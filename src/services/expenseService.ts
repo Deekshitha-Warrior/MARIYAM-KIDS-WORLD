@@ -35,8 +35,10 @@ export interface ExpenseFilterPayload {
   categoryId?: number | string
 }
 
-const STORAGE_EXPENSES_KEY = 'clad_expenses_records_v1'
-const STORAGE_CATEGORIES_KEY = 'clad_expense_categories_v1'
+const STORAGE_EXPENSES_KEY = 'chaji_expenses_records_v1'
+const LEGACY_STORAGE_EXPENSES_KEY = 'clad_expenses_records_v1'
+const STORAGE_CATEGORIES_KEY = 'chaji_expense_categories_v1'
+const LEGACY_STORAGE_CATEGORIES_KEY = 'clad_expense_categories_v1'
 
 // Default starter categories
 export const DEFAULT_EXPENSE_CATEGORIES: string[] = [
@@ -54,7 +56,7 @@ let remoteCategoriesAvailable: boolean | null = null
 
 const loadLocalExpenses = (): ExpenseRecord[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_EXPENSES_KEY)
+    const raw = localStorage.getItem(STORAGE_EXPENSES_KEY) || localStorage.getItem(LEGACY_STORAGE_EXPENSES_KEY)
     return raw ? (JSON.parse(raw) as ExpenseRecord[]) : []
   } catch {
     return []
@@ -71,7 +73,7 @@ const saveLocalExpenses = (records: ExpenseRecord[]) => {
 
 const loadLocalCategories = (): ExpenseCategory[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_CATEGORIES_KEY)
+    const raw = localStorage.getItem(STORAGE_CATEGORIES_KEY) || localStorage.getItem(LEGACY_STORAGE_CATEGORIES_KEY)
     if (raw) return JSON.parse(raw) as ExpenseCategory[]
   } catch {
     // fallback
@@ -394,7 +396,7 @@ export function exportExpensesToCSV(expenses: ExpenseRecord[]): void {
     [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
   const link = document.createElement('a')
   link.href = encodeURI(csvContent)
-  link.download = `CLAD-Expenses-${new Date().toISOString().slice(0, 10)}.csv`
+  link.download = `CHAJI-Expenses-${new Date().toISOString().slice(0, 10)}.csv`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

@@ -233,7 +233,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
           display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
         }}
       >
-        <div style={{ fontSize: 12, fontWeight: 800, color: '#0A0A0A' }}>Thank you for shopping at CLAD!</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#0A0A0A' }}>Thank you for shopping at CHAJI MENS WEAR!</div>
         <div style={{ fontSize: 10, color: '#777', marginTop: 2 }}>Follow us on Instagram: @{BRAND_INSTAGRAM}</div>
         {onPrintReceipt && (
           <button

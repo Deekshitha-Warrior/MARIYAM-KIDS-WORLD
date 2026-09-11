@@ -1,24 +1,24 @@
-export const BRAND_EN = 'CLAD Clothing'
-export const BRAND_TA = 'CLAD Clothing'
-export const BRAND_SHORT = 'CLAD'
+export const BRAND_EN = 'CHAJI MENS WEAR'
+export const BRAND_TA = 'CHAJI MENS WEAR'
+export const BRAND_SHORT = 'CHAJI'
 export const BRAND_SUBTITLE = 'Retail Billing & Inventory'
-export const BRAND_LOGO = '/clad-logo.png'
-export const BRAND_ICON = '/clad-icon.png'
-export const BRAND_FAVICON = '/clad-favicon.png'
+export const BRAND_LOGO = '/chaji-logo.jpeg'
+export const BRAND_ICON = '/chaji-icon.png'
+export const BRAND_FAVICON = '/chaji-favicon.png'
 export const BRAND_PRODUCTION_DOMAIN = 'https://cen-gen-pos.vercel.app'
 
 // Owner / Personal contact
-export const BRAND_OWNER_NAME = 'Rubi krishna'
-export const BRAND_OWNER_PHONE_DISPLAY = '+91 95857 47494'
-export const BRAND_OWNER_PHONE_E164 = '919585747494'
+export const BRAND_OWNER_NAME = 'Chandru ajitha'
+export const BRAND_OWNER_PHONE_DISPLAY = '+91 89250 94465'
+export const BRAND_OWNER_PHONE_E164 = '918925094465'
 
 // Official Shop contact (used for receipts, billing, and customer WhatsApp)
-export const BRAND_PRIMARY_PHONE_DISPLAY = '+91 70103 12145'
-export const BRAND_PRIMARY_PHONE_E164 = '917010312145'
-export const BRAND_SECONDARY_PHONE_DISPLAY = BRAND_OWNER_PHONE_DISPLAY
-export const BRAND_SECONDARY_PHONE_E164 = BRAND_OWNER_PHONE_E164
-export const BRAND_THIRD_PHONE_DISPLAY = BRAND_PRIMARY_PHONE_DISPLAY
-export const BRAND_THIRD_PHONE_E164 = BRAND_PRIMARY_PHONE_E164
+export const BRAND_PRIMARY_PHONE_DISPLAY = '+91 89250 94465'
+export const BRAND_PRIMARY_PHONE_E164 = '918925094465'
+export const BRAND_SECONDARY_PHONE_DISPLAY = '+91 93441 59498'
+export const BRAND_SECONDARY_PHONE_E164 = '919344159498'
+export const BRAND_THIRD_PHONE_DISPLAY = BRAND_SECONDARY_PHONE_DISPLAY
+export const BRAND_THIRD_PHONE_E164 = BRAND_SECONDARY_PHONE_E164
 
 export const BRAND_PHONE_DISPLAY = BRAND_PRIMARY_PHONE_DISPLAY
 export const BRAND_PHONE_E164 = BRAND_PRIMARY_PHONE_E164
@@ -27,8 +27,8 @@ export const BRAND_WHATSAPP = BRAND_PRIMARY_PHONE_DISPLAY
 export const WHATSAPP_NUM = BRAND_PRIMARY_PHONE_E164
 export const BRAND_WHATSAPP_LINK = `https://wa.me/${BRAND_PRIMARY_PHONE_E164}`
 
-export const BRAND_EMAIL = 'cladclothing26@gmail.com'
+export const BRAND_EMAIL = 'chandrums1552004@gmail.com'
 export const BRAND_ADDRESS = 'Manapparai, Trichy, Tamil Nadu - 621 306'
-export const BRAND_INSTAGRAM = '_clad_clothing'
-export const BRAND_INSTAGRAM_URL = 'https://instagram.com/_clad_clothing'
+export const BRAND_INSTAGRAM = 'chaji_mens_shop'
+export const BRAND_INSTAGRAM_URL = 'https://www.instagram.com/chaji_mens_shop/'
 export const BRAND_LOCATION_LINK = '#'
