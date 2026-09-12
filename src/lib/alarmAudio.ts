@@ -1,6 +1,7 @@
 /**
  * Synthesized Web Audio API Alarm Sound Manager
  * Provides reliable, zero-latency, dependency-free audio alerts that run offline.
+ * Gracefully handles browser autoplay policies and audio context suspensions without console errors.
  */
 class AlarmSoundManager {
   private ctx: AudioContext | null = null
@@ -8,38 +9,74 @@ class AlarmSoundManager {
   private intervalId: number | null = null
   private isAlarmPlaying: boolean = false
   private activeOscillators: OscillatorNode[] = []
+  private unlockListenerAttached: boolean = false
 
-  private initContext() {
-    if (typeof window === 'undefined') return
+  constructor() {
+    this.attachUnlockListener()
+  }
+
+  private attachUnlockListener() {
+    if (typeof window === 'undefined' || this.unlockListenerAttached) return
+    this.unlockListenerAttached = true
+
+    const unlock = () => {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {})
+      }
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('touchstart', unlock)
+      window.removeEventListener('keydown', unlock)
+      window.removeEventListener('click', unlock)
+    }
+
+    window.addEventListener('pointerdown', unlock, { passive: true })
+    window.addEventListener('touchstart', unlock, { passive: true })
+    window.addEventListener('keydown', unlock, { passive: true })
+    window.addEventListener('click', unlock, { passive: true })
+  }
+
+  private getContext(): AudioContext | null {
+    if (typeof window === 'undefined') return null
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      if (AudioCtx) {
-        this.ctx = new AudioCtx()
+      try {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        if (AudioCtx) {
+          this.ctx = new AudioCtx()
+        }
+      } catch {
+        // AudioContext not supported
+        return null
       }
     }
-    if (this.ctx) {
-      if (!this.masterGain) {
+    if (this.ctx && !this.masterGain) {
+      try {
         this.masterGain = this.ctx.createGain()
         this.masterGain.connect(this.ctx.destination)
-      }
-      if (this.ctx.state === 'suspended') {
-        void this.ctx.resume()
+      } catch {
+        // Gain connection failure
       }
     }
+    return this.ctx
   }
 
   // Dual-tone urgent alert pulse (A5 -> E5)
   private playBeep() {
-    if (!this.ctx || !this.masterGain || !this.isAlarmPlaying) return
+    if (!this.isAlarmPlaying) return
+    const ctx = this.getContext()
+    if (!ctx || !this.masterGain) return
+
+    // If context is suspended due to browser autoplay policies, attempt silent resume
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+      return
+    }
+
+    if (ctx.state !== 'running') return
 
     try {
-      if (this.ctx.state === 'suspended') {
-        void this.ctx.resume()
-      }
-
-      const now = this.ctx.currentTime
-      const osc = this.ctx.createOscillator()
-      const gain = this.ctx.createGain()
+      const now = ctx.currentTime
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
 
       osc.type = 'sawtooth'
       // Dual tone: 880 Hz (A5) shifting to 659.25 Hz (E5)
@@ -61,8 +98,8 @@ class AlarmSoundManager {
 
       osc.start(now)
       osc.stop(now + 0.36)
-    } catch (err) {
-      console.warn('AudioContext beep execution skipped:', err)
+    } catch {
+      // Gracefully ignore audio scheduling issues without console spam
     }
   }
 
@@ -70,18 +107,26 @@ class AlarmSoundManager {
     if (this.isAlarmPlaying) return
     this.stopAlert() // Clear any existing intervals / state
 
-    this.initContext()
     this.isAlarmPlaying = true
-    if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(1, this.ctx.currentTime)
+    const ctx = this.getContext()
+    if (ctx && this.masterGain) {
+      try {
+        this.masterGain.gain.setValueAtTime(1, ctx.currentTime)
+      } catch {
+        // ignore
+      }
     }
 
+    // Attempt first beep
     this.playBeep()
 
     // Repeat alert pulse every 1.5 seconds until silenced
     this.intervalId = window.setInterval(() => {
       if (this.isAlarmPlaying) {
         this.playBeep()
+      } else if (this.intervalId) {
+        clearInterval(this.intervalId)
+        this.intervalId = null
       }
     }, 1500)
   }

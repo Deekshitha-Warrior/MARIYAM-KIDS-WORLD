@@ -1632,26 +1632,29 @@ export default function Dashboard() {
           </button>
         </div>
         {/* Mobile mini-header */}
-        <div className="flex lg:hidden items-center justify-between px-3 py-2.5 border-b border-white/10 bg-[#0A0A0A] shrink-0">
-          <Link to="/pos" title="Go to Billing Panel" className="flex items-center gap-2.5 min-w-0">
+        <div className="flex lg:hidden items-center justify-between px-3 py-2 border-b border-white/10 bg-[#0A0A0A] shrink-0 gap-2">
+          <Link to="/pos" title="Go to Billing Panel" className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#141414] border border-[#D4AF37]/50 shrink-0 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden">
               <img src={BRAND_ICON} alt={BRAND_EN} className="w-full h-full object-contain" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[16px] font-black text-white tracking-wider truncate">{BRAND_EN}</span>
-              <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+              <span className="text-[13px] sm:text-[14px] font-black text-white tracking-wide truncate min-w-0">
+                {BRAND_EN}
+              </span>
+              <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
                 {role === 'admin' ? 'ADMIN' : 'STAFF'}
               </span>
             </div>
           </Link>
           <button
+            type="button"
             onClick={() => {
               useAdminAuthStore.getState().logout()
               navigate('/admin-login', { replace: true })
             }}
-            className="flex items-center gap-1 text-[11px] font-bold text-white/70 hover:text-white px-2.5 py-1 rounded-lg bg-white/10"
+            className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-white/80 hover:text-white px-2.5 py-1.5 rounded-lg bg-white/10 active:bg-white/20 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <Power size={13} />
+            <Power size={13} className="text-red-400 shrink-0" />
             <span>Logout</span>
           </button>
         </div>
