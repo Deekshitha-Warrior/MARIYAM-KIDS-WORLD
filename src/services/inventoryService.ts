@@ -20,6 +20,7 @@ export interface InventoryStockItem {
   category?: string
   image_url?: string
   is_active: boolean
+  low_stock_threshold?: number
   updated_at?: string
 }
 
@@ -89,7 +90,7 @@ export const inventoryService = {
     // 1. Fetch products
     const { data: products, error: prodErr } = await supabase
       .from('products')
-      .select('id, name, name_ta, price, offer_price, purchase_price, stock_quantity, unit, unit_type, category, category_id, image_url, barcode, sku, is_active, updated_at')
+      .select('id, name, name_ta, price, offer_price, purchase_price, stock_quantity, low_stock_alert, unit, unit_type, category, category_id, image_url, barcode, sku, is_active, updated_at')
       .order('name', { ascending: true })
 
     if (prodErr) {
@@ -126,6 +127,7 @@ export const inventoryService = {
         continue
       }
 
+      const threshold = Number(p.low_stock_alert) > 0 ? Number(p.low_stock_alert) : 5
       const prodVariants = variantsByProduct.get(p.id)
 
       if (prodVariants && prodVariants.length > 0) {
@@ -142,6 +144,7 @@ export const inventoryService = {
             sku: v.sku || p.sku,
             barcode: v.barcode,
             stock: Number(v.stock) || 0,
+            low_stock_threshold: threshold,
             price: Number(v.price) || Number(p.price) || 0,
             offer_price: p.offer_price ? Number(p.offer_price) : undefined,
             purchase_price: v.purchase_price ? Number(v.purchase_price) : (p.purchase_price ? Number(p.purchase_price) : undefined),
@@ -167,6 +170,7 @@ export const inventoryService = {
           sku: p.sku,
           barcode: p.barcode,
           stock: Number(p.stock_quantity) || 0,
+          low_stock_threshold: threshold,
           price: Number(p.price) || 0,
           offer_price: p.offer_price ? Number(p.offer_price) : undefined,
           purchase_price: p.purchase_price ? Number(p.purchase_price) : undefined,

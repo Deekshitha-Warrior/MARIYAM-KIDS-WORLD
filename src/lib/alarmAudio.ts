@@ -67,7 +67,11 @@ class AlarmSoundManager {
 
     // If context is suspended due to browser autoplay policies, attempt silent resume
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
+      ctx.resume().then(() => {
+        if (this.isAlarmPlaying && ctx.state === 'running') {
+          this.playBeep()
+        }
+      }).catch(() => {})
       return
     }
 

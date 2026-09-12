@@ -38,6 +38,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { debounce } from '../lib/debounce'
 import { useAuthStore, useProductStore, useAdminAuthStore, type Product } from '../store/store'
+import { useAlarmStore } from '../store/alarmStore'
+import { alarmSound } from '../lib/alarmAudio'
 import { uploadProductImage } from '../lib/storage'
 import { formatCurrency, normalizeOrderMode, normalizeUnitType, toNumber, type UnitType } from '../lib/retail'
 import { normalizeStructuredOrderItem, formatInvoiceNo } from '../lib/retail'
@@ -319,6 +321,14 @@ export default function Dashboard() {
       const staffAllowedTabs: TabKey[] = ['billing', 'inventory', 'advance_orders', 'history']
       if (!staffAllowedTabs.includes(tabKey)) return
     }
+    if (tabKey === 'inventory') {
+      useAlarmStore.getState().resetSilencedState()
+      const lowItems = useAlarmStore.getState().lowStockItems
+      if (lowItems.length > 0) {
+        useAlarmStore.getState().setLowStockItems(lowItems)
+        alarmSound.startAlert()
+      }
+    }
     setTab(tabKey)
     setCurrentTab(tabKey)
     if (tabKey === 'pos_analytics') {
@@ -327,10 +337,23 @@ export default function Dashboard() {
       navigate('/dashboard?tab=expenses', { replace: true })
     } else if (tabKey === 'advance_orders') {
       navigate('/dashboard?tab=advance_orders', { replace: true })
+    } else if (tabKey === 'inventory') {
+      navigate('/dashboard?tab=inventory', { replace: true })
     } else {
       navigate('/dashboard', { replace: true })
     }
   }
+
+  useEffect(() => {
+    if (tab === 'inventory') {
+      useAlarmStore.getState().resetSilencedState()
+      const lowItems = useAlarmStore.getState().lowStockItems
+      if (lowItems.length > 0) {
+        useAlarmStore.getState().setLowStockItems(lowItems)
+        alarmSound.startAlert()
+      }
+    }
+  }, [tab])
 
   const deletedOrderIds = React.useRef<Set<string>>(new Set())
 
@@ -631,14 +654,31 @@ export default function Dashboard() {
       { name: 'Manual Sales',  value: manualRevenue || totalManualRevenue, color: '#8b5cf6' },
     ]
 
-    const couponMap = new Map<string, { code: string; usage: number; discounts: number }>()
+    const couponMap = new Map<string, { code: string; usage: number; discounts: number; percentage?: number; is_active?: boolean }>()
+    coupons.forEach(c => {
+      const code = String(c.code || '').trim().toUpperCase()
+      if (!code) return
+      couponMap.set(code, {
+        code,
+        usage: 0,
+        discounts: 0,
+        percentage: c.percentage,
+        is_active: c.is_active,
+      })
+    })
     billableCompleted.forEach(order => {
-      const code = String((order as Record<string,unknown>).coupon_code || '').trim(); if (!code) return
-      const u = couponMap.get(code) || { code, usage: 0, discounts: 0 }
-      u.usage += 1; u.discounts += toNumber((order as Record<string,unknown>).discount_amount, 0)
+      const rawCode = String((order as Record<string,unknown>).coupon_code || '').trim()
+      if (!rawCode) return
+      const code = rawCode.toUpperCase()
+      const u = couponMap.get(code) || { code, usage: 0, discounts: 0, is_active: false }
+      u.usage += 1
+      u.discounts += toNumber((order as Record<string,unknown>).discount_amount, 0)
       couponMap.set(code, u)
     })
-    const topCoupons = Array.from(couponMap.values()).sort((a, b) => b.usage - a.usage)
+    const topCoupons = Array.from(couponMap.values()).sort((a, b) => {
+      if (b.usage !== a.usage) return b.usage - a.usage
+      return b.discounts - a.discounts
+    })
     const totalCouponDiscounts = topCoupons.reduce((s, c) => s + c.discounts, 0)
     const totalCouponOrders = topCoupons.reduce((s, c) => s + c.usage, 0)
     const couponUsageRate = billableCompleted.length > 0
@@ -750,7 +790,7 @@ export default function Dashboard() {
       netProfit,
       isProfitable,
     }
-  }, [orders, orderItems, products, expenses, analyticsDateFrom, analyticsDateTo])
+  }, [orders, orderItems, products, coupons, expenses, analyticsDateFrom, analyticsDateTo])
 
   // Bill-type filtered results for Order Management table (client-side, instant)
   const filteredSearchResults = useMemo(() => {
@@ -1089,14 +1129,21 @@ export default function Dashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, handleChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, handleChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, handleChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'coupons' }, handleChange)
       .subscribe()
     return () => { void supabase.removeChannel(ch) }
   }, [isAdmin, loadData])
 
   useEffect(() => {
     if (tab === 'users') void loadUsers()
-    if (tab === 'coupons') void loadCoupons()
+    if (tab === 'coupons' || tab === 'pos_analytics') void loadCoupons()
   }, [tab, loadUsers, loadCoupons])
+
+  useEffect(() => {
+    if (tab === 'pos_analytics' && posAnalyticsTab === 'coupons') {
+      void loadCoupons()
+    }
+  }, [tab, posAnalyticsTab, loadCoupons])
 
   const applyAnalyticsPreset = (preset: 'all' | 'today' | 'week' | 'month' | 'year' | 'custom') => {
     setAnalyticsDatePreset(preset)
@@ -2922,9 +2969,19 @@ export default function Dashboard() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] font-black text-[#9BAB9A]">{i + 1}</span>
-                              <p className="text-[13px] font-bold text-[#111111] truncate">{coupon.code}</p>
+                              <p className="text-[13px] font-bold text-[#111111] truncate font-mono">{coupon.code}</p>
+                              {coupon.percentage ? (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                  {coupon.percentage}% OFF
+                                </span>
+                              ) : null}
+                              {coupon.is_active === false && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                                  Inactive
+                                </span>
+                              )}
                             </div>
-                            <p className="text-[11px] text-[#374151] ml-5">{coupon.usage} order{coupon.usage > 1 ? 's' : ''}</p>
+                            <p className="text-[11px] text-[#374151] ml-5">{coupon.usage} order{coupon.usage !== 1 ? 's' : ''}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-[13px] font-black text-emerald-700">{formatCurrency(coupon.discounts)}</p>
@@ -2933,68 +2990,95 @@ export default function Dashboard() {
                         </div>
                       ))}
                       {analytics.topCoupons.length === 0 && (
-                        <p className="text-center text-[13px] text-[#374151] py-6">No coupon usage yet</p>
+                        <p className="text-center text-[13px] text-[#374151] py-6">No coupons created or used yet</p>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Coupon detail table */}
-                {analytics.topCoupons.length > 0 && (
-                  <div className="bg-white rounded-2xl border border-[#E5E7EB]/30 p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[15px] font-bold text-[#111111]">All Coupons Performance</h3>
-                      <span className="text-[11px] font-bold text-[#10B981]">{analytics.topCoupons.length} coupons</span>
-                    </div>
-                    <div className="space-y-3 md:hidden">
-                      {analytics.topCoupons.map((coupon, i) => (
-                        <div key={coupon.code} className="rounded-2xl border border-[#E5E7EB]/30 bg-[#FBFAF6] p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-[13px] font-black text-[#9BAB9A]">#{i + 1}</p>
-                              <p className="text-[16px] font-bold text-[#111111] break-words">{coupon.code}</p>
-                            </div>
-                            <p className="text-[14px] font-black text-emerald-700">{formatCurrency(coupon.discounts)}</p>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-3 text-[13px]">
-                            <div>
-                              <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Orders</p>
-                              <p className="font-bold text-[#111111]">{coupon.usage}</p>
-                            </div>
-                            <div>
-                              <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Avg Discount</p>
-                              <p className="font-semibold text-[#374151]">{coupon.usage > 0 ? formatCurrency(coupon.discounts / coupon.usage) : '-'}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="hidden md:block overflow-x-auto rounded-xl border border-[#E5E7EB]/30">
-                      <table className="w-full min-w-[400px] text-left text-[12px]">
-                        <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-wider text-[#374151]">
-                          <tr>
-                            <th className="px-4 py-2.5 font-black">#</th>
-                            <th className="px-4 py-2.5 font-black">Code</th>
-                            <th className="px-4 py-2.5 font-black">Orders</th>
-                            <th className="px-4 py-2.5 font-black">Total Discount</th>
-                            <th className="px-4 py-2.5 font-black">Avg Discount</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#E5E7EB]/20">
-                          {analytics.topCoupons.map((coupon, i) => (
-                            <tr key={coupon.code} className="hover:bg-[#F9FAFB]/50">
-                              <td className="px-4 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
-                              <td className="px-4 py-2 font-bold text-[#111111]">{coupon.code}</td>
-                              <td className="px-4 py-2 font-bold">{coupon.usage}</td>
-                              <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(coupon.discounts)}</td>
-                              <td className="px-4 py-2 text-[#374151]">{coupon.usage > 0 ? formatCurrency(coupon.discounts / coupon.usage) : '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                <div className="bg-white rounded-2xl border border-[#E5E7EB]/30 p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[15px] font-bold text-[#111111]">All Coupons Performance</h3>
+                    <span className="text-[11px] font-bold text-[#10B981]">{analytics.topCoupons.length} coupons</span>
                   </div>
-                )}
+                  {analytics.topCoupons.length > 0 ? (
+                    <>
+                      <div className="space-y-3 md:hidden">
+                        {analytics.topCoupons.map((coupon, i) => (
+                          <div key={coupon.code} className="rounded-2xl border border-[#E5E7EB]/30 bg-[#FBFAF6] p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-[13px] font-black text-[#9BAB9A]">#{i + 1}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <p className="text-[16px] font-bold text-[#111111] break-words font-mono">{coupon.code}</p>
+                                  {coupon.percentage ? (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                      {coupon.percentage}% OFF
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <p className="text-[14px] font-black text-emerald-700">{formatCurrency(coupon.discounts)}</p>
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 gap-3 text-[13px]">
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Orders</p>
+                                <p className="font-bold text-[#111111]">{coupon.usage}</p>
+                              </div>
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Avg Discount</p>
+                                <p className="font-semibold text-[#374151]">{coupon.usage > 0 ? formatCurrency(coupon.discounts / coupon.usage) : '-'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="hidden md:block overflow-x-auto rounded-xl border border-[#E5E7EB]/30">
+                        <table className="w-full min-w-[500px] text-left text-[12px]">
+                          <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-wider text-[#374151]">
+                            <tr>
+                              <th className="px-4 py-2.5 font-black">#</th>
+                              <th className="px-4 py-2.5 font-black">Code</th>
+                              <th className="px-4 py-2.5 font-black">Discount Rate</th>
+                              <th className="px-4 py-2.5 font-black">Orders Used</th>
+                              <th className="px-4 py-2.5 font-black">Total Discount</th>
+                              <th className="px-4 py-2.5 font-black">Avg Discount</th>
+                              <th className="px-4 py-2.5 font-black text-right">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#E5E7EB]/20">
+                            {analytics.topCoupons.map((coupon, i) => (
+                              <tr key={coupon.code} className="hover:bg-[#F9FAFB]/50">
+                                <td className="px-4 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
+                                <td className="px-4 py-2 font-bold text-[#111111] font-mono">{coupon.code}</td>
+                                <td className="px-4 py-2 font-bold text-amber-800">
+                                  {coupon.percentage ? `${coupon.percentage}%` : '-'}
+                                </td>
+                                <td className="px-4 py-2 font-bold">{coupon.usage}</td>
+                                <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(coupon.discounts)}</td>
+                                <td className="px-4 py-2 text-[#374151]">{coupon.usage > 0 ? formatCurrency(coupon.discounts / coupon.usage) : '-'}</td>
+                                <td className="px-4 py-2 text-right">
+                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                    coupon.is_active === false
+                                      ? 'bg-gray-100 text-gray-500'
+                                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  }`}>
+                                    {coupon.is_active === false ? 'Inactive' : 'Active'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-center text-[13px] text-[#374151] py-8">
+                      No coupons configured in store yet. Add coupons from the Coupons tab to track performance.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>

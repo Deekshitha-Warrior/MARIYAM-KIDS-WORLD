@@ -14,6 +14,9 @@ import {
   type UnitType,
 } from '../lib/retail'
 
+import { useAlarmStore } from './alarmStore'
+import { alarmSound } from '../lib/alarmAudio'
+
 export type { ProductVariant }
 
 /** Shared state for authentication, products, billing, and settings. */
@@ -594,6 +597,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
         const adminPass = String(import.meta.env.VITE_ADMIN_PASSWORD || import.meta.env.VITE_PORTAL_PASSWORD || 'admin123').trim()
 
         if (trimmedId === adminId && trimmedPass === adminPass) {
+          useAlarmStore.getState().resetSilencedState()
           set({ isLoggedIn: true, role: 'admin', adminId: trimmedId })
           return 'admin'
         }
@@ -603,13 +607,18 @@ export const useAdminAuthStore = create<AdminAuthState>()(
         const staffPass = String(import.meta.env.VITE_STAFF_PASSWORD || 'staff123').trim()
 
         if (trimmedId === staffId && trimmedPass === staffPass) {
+          useAlarmStore.getState().resetSilencedState()
           set({ isLoggedIn: true, role: 'staff', adminId: trimmedId })
           return 'staff'
         }
 
         return false
       },
-      logout: () => set({ isLoggedIn: false, role: null, adminId: null }),
+      logout: () => {
+        alarmSound.stopAlert()
+        useAlarmStore.getState().resetSilencedState()
+        set({ isLoggedIn: false, role: null, adminId: null })
+      },
     }),
     {
       name: 'purple-boutique-admin-session',

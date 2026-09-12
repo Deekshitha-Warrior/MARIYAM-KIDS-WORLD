@@ -2,12 +2,12 @@ import { useEffect, useRef } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { useAlarmStore, type LowStockItem } from '../store/alarmStore'
 
-export function useLowStockMonitor(enabled: boolean = true) {
+export function useLowStockMonitor(enabled: boolean = true, role?: string | null) {
   const setLowStockItems = useAlarmStore((state) => state.setLowStockItems)
   const isCheckingRef = useRef(false)
 
-  const checkStockLevels = async () => {
-    if (!enabled || isCheckingRef.current) return
+  const checkStockLevels = async (force: boolean = false) => {
+    if (!enabled || (isCheckingRef.current && !force)) return
     isCheckingRef.current = true
 
     try {
@@ -99,8 +99,9 @@ export function useLowStockMonitor(enabled: boolean = true) {
   useEffect(() => {
     if (!enabled) return
 
-    // Initial check
-    void checkStockLevels()
+    // Immediately unblock and run fresh stock check on login or role switch
+    isCheckingRef.current = false
+    void checkStockLevels(true)
 
     // 15-second interval continuous stock monitor
     const interval = setInterval(() => {
@@ -115,10 +116,10 @@ export function useLowStockMonitor(enabled: boolean = true) {
     const realtimeChannel = supabase
       .channel('low-stock-realtime-monitor')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        void checkStockLevels()
+        void checkStockLevels(true)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variants' }, () => {
-        void checkStockLevels()
+        void checkStockLevels(true)
       })
       .subscribe()
 
@@ -126,6 +127,5 @@ export function useLowStockMonitor(enabled: boolean = true) {
       clearInterval(interval)
       void supabase.removeChannel(realtimeChannel)
     }
-  }, [enabled])
+  }, [enabled, role])
 }
-

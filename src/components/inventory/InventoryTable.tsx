@@ -23,6 +23,8 @@ import { StockHistoryDrawer } from './StockHistoryDrawer'
 import { QuickPriceModal } from './QuickPriceModal'
 import { formatCurrency } from '../../lib/retail'
 import { useProductStore, useAdminAuthStore } from '../../store/store'
+import { useAlarmStore } from '../../store/alarmStore'
+import { alarmSound } from '../../lib/alarmAudio'
 import { CategoryManagerView } from './CategoryManagerView'
 import { InventoryAnalyticsView } from './InventoryAnalyticsView'
 import { AddEditProductView } from './AddEditProductView'
@@ -53,6 +55,25 @@ export const InventoryTable: React.FC = () => {
       void fetchProducts(true)
       const data = await inventoryService.fetchInventoryItems()
       setItems(data)
+
+      // Alert sound and modal when viewing inventory with low stock
+      const lowStockFlagged = data
+        .filter((i) => i.stock > 0 && i.stock <= (i.low_stock_threshold || 5))
+        .map((i) => ({
+          id: i.variant_id ? `v-${i.variant_id}` : `p-${i.product_id}`,
+          name: i.name,
+          variantName: i.variant_name || undefined,
+          stock: i.stock,
+          alertThreshold: i.low_stock_threshold || 5,
+          barcode: i.barcode || undefined,
+          category: i.category || undefined,
+        }))
+
+      if (lowStockFlagged.length > 0) {
+        useAlarmStore.getState().resetSilencedState()
+        useAlarmStore.getState().setLowStockItems(lowStockFlagged)
+        alarmSound.startAlert()
+      }
     } catch (err) {
       console.error('Failed to load inventory items:', err)
     } finally {
@@ -95,9 +116,10 @@ export const InventoryTable: React.FC = () => {
 
     if (!matchesSearch) return false
 
+    const threshold = item.low_stock_threshold || 5
     if (filterStatus === 'out') return item.stock <= 0
-    if (filterStatus === 'low') return item.stock > 0 && item.stock <= 5
-    if (filterStatus === 'in_stock') return item.stock > 0
+    if (filterStatus === 'low') return item.stock > 0 && item.stock <= threshold
+    if (filterStatus === 'in_stock') return item.stock > threshold
 
     return true
   })
@@ -106,7 +128,8 @@ export const InventoryTable: React.FC = () => {
   const totalSkus = items.length
   const totalUnits = items.reduce((sum, i) => sum + i.stock, 0)
   const outOfStockCount = items.filter((i) => i.stock <= 0).length
-  const lowStockCount = items.filter((i) => i.stock > 0 && i.stock <= 5).length
+  const lowStockCount = items.filter((i) => i.stock > 0 && i.stock <= (i.low_stock_threshold || 5)).length
+  const inStockCount = items.filter((i) => i.stock > (i.low_stock_threshold || 5)).length
   const totalValuation = items.reduce((sum, i) => sum + i.stock * i.price, 0)
 
   interface ProductOptionType {
@@ -163,59 +186,59 @@ export const InventoryTable: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* NAVIGATION / HEADER */}
-      {role === 'admin' ? (
-        <div className="bg-white border border-[#E8D399] rounded-2xl p-2 sm:p-2.5 shadow-sm flex items-center justify-between gap-3 overflow-x-auto hide-scrollbar">
-          <div className="flex items-center gap-1.5 p-1 bg-[#FBFAF6] border border-gray-200 rounded-xl shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('stock')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === 'stock'
-                  ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              <Box size={14} /> Stock Management
-            </button>
+      <div className="bg-white border border-[#E8D399] rounded-2xl p-2 sm:p-2.5 shadow-sm flex items-center justify-between gap-3 overflow-x-auto hide-scrollbar">
+        <div className="flex items-center gap-1.5 p-1 bg-[#FBFAF6] border border-gray-200 rounded-xl shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('stock')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'stock'
+                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <Box size={14} /> Stock Management
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('products')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === 'products'
-                  ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              <Package size={14} /> Add / Edit Products
-            </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('products')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'products'
+                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <Package size={14} /> Add / Edit Products
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('categories')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === 'categories'
-                  ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              <Tag size={14} /> Categories
-            </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('categories')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'categories'
+                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <Tag size={14} /> Categories
+          </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('analytics')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === 'analytics'
-                  ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              <BarChart3 size={14} /> Analytics &amp; Reports
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('analytics')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'analytics'
+                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <BarChart3 size={14} /> Analytics &amp; Reports
+          </button>
+        </div>
 
-          {/* Global Add Barcode CTA */}
+        {/* Global Add Barcode CTA (Admin Only) */}
+        {role === 'admin' && (
           <button
             type="button"
             onClick={() => {
@@ -227,20 +250,8 @@ export const InventoryTable: React.FC = () => {
           >
             <Printer size={15} /> Add Barcode
           </button>
-        </div>
-      ) : (
-        <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#0A0A0A] text-[#D4AF37] flex items-center justify-center font-black">
-              <Box size={18} />
-            </div>
-            <div>
-              <h2 className="text-base font-black text-[#0A0A0A]">Stock Management</h2>
-              <p className="text-xs font-semibold text-gray-500">Live store product inventory and stock levels</p>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* TAB 1: STOCK MANAGEMENT VIEW */}
       {activeTab === 'stock' && (
@@ -324,7 +335,7 @@ export const InventoryTable: React.FC = () => {
                     : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
                 }`}
               >
-                In Stock ({items.filter((i) => i.stock > 0).length})
+                In Stock ({inStockCount})
               </button>
               <button
                 type="button"
@@ -428,7 +439,7 @@ export const InventoryTable: React.FC = () => {
                               className={`inline-block px-2.5 py-1 rounded-full text-xs font-black tabular-nums ${
                                 item.stock <= 0
                                   ? 'bg-red-50 text-red-700 border border-red-200'
-                                  : item.stock <= 5
+                                  : item.stock <= (item.low_stock_threshold || 5)
                                   ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                   : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                               }`}
@@ -441,34 +452,30 @@ export const InventoryTable: React.FC = () => {
                           <td className="py-3.5 px-4 text-right align-middle font-black text-xs text-gray-900 tabular-nums">
                             <div className="inline-flex items-center justify-end gap-1.5 group">
                               <span>{formatCurrency(item.price)}</span>
-                              {role === 'admin' && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPriceModalItem(item)}
-                                  className="p-1 rounded-md text-gray-400 hover:text-amber-800 hover:bg-amber-100/70 transition-all cursor-pointer"
-                                  title="Quick Edit Price"
-                                >
-                                  <Edit2 size={12} />
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => setPriceModalItem(item)}
+                                className="p-1 rounded-md text-gray-400 hover:text-amber-800 hover:bg-amber-100/70 transition-all cursor-pointer"
+                                title="Quick Edit Price"
+                              >
+                                <Edit2 size={12} />
+                              </button>
                             </div>
                           </td>
 
                           {/* Actions */}
                           <td className="py-3.5 px-4 text-right align-middle">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Adjust Stock (Admin Only) */}
-                              {role === 'admin' && (
-                                <button
-                                  type="button"
-                                  onClick={() => setAdjustModalItem(item)}
-                                  className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors cursor-pointer"
-                                  title="Adjust Stock"
-                                >
-                                  <SlidersHorizontal size={13} className="inline mr-1" />
-                                  Adjust
-                                </button>
-                              )}
+                              {/* Adjust Stock */}
+                              <button
+                                type="button"
+                                onClick={() => setAdjustModalItem(item)}
+                                className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors cursor-pointer"
+                                title="Adjust Stock"
+                              >
+                                <SlidersHorizontal size={13} className="inline mr-1" />
+                                Adjust
+                              </button>
 
                               {/* Stock History */}
                               <button
@@ -538,15 +545,13 @@ export const InventoryTable: React.FC = () => {
                           <div className="font-black text-xs text-gray-900 tabular-nums">
                             {formatCurrency(item.price)}
                           </div>
-                          {role === 'admin' && (
-                            <button
-                              type="button"
-                              onClick={() => setPriceModalItem(item)}
-                              className="text-[10px] font-bold text-amber-700 hover:underline"
-                            >
-                              Edit Price
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setPriceModalItem(item)}
+                            className="text-[10px] font-bold text-amber-700 hover:underline"
+                          >
+                            Edit Price
+                          </button>
                         </div>
                       </div>
 
@@ -566,7 +571,7 @@ export const InventoryTable: React.FC = () => {
                             className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-black tabular-nums ${
                               item.stock <= 0
                                 ? 'bg-red-50 text-red-700 border border-red-200'
-                                : item.stock <= 5
+                                : item.stock <= (item.low_stock_threshold || 5)
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                 : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             }`}
@@ -578,16 +583,14 @@ export const InventoryTable: React.FC = () => {
 
                       {/* Mobile Actions Toolbar */}
                       <div className="flex items-center justify-end gap-1.5 pt-1.5">
-                        {role === 'admin' && (
-                          <button
-                            type="button"
-                            onClick={() => setAdjustModalItem(item)}
-                            className="flex-1 py-1.5 px-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors flex items-center justify-center gap-1"
-                          >
-                            <SlidersHorizontal size={12} />
-                            Adjust
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setAdjustModalItem(item)}
+                          className="flex-1 py-1.5 px-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors flex items-center justify-center gap-1"
+                        >
+                          <SlidersHorizontal size={12} />
+                          Adjust
+                        </button>
                         <button
                           type="button"
                           onClick={() => setHistoryDrawerItem(item)}

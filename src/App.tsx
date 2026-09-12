@@ -94,7 +94,7 @@ function AppShell() {
   const { isLoggedIn, role } = useAdminAuthStore()
 
   const hasStaffOrAdminAccess = Boolean(isLoggedIn && (role === 'admin' || role === 'staff'))
-  useLowStockMonitor(hasStaffOrAdminAccess)
+  useLowStockMonitor(hasStaffOrAdminAccess, role)
 
   useEffect(() => {
     document.title = BRAND_EN
