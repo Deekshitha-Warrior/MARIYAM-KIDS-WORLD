@@ -7,8 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      selfDestroying: true,
       includeAssets: [
         'chaji-logo.jpeg',
         'chaji-logo.png',
