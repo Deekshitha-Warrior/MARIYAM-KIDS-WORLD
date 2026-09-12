@@ -1281,78 +1281,89 @@ export default function Pos(props: PosProps = {}) {
 
               {items.map(item => (
                 <div key={item.id}>
-                  <div className="md:hidden border border-gray-200 rounded-2xl p-4 bg-[#FFFDFC] space-y-3">
-                    <div className="flex items-start justify-between gap-3">
+                  <div className="md:hidden bg-white border border-gray-200/90 rounded-2xl p-3.5 shadow-sm hover:border-[#D4AF37]/50 transition-all space-y-3">
+                    {/* Header Row: Product Name + Trash Delete */}
+                    <div className="flex items-start justify-between gap-2.5">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-black uppercase tracking-wider text-[#374151] mb-1">Product Name</p>
                         {item.source === 'manual' ? (
                           <input
                             type="text"
                             value={item.name}
                             onChange={e => updateItem(item.id, 'name', e.target.value)}
-                            placeholder="Item name"
-                            className="w-full h-12 px-3 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[16px] font-bold text-[#111111] focus:outline-none focus:border-[#D4AF37]"
+                            placeholder="Enter item name..."
+                            className="w-full px-3 py-1.5 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[14px] font-bold text-[#111111] focus:outline-none focus:border-[#D4AF37]"
                           />
                         ) : (
-                          <div className="rounded-xl border border-gray-200 bg-white px-3 py-3">
-                            <p className="text-[16px] font-bold text-[#111111] break-words">{item.name} {item.variantName ? `- ${item.variantName}` : ''}</p>
+                          <div>
+                            <h4 className="text-[14px] font-bold text-[#111111] leading-snug break-words">
+                              {item.name}
+                            </h4>
+                            {item.variantName && (
+                              <span className="inline-block mt-0.5 text-[10.5px] font-semibold text-[#B48811] bg-[#FBFAF6] border border-[#E8D399]/60 px-1.5 py-0.5 rounded">
+                                {item.variantName}
+                              </span>
+                            )}
                           </div>
                         )}
-                      </div>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border border-gray-200 text-[#374151] hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
-                        aria-label={`Delete ${item.name}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-[12px] font-black uppercase tracking-wider text-[#374151]">Unit Price</p>
+                        {/* Clickable Unit Price Pill Badge */}
+                        <div className="mt-1.5 flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => handleOpenPriceEdit(item)}
-                            className="text-[10px] font-bold text-[#B48811] hover:underline flex items-center gap-1 cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FBF9F4] hover:bg-[#F5EEDB] border border-[#E8D399]/70 hover:border-[#D4AF37] text-[12px] text-[#374151] transition-all cursor-pointer active:scale-95"
+                            title="Tap to change unit price"
                           >
-                            <Edit2 size={10} /> Edit
+                            <span className="text-gray-500 font-medium">Rate:</span>
+                            <span className="font-bold text-[#111111]">
+                              ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            </span>
+                            <Edit2 size={11} className="text-[#B48811]" />
                           </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPriceEdit(item)}
-                          className="w-full h-11 rounded-xl border border-gray-200 bg-[#FAFAFA] hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/10 px-3 flex items-center justify-between text-[14px] font-black text-[#111111] transition-colors text-left cursor-pointer"
-                        >
-                          <span className="text-[11px] text-gray-500 font-semibold flex items-center gap-1">
-                            <Edit2 size={12} className="text-gray-400" /> Tap to change
-                          </span>
-                          <span>
-                            ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                          </span>
-                        </button>
                       </div>
-                      <div>
-                        <p className="text-[12px] font-black uppercase tracking-wider text-[#374151] mb-1">Total</p>
-                        <div className="h-11 rounded-xl border border-gray-200 bg-white px-3 flex items-center justify-end text-[15px] font-black text-[#0A0A0A]">
-                          {formatCurrency(item.lineTotal)}
-                        </div>
-                      </div>
+
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200/80 text-gray-400 hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors shrink-0 active:scale-95"
+                        aria-label={`Delete ${item.name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
 
-                    <div>
-                      <p className="text-[13px] font-black uppercase tracking-wider text-[#374151] mb-1">Quantity</p>
-                      <div className="grid grid-cols-[48px_1fr_48px] items-center gap-2 border border-gray-200 rounded-xl px-2 py-2 bg-white">
+                    {/* Bottom Row: Quantity Stepper & Line Total */}
+                    <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-gray-100">
+                      {/* Quantity Stepper */}
+                      <div className="inline-flex items-center bg-[#F9FAFB] border border-gray-200 rounded-xl p-1">
                         <button
+                          type="button"
                           onClick={() => bumpQty(item.id, -1)}
-                          className="w-11 h-11 rounded-xl hover:bg-[#FAFAFA] flex items-center justify-center text-[#374151] font-bold text-[20px]"
-                        >-</button>
-                        <span className="text-[18px] font-black text-[#111111] text-center">{item.qty}</span>
+                          className="w-8 h-8 rounded-lg bg-white border border-gray-200/80 hover:bg-gray-100 text-gray-700 font-bold flex items-center justify-center text-[18px] shadow-sm active:scale-90 transition-all cursor-pointer"
+                          aria-label="Decrease quantity"
+                        >
+                          −
+                        </button>
+                        <span className="w-10 text-center text-[15px] font-black text-[#111111]">
+                          {item.qty}
+                        </span>
                         <button
+                          type="button"
                           onClick={() => bumpQty(item.id, 1)}
-                          className="w-11 h-11 rounded-xl hover:bg-[#FAFAFA] flex items-center justify-center text-[#374151] font-bold text-[20px]"
-                        >+</button>
+                          className="w-8 h-8 rounded-lg bg-white border border-gray-200/80 hover:bg-gray-100 text-gray-700 font-bold flex items-center justify-center text-[18px] shadow-sm active:scale-90 transition-all cursor-pointer"
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Line Total */}
+                      <div className="text-right">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total</span>
+                        <span className="text-[17px] font-black text-[#0A0A0A] leading-tight block">
+                          {formatCurrency(item.lineTotal)}
+                        </span>
                       </div>
                     </div>
                   </div>
