@@ -470,7 +470,7 @@ export const InventoryTable: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setAdjustModalItem(item)}
-                                className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors cursor-pointer"
+                                className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors cursor-pointer shrink-0"
                                 title="Adjust Stock"
                               >
                                 <SlidersHorizontal size={13} className="inline mr-1" />
@@ -481,30 +481,34 @@ export const InventoryTable: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setHistoryDrawerItem(item)}
-                                className="p-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
                                 title="Stock History"
                               >
                                 <History size={14} />
                               </button>
 
-                              {/* Print Barcode */}
-                              {item.barcode && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPrintModalItem(item)}
-                                  className="p-1.5 rounded-lg bg-[#0A0A0A] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#1A1A1A] transition-colors cursor-pointer"
-                                  title="Print Barcode Labels"
-                                >
-                                  <Printer size={14} />
-                                </button>
-                              )}
+                              {/* Print Barcode (reserves identical spacing when item has no barcode) */}
+                              <button
+                                type="button"
+                                disabled={!item.barcode}
+                                onClick={() => item.barcode && setPrintModalItem(item)}
+                                className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
+                                  item.barcode
+                                    ? 'bg-[#0A0A0A] text-[#D4AF37] border-[#D4AF37] hover:bg-[#1A1A1A] cursor-pointer'
+                                    : 'invisible pointer-events-none border-transparent'
+                                }`}
+                                title={item.barcode ? 'Print Barcode Labels' : undefined}
+                                aria-hidden={!item.barcode}
+                              >
+                                <Printer size={14} />
+                              </button>
 
                               {/* Delete Product / Variant (Admin Only) */}
                               {role === 'admin' && (
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteItem(item)}
-                                  className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
+                                  className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer shrink-0"
                                   title={`Delete "${item.variant_name ? `${item.name} (${item.variant_name})` : item.name}"`}
                                 >
                                   <Trash2 size={14} />

@@ -26,6 +26,7 @@ import { PLACEHOLDER as PRODUCT_PLACEHOLDER } from '../lib/productImages'
 import {
   BRAND_TA,
   BRAND_EN,
+  BRAND_ADDRESS,
   BRAND_LOCATION_LINK,
   BRAND_WHATSAPP,
   BRAND_WHATSAPP_LINK,
@@ -108,7 +109,7 @@ const TESTIMONIALS = [
   },
   {
     name: 'Anand Thiagarajan',
-    location: 'Trichy',
+    location: 'Arani',
     rating: 5,
     text: 'Outstanding quality. The moringa powder and ashwagandha are the best I have ever tried. Have been recommending to all my friends and relatives. 100% authentic!',
     initials: 'AT',
@@ -867,7 +868,7 @@ export default function Home() {
                 Visit Our Store
               </h2>
               <p className="text-[#374151] text-[14px] leading-[1.7] font-medium mb-6">
-                Visit {BRAND_EN} in Manapparai, Trichy for premium men's &amp; women's clothing, apparel, and custom fashion collections. Our team will help you find the right fit for your needs.
+                Visit {BRAND_EN} in Sevoor, Arani for premium men's &amp; women's clothing, apparel, and custom fashion collections. Our team will help you find the right fit for your needs.
               </p>
 
               <div className="space-y-3.5">
@@ -877,7 +878,7 @@ export default function Home() {
                   </div>
                   <div>
                     <p className="font-bold text-[13px] text-[#111111] leading-tight">Store Location</p>
-                    <p className="text-[13px] text-[#374151] mt-0.5">{BRAND_EN}</p>
+                    <p className="text-[13px] text-[#374151] mt-0.5">{BRAND_ADDRESS}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

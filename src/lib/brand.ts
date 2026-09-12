@@ -28,7 +28,7 @@ export const WHATSAPP_NUM = BRAND_PRIMARY_PHONE_E164
 export const BRAND_WHATSAPP_LINK = `https://wa.me/${BRAND_PRIMARY_PHONE_E164}`
 
 export const BRAND_EMAIL = 'chandrums1552004@gmail.com'
-export const BRAND_ADDRESS = 'Manapparai, Trichy, Tamil Nadu - 621 306'
+export const BRAND_ADDRESS = '1892 A, bypass road, Sevoor,arani-632316'
 export const BRAND_INSTAGRAM = 'chaji_mens_shop'
 export const BRAND_INSTAGRAM_URL = 'https://www.instagram.com/chaji_mens_shop/'
 export const BRAND_LOCATION_LINK = '#'
