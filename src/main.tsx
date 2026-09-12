@@ -6,14 +6,34 @@ import { ErrorBoundary } from './components/common/ErrorBoundary'
 
 // Global deployment chunk recovery & benign error suppression
 if (typeof window !== 'undefined') {
+  const forceFreshReload = () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        void navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((r) => void r.unregister())
+        })
+      }
+      if (typeof caches !== 'undefined') {
+        void caches.keys().then((names) => {
+          names.forEach((name) => void caches.delete(name))
+        })
+      }
+    } catch {
+      // Ignore cleanup failures
+    }
+    setTimeout(() => {
+      window.location.reload()
+    }, 80)
+  }
+
   // Vite official event when dynamic chunk fails to preload (e.g. after new deployment)
   window.addEventListener('vite:preloadError', (event) => {
     console.warn('[Vite] Preload error detected after new deployment, reloading...', event)
     const lastReload = sessionStorage.getItem('chunk_reload_ts')
     const now = Date.now()
-    if (!lastReload || now - Number(lastReload) > 10000) {
+    if (!lastReload || now - Number(lastReload) > 8000) {
       sessionStorage.setItem('chunk_reload_ts', String(now))
-      window.location.reload()
+      forceFreshReload()
     }
   })
 
@@ -78,14 +98,16 @@ if (typeof window !== 'undefined') {
         errorMsg.includes('Failed to fetch dynamically imported module') ||
         errorMsg.includes('Expected a JavaScript-or-Wasm module script') ||
         errorMsg.includes('error loading dynamically imported module') ||
-        errorMsg.includes('Importing a module script failed')
+        errorMsg.includes('Importing a module script failed') ||
+        errorMsg.includes('Refused to apply style') ||
+        errorMsg.includes('stylesheet MIME type')
       ) {
-        console.warn('[App] Dynamic chunk load error detected, refreshing page for updated assets:', errorMsg)
+        console.warn('[App] Stale deployment asset detected, refreshing page for updated assets:', errorMsg)
         const lastReload = sessionStorage.getItem('chunk_reload_ts')
         const now = Date.now()
-        if (!lastReload || now - Number(lastReload) > 10000) {
+        if (!lastReload || now - Number(lastReload) > 8000) {
           sessionStorage.setItem('chunk_reload_ts', String(now))
-          window.location.reload()
+          forceFreshReload()
           return
         }
       }
@@ -105,6 +127,20 @@ if (typeof window !== 'undefined') {
         event.message ||
         (event.error instanceof Error ? event.error.message : String(event.error || ''))
       const src = event.filename || ''
+
+      if (
+        errorMsg.includes('Refused to apply style') ||
+        errorMsg.includes('stylesheet MIME type')
+      ) {
+        const lastReload = sessionStorage.getItem('chunk_reload_ts')
+        const now = Date.now()
+        if (!lastReload || now - Number(lastReload) > 8000) {
+          sessionStorage.setItem('chunk_reload_ts', String(now))
+          forceFreshReload()
+          return
+        }
+      }
+
       if (isBenignError(errorMsg, src)) {
         event.preventDefault()
         event.stopImmediatePropagation?.()
