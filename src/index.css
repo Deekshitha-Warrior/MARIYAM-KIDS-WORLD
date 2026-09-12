@@ -241,43 +241,91 @@
     #FBFAF6;
 }
 
-/* ── PRINT STYLES — A4 invoice ─────────────────────────── */
+/* ── PRINT STYLES — Single-page A4 / Letter invoice ─────────────────────────── */
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 12mm 12mm 12mm 12mm;
+    size: auto;
+    margin: 8mm 10mm;
   }
 
-  html, body, #root {
+  html, body {
     background: #fff !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
     color: #000 !important;
+  }
+
+  #root,
+  #root > div,
+  main,
+  .mobile-page-shell {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .print\:hidden,
   .print-hidden,
   nav,
-  footer { display: none !important; }
+  footer,
+  aside,
+  header {
+    display: none !important;
+  }
 
   #invoice-print-root {
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
     min-height: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
   }
 
   #invoice-print-root * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Compact spacing during print to guarantee fit on 1 page (A4 and Letter) */
+  #invoice-print-root .invoice-header {
+    padding-bottom: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  #invoice-print-root .invoice-meta {
+    margin-bottom: 12px !important;
+    gap: 10px !important;
+  }
+
+  #invoice-print-root .invoice-totals {
+    margin-top: 14px !important;
+    padding-top: 10px !important;
+  }
+
+  #invoice-print-root .invoice-footer {
+    margin-top: 14px !important;
+    padding-top: 10px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   .bg-bgMain {

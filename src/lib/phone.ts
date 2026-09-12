@@ -62,3 +62,23 @@ export function toWhatsAppUrl(phone: string, text?: string): string {
 
   return `https://api.whatsapp.com/send${queryParams.length > 0 ? `?${queryParams.join('&')}` : ''}`
 }
+
+/**
+ * Format phone number safely for CSV exports so Microsoft Excel, Google Sheets,
+ * and Calc never convert it to exponential/scientific notation (e.g. 9.18123E+11)
+ * or truncate leading zeros.
+ */
+export function formatPhoneForCSV(input?: string | null): string {
+  if (!input) return ''
+  const trimmed = String(input).trim()
+  const digits = trimmed.replace(/\D/g, '')
+  let mobile10 = digits
+  if (digits.length === 12 && digits.startsWith('91')) {
+    mobile10 = digits.slice(2)
+  }
+  if (mobile10.length === 10) {
+    return `\t+91 ${mobile10.slice(0, 5)} ${mobile10.slice(5)}`
+  }
+  return `\t${trimmed}`
+}
+

@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { BRAND_EN, BRAND_ADDRESS, BRAND_PHONE_DISPLAY } from '../lib/brand'
+import { LOGO_BASE64 } from '../lib/logoBase64'
 import { formatCurrency } from '../lib/retail'
 
 export interface AnalyticsExportData {
@@ -213,58 +214,60 @@ export async function exportAnalyticsToPDF({
   container.style.backgroundColor = '#FFFFFF'
   container.style.color = '#0A0A0A'
   container.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-  container.style.padding = '32px'
+  container.style.padding = '28px 32px'
   container.style.boxSizing = 'border-box'
 
   container.innerHTML = `
     <div style="width: 100%; box-sizing: border-box;">
       <!-- Header Banner -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #D4AF37; padding-bottom: 16px; margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #D4AF37; padding-bottom: 14px; margin-bottom: 18px;">
         <div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="width: 32px; height: 32px; border-radius: 8px; background: #0A0A0A; border: 1.5px solid #D4AF37; display: flex; align-items: center; justify-content: center; color: #D4AF37; font-weight: 900; font-size: 16px; font-family: serif;">C</div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: #0A0A0A; border: 1.5px solid #D4AF37; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px; box-sizing: border-box; flex-shrink: 0;">
+              <img src="${LOGO_BASE64}" style="width: 100%; height: 100%; object-fit: contain; display: block;" alt="CHAJI Logo" />
+            </div>
             <div>
-              <h1 style="margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; color: #0A0A0A; text-transform: uppercase;">${BRAND_EN}</h1>
-              <p style="margin: 2px 0 0 0; font-size: 10px; font-weight: 700; color: #B48811;">Executive POS & Store Analytics Intelligence</p>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; color: #0A0A0A; text-transform: uppercase; line-height: 1.15;">${BRAND_EN}</h1>
+              <p style="margin: 3px 0 0 0; font-size: 10px; font-weight: 700; color: #B48811;">Executive POS & Store Analytics Intelligence</p>
             </div>
           </div>
-          <p style="margin: 8px 0 0 0; font-size: 9px; color: #666;">${BRAND_ADDRESS} • Tel: ${BRAND_PHONE_DISPLAY}</p>
+          <p style="margin: 6px 0 0 0; font-size: 9px; color: #666; padding-left: 2px;">${BRAND_ADDRESS} • Tel: ${BRAND_PHONE_DISPLAY}</p>
         </div>
-        <div style="text-align: right;">
-          <span style="display: inline-block; padding: 4px 10px; background: #0A0A0A; color: #D4AF37; font-size: 10px; font-weight: 800; border-radius: 6px; text-transform: uppercase; margin-bottom: 4px;">
+        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+          <span style="display: inline-block; padding: 4px 10px; background: #0A0A0A; color: #D4AF37; font-size: 9.5px; font-weight: 800; border-radius: 6px; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">
             ${activeTab.toUpperCase()} VIEW
           </span>
-          <p style="margin: 0; font-size: 10px; font-weight: 700; color: #333;">Period: <span style="color: #0A0A0A; font-weight: 900;">${filterText}</span></p>
-          <p style="margin: 2px 0 0 0; font-size: 9px; color: #777;">Generated: ${nowStr}</p>
+          <p style="margin: 0; font-size: 9.5px; font-weight: 700; color: #333;">Period: <span style="color: #0A0A0A; font-weight: 900;">${filterText}</span></p>
+          <p style="margin: 2px 0 0 0; font-size: 8.5px; color: #777;">Generated: ${nowStr}</p>
         </div>
       </div>
 
       <!-- KPI Summary Cards Grid -->
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
-        <div style="background: #FBF9F4; border: 1px solid #E8D399; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #666; margin-bottom: 4px;">Total Revenue</div>
-          <div style="font-size: 15px; font-weight: 900; color: #0A0A0A; line-height: 1.2;">${formatCurrency(data.totalCompletedRevenue)}</div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px;">
+        <div style="background: #FBF9F4; border: 1px solid #E8D399; border-radius: 12px; padding: 12px 14px; min-height: 84px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #666; margin-bottom: 4px; letter-spacing: 0.3px;">Total Revenue</div>
+          <div style="font-size: 16px; font-weight: 900; color: #0A0A0A; line-height: 1.2;">${formatCurrency(data.totalCompletedRevenue)}</div>
           <div style="font-size: 8px; color: #10B981; font-weight: 700; margin-top: 4px;">POS & Walk-in sales</div>
         </div>
-        <div style="background: ${data.isProfitable ? '#ECFDF5' : '#FFF1F2'}; border: 1px solid ${data.isProfitable ? '#A7F3D0' : '#FECDD3'}; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: ${data.isProfitable ? '#065F46' : '#9F1239'}; margin-bottom: 4px;">${data.isProfitable ? 'Net Profit' : 'Net Loss'}</div>
-          <div style="font-size: 15px; font-weight: 900; color: ${data.isProfitable ? '#059669' : '#E11D48'}; line-height: 1.2;">${formatCurrency(Math.abs(data.netProfit))}</div>
+        <div style="background: ${data.isProfitable ? '#ECFDF5' : '#FFF1F2'}; border: 1px solid ${data.isProfitable ? '#A7F3D0' : '#FECDD3'}; border-radius: 12px; padding: 12px 14px; min-height: 84px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: ${data.isProfitable ? '#065F46' : '#9F1239'}; margin-bottom: 4px; letter-spacing: 0.3px;">${data.isProfitable ? 'Net Profit' : 'Net Loss'}</div>
+          <div style="font-size: 16px; font-weight: 900; color: ${data.isProfitable ? '#059669' : '#E11D48'}; line-height: 1.2;">${formatCurrency(Math.abs(data.netProfit))}</div>
           <div style="font-size: 8px; color: #666; font-weight: 700; margin-top: 4px;">Rev − ${formatCurrency(data.totalExpenses)} Exp</div>
         </div>
-        <div style="background: #FBF9F4; border: 1px solid #E8D399; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #666; margin-bottom: 4px;">Completed Bills</div>
-          <div style="font-size: 15px; font-weight: 900; color: #0A0A0A; line-height: 1.2;">${data.completedOrders} Orders</div>
+        <div style="background: #FBF9F4; border: 1px solid #E8D399; border-radius: 12px; padding: 12px 14px; min-height: 84px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #666; margin-bottom: 4px; letter-spacing: 0.3px;">Completed Bills</div>
+          <div style="font-size: 16px; font-weight: 900; color: #0A0A0A; line-height: 1.2;">${data.completedOrders} Orders</div>
           <div style="font-size: 8px; color: #B48811; font-weight: 700; margin-top: 4px;">Avg ${formatCurrency(data.averageRevenuePerBill)}/bill</div>
         </div>
-        <div style="background: #FBF9F4; border: 1px solid #E8D399; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between;">
-          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #666; margin-bottom: 4px;">Total Items Sold</div>
-          <div style="font-size: 15px; font-weight: 900; color: #0A0A0A; line-height: 1.2;">${Math.round(data.totalProductsSold)} Pcs</div>
+        <div style="background: #FBF9F4; border: 1px solid #E8D399; border-radius: 12px; padding: 12px 14px; min-height: 84px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #666; margin-bottom: 4px; letter-spacing: 0.3px;">Total Items Sold</div>
+          <div style="font-size: 16px; font-weight: 900; color: #0A0A0A; line-height: 1.2;">${Math.round(data.totalProductsSold)} Pcs</div>
           <div style="font-size: 8px; color: #6366F1; font-weight: 700; margin-top: 4px;">Top: ${data.bestProduct.slice(0, 14)}</div>
         </div>
       </div>
 
       <!-- CHART DIAGRAM SECTION WITH DEDICATED AXIS AND NO OVERLAP -->
-      <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+      <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 14px; padding: 14px 16px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
         <!-- Chart Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <div>
@@ -282,15 +285,15 @@ export async function exportAnalyticsToPDF({
         ${
           activeTab === 'today'
             ? `
-          <!-- Bars Container (Fixed Height 75px) -->
-          <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 75px; padding: 0 4px; box-sizing: border-box;">
+          <!-- Bars Container (Fixed Height 85px) -->
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 85px; padding: 0 4px; box-sizing: border-box;">
             ${data.todayHourlyTrend
               .filter((_, idx) => idx >= 8 && idx <= 22)
               .map((h) => {
-                const barHeight = Math.max(3, Math.round((h.revenue / maxHourlyRev) * 50))
+                const barHeight = Math.max(3, Math.round((h.revenue / maxHourlyRev) * 54))
                 return `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; margin: 0 2px; height: 100%;">
-                  <span style="font-size: 7px; font-weight: 800; color: ${h.revenue > 0 ? '#0A0A0A' : '#ccc'}; margin-bottom: 2px; line-height: 1;">
+                  <span style="font-size: 7.5px; font-weight: 800; color: ${h.revenue > 0 ? '#0A0A0A' : '#ccc'}; margin-bottom: 4px; line-height: 1;">
                     ${h.revenue > 0 ? '₹' + Math.round(h.revenue) : ''}
                   </span>
                   <div style="width: 100%; max-width: 22px; height: ${barHeight}px; background: ${h.revenue > 0 ? '#0A0A0A' : '#F3F4F6'}; border-radius: 3px 3px 0 0;"></div>
@@ -304,13 +307,13 @@ export async function exportAnalyticsToPDF({
           <div style="width: 100%; height: 1.5px; background: #0A0A0A; margin: 0;"></div>
 
           <!-- X-Axis Labels -->
-          <div style="display: flex; justify-content: space-between; padding: 5px 4px 0 4px;">
+          <div style="display: flex; justify-content: space-between; padding: 6px 4px 0 4px;">
             ${data.todayHourlyTrend
               .filter((_, idx) => idx >= 8 && idx <= 22)
               .map(
                 (h) => `
               <div style="display: flex; flex-direction: column; align-items: center; flex: 1; margin: 0 2px;">
-                <span style="font-size: 7px; font-weight: 700; color: #555; white-space: nowrap; line-height: 1;">${h.hour}</span>
+                <span style="font-size: 7.5px; font-weight: 700; color: #555; white-space: nowrap; line-height: 1;">${h.hour}</span>
               </div>
             `
               )
@@ -318,15 +321,15 @@ export async function exportAnalyticsToPDF({
           </div>
         `
             : `
-          <!-- Bars Container (Fixed Height 75px) -->
-          <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 75px; padding: 0 8px; box-sizing: border-box;">
+          <!-- Bars Container (Fixed Height 85px) -->
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 85px; padding: 0 8px; box-sizing: border-box;">
             ${data.weeklySales
               .map((w) => {
-                const barHeight = Math.max(3, Math.round((w.revenue / maxWeeklyRev) * 50))
+                const barHeight = Math.max(3, Math.round((w.revenue / maxWeeklyRev) * 54))
                 return `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; margin: 0 6px; height: 100%;">
-                  <span style="font-size: 8px; font-weight: 800; color: ${w.revenue > 0 ? '#0A0A0A' : '#bbb'}; margin-bottom: 3px; line-height: 1;">
-                    ${w.revenue > 0 ? '₹' + Math.round(w.revenue).toLocaleString('en-IN') : '₹0'}
+                  <span style="font-size: 8.5px; font-weight: 800; color: ${w.revenue > 0 ? '#0A0A0A' : '#cbd5e1'}; margin-bottom: 4px; line-height: 1;">
+                    ${w.revenue > 0 ? '₹' + Math.round(w.revenue).toLocaleString('en-IN') : '—'}
                   </span>
                   <div style="width: 100%; max-width: 44px; height: ${barHeight}px; background: ${w.revenue > 0 ? '#0A0A0A' : '#E5E7EB'}; border-radius: 4px 4px 0 0;"></div>
                 </div>
@@ -344,8 +347,8 @@ export async function exportAnalyticsToPDF({
               .map(
                 (w) => `
               <div style="display: flex; flex-direction: column; align-items: center; flex: 1; margin: 0 6px;">
-                <span style="font-size: 8.5px; font-weight: 800; color: #111; line-height: 1;">${w.day}</span>
-                <span style="font-size: 7.5px; font-weight: 600; color: #888; margin-top: 2px; line-height: 1;">${w.date.slice(5)}</span>
+                <span style="font-size: 9px; font-weight: 800; color: #111; line-height: 1.2;">${w.day}</span>
+                <span style="font-size: 8px; font-weight: 600; color: #666; margin-top: 2px; line-height: 1;">${w.date.slice(5)}</span>
               </div>
             `
               )

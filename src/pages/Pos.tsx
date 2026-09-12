@@ -5,7 +5,8 @@ import {
   Search, Trash2, Plus, Receipt, Printer,
   RefreshCw, ShoppingBag, MessageCircle,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  Wifi, WifiOff, Layers, X, ChevronDown, Power
+  Wifi, WifiOff, Layers, X, ChevronDown, Power,
+  Edit2, AlertCircle, Check
 } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { useProductStore, useVariantStore, useAdminAuthStore, type Product } from '../store/store'
@@ -172,6 +173,19 @@ export default function Pos(props: PosProps = {}) {
   const [depositCreated, setDepositCreated] = useState<AdvanceOrder | null>(null)
   const [depositForm, setDepositForm] = useState({ amount: '', expectedDeliveryDate: '', paymentMethod: 'cash' as AdvancePaymentMethod, address: '', remarks: '', referenceNumber: '' })
   const [dbCategories, setDbCategories] = useState<string[]>([])
+  const [priceEditModal, setPriceEditModal] = useState<{
+    isOpen: boolean
+    item: PosItem | null
+    newPrice: string
+    isSubmitting: boolean
+    error: string
+  }>({
+    isOpen: false,
+    item: null,
+    newPrice: '',
+    isSubmitting: false,
+    error: '',
+  })
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -545,6 +559,81 @@ export default function Pos(props: PosProps = {}) {
   const setQty = (id: string | number, val: number) => {
     if (val <= 0) { removeItem(id); return }
     setItems(cur => cur.map(i => i.id === id ? recalc(i, val) : i))
+  }
+
+  const handleOpenPriceEdit = (item: PosItem) => {
+    setPriceEditModal({
+      isOpen: true,
+      item,
+      newPrice: String(item.basePrice ?? 0),
+      isSubmitting: false,
+      error: '',
+    })
+  }
+
+  const handleClosePriceEdit = () => {
+    setPriceEditModal({
+      isOpen: false,
+      item: null,
+      newPrice: '',
+      isSubmitting: false,
+      error: '',
+    })
+  }
+
+  const handleSavePrice = async (updateInventory: boolean) => {
+    const { item, newPrice } = priceEditModal
+    if (!item) return
+
+    const parsedPrice = parseFloat(newPrice)
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      setPriceEditModal(prev => ({ ...prev, error: 'Please enter a valid price (0 or greater).' }))
+      return
+    }
+
+    if (updateInventory) {
+      setPriceEditModal(prev => ({ ...prev, isSubmitting: true, error: '' }))
+      try {
+        if (!isSupabaseConfigured) {
+          throw new Error('Database is not configured')
+        }
+
+        // 1. If item has a variant ID, update product_variants table
+        if (item.variantId) {
+          const { error: variantErr } = await supabase
+            .from('product_variants')
+            .update({ price: parsedPrice })
+            .eq('id', item.variantId)
+          if (variantErr) throw variantErr
+        } else {
+          // 2. Otherwise update standard products table
+          const realDbId = toProductId(item.parentProductId || item.id)
+          if (realDbId) {
+            const { error: prodErr } = await supabase
+              .from('products')
+              .update({ price: parsedPrice })
+              .eq('id', realDbId)
+            if (prodErr) throw prodErr
+          }
+        }
+
+        // Refresh product stores so catalog reflects new price
+        void fetchProducts(true)
+        void fetchVariants()
+      } catch (err: unknown) {
+        console.error('Failed to update price in inventory:', err)
+        setPriceEditModal(prev => ({
+          ...prev,
+          isSubmitting: false,
+          error: err instanceof Error ? err.message : 'Failed to update price in inventory'
+        }))
+        return
+      }
+    }
+
+    // Update the item price in the active billing cart
+    updateItem(item.id, 'basePrice', parsedPrice)
+    handleClosePriceEdit()
   }
 
   const clearAll = () => {
@@ -1221,10 +1310,28 @@ export default function Pos(props: PosProps = {}) {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="text-[12px] font-black uppercase tracking-wider text-[#374151] mb-1">Unit Price</p>
-                        <div className="h-11 rounded-xl border border-gray-200 bg-[#FAFAFA] px-3 flex items-center justify-end text-[14px] font-black text-[#111111]">
-                          ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[12px] font-black uppercase tracking-wider text-[#374151]">Unit Price</p>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPriceEdit(item)}
+                            className="text-[10px] font-bold text-[#B48811] hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit2 size={10} /> Edit
+                          </button>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPriceEdit(item)}
+                          className="w-full h-11 rounded-xl border border-gray-200 bg-[#FAFAFA] hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/10 px-3 flex items-center justify-between text-[14px] font-black text-[#111111] transition-colors text-left cursor-pointer"
+                        >
+                          <span className="text-[11px] text-gray-500 font-semibold flex items-center gap-1">
+                            <Edit2 size={12} className="text-gray-400" /> Tap to change
+                          </span>
+                          <span>
+                            ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </span>
+                        </button>
                       </div>
                       <div>
                         <p className="text-[12px] font-black uppercase tracking-wider text-[#374151] mb-1">Total</p>
@@ -1274,10 +1381,18 @@ export default function Pos(props: PosProps = {}) {
                     </div>
 
                     {/* Price */}
-                    <div className="flex items-center justify-end px-3 py-2 text-right">
-                      <span className="text-[13px] font-black text-[#111111] tracking-tight">
-                        ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                      </span>
+                    <div className="flex items-center justify-end px-2 py-1 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPriceEdit(item)}
+                        className="group flex items-center justify-end gap-1.5 px-2.5 py-1.5 rounded-lg border border-transparent hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/10 transition-all text-right cursor-pointer"
+                        title="Click to edit price"
+                      >
+                        <span className="text-[13px] font-black text-[#111111] group-hover:text-[#B48811] tracking-tight">
+                          ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </span>
+                        <Edit2 size={12} className="text-gray-400 group-hover:text-[#B48811] transition-colors shrink-0" />
+                      </button>
                     </div>
 
                     {/* Quantity Controls */}
@@ -1732,6 +1847,112 @@ export default function Pos(props: PosProps = {}) {
               >
                 Add to Order (₹{((selectedVariant?.price || variantPickerProduct.price || 0) * variantPickerQty).toFixed(2)})
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Price Edit & Inventory Confirmation Modal */}
+      {priceEditModal.isOpen && priceEditModal.item && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-amber-50/50 to-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center text-[#B48811]">
+                  <Edit2 size={16} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Edit Item Price</h3>
+                  <p className="text-xs text-gray-500 truncate max-w-[260px]">{priceEditModal.item.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClosePriceEdit}
+                className="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    New Price (₹)
+                  </label>
+                  <span className="text-[11px] text-gray-500 font-semibold">
+                    Current: ₹{Number(priceEditModal.item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-base">₹</span>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    autoFocus
+                    value={priceEditModal.newPrice}
+                    onChange={(e) => setPriceEditModal(prev => ({ ...prev, newPrice: e.target.value, error: '' }))}
+                    placeholder="0.00"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void handleSavePrice(false)
+                      }
+                    }}
+                    className="w-full h-12 pl-8 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-lg font-black text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:bg-white transition-all"
+                  />
+                </div>
+                {priceEditModal.error && (
+                  <p className="text-xs font-semibold text-red-500 mt-1.5">{priceEditModal.error}</p>
+                )}
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-xs text-amber-900 space-y-1">
+                <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                  <AlertCircle size={14} className="shrink-0 text-[#B48811]" />
+                  Do you want to update this price in inventory also?
+                </p>
+                <p className="text-[11px] text-amber-700/90 pl-5 leading-relaxed">
+                  Selecting <strong>Yes</strong> updates the price in your master product catalog and inventory database. Selecting <strong>No</strong> updates it for this billing session only.
+                </p>
+              </div>
+
+              <div className="pt-2 grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  disabled={priceEditModal.isSubmitting}
+                  onClick={() => void handleSavePrice(true)}
+                  className="h-11 px-3 bg-[#0A0A0A] hover:bg-[#1A1A1A] text-[#D4AF37] border border-[#D4AF37] font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {priceEditModal.isSubmitting ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <Check size={14} />
+                  )}
+                  <span>Yes (Update Inventory)</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={priceEditModal.isSubmitting}
+                  onClick={() => void handleSavePrice(false)}
+                  className="h-11 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1 disabled:opacity-50 cursor-pointer"
+                >
+                  <span>No (This Bill Only)</span>
+                </button>
+              </div>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={handleClosePriceEdit}
+                  className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

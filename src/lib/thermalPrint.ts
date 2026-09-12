@@ -50,6 +50,19 @@ export function printThermalReceipt(data: ThermalReceiptData) {
       catch { return new Date().toLocaleString('en-IN') }
     })()
 
+    const formatCustomerPhone = (phone?: string): string => {
+      if (!phone) return ''
+      const trimmed = phone.trim()
+      const digits = trimmed.replace(/\D/g, '')
+      if (digits.length === 12 && digits.startsWith('91')) {
+        return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`
+      }
+      if (digits.length === 10) {
+        return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
+      }
+      return trimmed
+    }
+
     const html = `
       <!DOCTYPE html>
       <html lang="en" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" spellcheck="false">
@@ -100,29 +113,34 @@ export function printThermalReceipt(data: ThermalReceiptData) {
           <div>Inv: #${formatInvoiceNo(data.invoiceNo)}</div>
           <div>Date: ${dateStr}</div>
           ${data.customerName ? `<div>Name: ${data.customerName}</div>` : ''}
-          ${data.phone ? `<div>Tel: ${data.phone}</div>` : ''}
+          ${data.phone ? `<div>Tel: ${formatCustomerPhone(data.phone)}</div>` : ''}
         </div>
 
-        <table class="border-bottom">
+        <table class="border-bottom" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
           <thead>
             <tr style="font-size: 10px; border-bottom: 1px dashed #000;">
-              <th class="text-left">Item</th>
-              <th class="text-right">Qty</th>
-              <th class="text-right">Total</th>
+              <th style="width: 50%; text-align: left; padding: 4px 0;">Item Name</th>
+              <th style="width: 18%; text-align: center; padding: 4px 0;">Qty</th>
+              <th style="width: 32%; text-align: right; padding: 4px 0;">Amount</th>
             </tr>
           </thead>
           <tbody>
             ${data.items.map(item => {
               const lineTotal = item.line_total ?? (item.qty * item.price)
               const unit = item.unit && item.unit !== 'unit' && item.unit !== 'piece' ? item.unit : ''
+              const rateDisplay = `${formatCurrency(item.price)}${unit ? `/${unit}` : ''}`
               return `
                 <tr>
-                  <td class="text-left item-name">
-                    ${item.name} <br/>
-                    <span style="font-size: 9px;">${formatCurrency(item.price)} ${unit ? ` / ${unit}` : ''}</span>
+                  <td style="text-align: left; padding: 3px 2px 3px 0; vertical-align: top; word-break: break-word;">
+                    <div style="font-size: 11px; font-weight: bold; line-height: 1.25;">${item.name}</div>
+                    <div style="font-size: 9px; color: #444; margin-top: 1px;">@ ${rateDisplay}</div>
                   </td>
-                  <td class="text-right">${item.qty}</td>
-                  <td class="text-right">${formatCurrency(lineTotal)}</td>
+                  <td style="text-align: center; vertical-align: top; padding: 3px 0; font-size: 11px;">
+                    ${item.qty}
+                  </td>
+                  <td style="text-align: right; vertical-align: top; padding: 3px 0; font-size: 11px; font-weight: bold;">
+                    ${formatCurrency(lineTotal)}
+                  </td>
                 </tr>
               `
             }).join('')}

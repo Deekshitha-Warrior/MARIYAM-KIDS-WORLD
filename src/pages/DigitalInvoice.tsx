@@ -228,7 +228,7 @@ export default function DigitalInvoice() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#f9faf6] font-sans pb-12 print:bg-white print:pb-0">
+    <div className="h-full overflow-y-auto bg-[#f9faf6] font-sans pb-12 print:bg-white print:pb-0 print:h-auto print:min-h-0 print:overflow-visible print:m-0 print:p-0">
       {/* Top action bar */}
       <div className="bg-[#f9faf6] p-4 sticky top-0 z-50 print:hidden flex items-center justify-between max-w-4xl mx-auto">
         <button onClick={handleBack} className="flex items-center gap-2 text-[#0A0A0A] hover:text-[#D4AF37] font-semibold text-sm transition-colors bg-white border border-[#E8D399] px-4 py-2 rounded-full shadow-sm cursor-pointer">
@@ -250,8 +250,8 @@ export default function DigitalInvoice() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto mt-4 print:mt-0 px-2 sm:px-0">
-        <div ref={invoiceElementRef} className="bg-white shadow-xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none border border-sand/20 print:border-none">
+      <div className="max-w-3xl mx-auto mt-4 print:mt-0 print:mb-0 print:p-0 print:max-w-full px-2 sm:px-0">
+        <div ref={invoiceElementRef} className="bg-white shadow-xl rounded-2xl overflow-hidden print:shadow-none print:rounded-none border border-sand/20 print:border-none print:m-0 print:p-0 print:overflow-visible">
           <Invoice
             invoiceNo={invoice.invoice_no}
             date={invoice.created_at}
@@ -268,7 +268,6 @@ export default function DigitalInvoice() {
             total={invoice.total > 0 ? invoice.total : (subtotal + (invoice.delivery_charge || 0) + (invoice.total_gst || invoice.gst_amount || 0) - (invoice.discount_amount || 0) - (invoice.manual_discount_amount || 0))}
             status={invoice.status}
             paymentMode={invoice.payment_mode || invoice.payment_method}
-            onPrintReceipt={printReceipt}
           />
         </div>
       </div>

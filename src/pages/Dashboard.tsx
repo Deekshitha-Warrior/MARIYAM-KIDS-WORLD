@@ -45,6 +45,7 @@ import { Invoice } from '../components/Invoice'
 import { printThermalReceipt } from '../lib/thermalPrint'
 import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
 import { invoicePdfFile } from '../lib/invoicePdf'
+import { formatPhoneForCSV } from '../lib/phone'
 // toWhatsAppUrl removed - using direct link building in handlers
 import { createVariant, updateVariant, deleteVariant, setDefaultVariant, type ProductVariant } from '../services/variantService'
 import { useVariantStore } from '../store/store'
@@ -137,13 +138,25 @@ const emptyForm = {
 
 const exportCSV = (orders: DashboardOrder[]) => {
   const header = ['Order Ref', 'Customer', 'Phone', 'Date', 'Total (INR)', 'Order Type', 'Status']
-  const rows = orders.map(o => [
-    o.order_type === 'online_request' ? o.id : o.invoice_no, o.customer_name, o.phone,
-    new Date(o.created_at).toLocaleDateString('en-MY'),
-    getOrderTotal(o).toFixed(2), o.order_type, o.status,
-  ])
+  const rows = orders.map(o => {
+    let dateStr = ''
+    try {
+      dateStr = new Date(o.created_at).toISOString().slice(0, 10)
+    } catch {
+      dateStr = String(o.created_at || '')
+    }
+    return [
+      o.order_type === 'online_request' ? o.id : o.invoice_no,
+      o.customer_name || 'Walk-in Customer',
+      formatPhoneForCSV(o.phone),
+      dateStr,
+      getOrderTotal(o).toFixed(2),
+      o.order_type,
+      o.status,
+    ]
+  })
   const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

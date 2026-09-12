@@ -21,7 +21,13 @@ export type InvoicePdfData = {
   paymentMode?: string
 }
 
-const money = (value: number) => formatCurrency(Number(value || 0)).replace(/\s+/g, ' ')
+// jsPDF's built-in Helvetica font does not include the ₹ Unicode glyph (U+20B9).
+// In ISO-8859-1 (WinAnsiEncoding), \u20B9 maps to character code 185 (0xB9), which renders
+// as the superscript 1 (¹) glyph. Replacing with "Rs. " ensures clean and proper PDF formatting.
+const money = (value: number): string => {
+  const formatted = formatCurrency(Number(value || 0)).replace(/\s+/g, ' ')
+  return formatted.replace(/^[₹\u20b9]\s*/, 'Rs. ')
+}
 
 /** Creates a compact A4 invoice that can be attached as a file to WhatsApp. */
 export function createInvoicePdf(data: InvoicePdfData): Blob {

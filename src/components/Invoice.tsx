@@ -57,7 +57,6 @@ export const Invoice: React.FC<InvoiceProps> = ({
   status = 'completed',
   userId,
   paymentMode,
-  onPrintReceipt,
 }) => {
   const formattedInvoiceNo = formatInvoiceNo(invoiceNo)
   const dateStr = (() => {
@@ -77,7 +76,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
       }}
     >
       {/* ── HEADER ────────────────────────────────────────────────── */}
-      <div style={{ textAlign: 'center', borderBottom: '1px solid #E8D399', paddingBottom: 20, marginBottom: 20 }}>
+      <div className="invoice-header" style={{ textAlign: 'center', borderBottom: '1px solid #E8D399', paddingBottom: 20, marginBottom: 20 }}>
         <div style={{ width: 64, height: 64, margin: '0 auto 10px auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img src={BRAND_ICON} alt={BRAND_EN} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
@@ -95,7 +94,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
       </div>
 
       {/* ── META ROW (Properly partitioned bill details) ─────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <div className="invoice-meta grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div style={{ minWidth: 0, padding: '12px 14px', borderRadius: 12, background: '#FBFAF6', border: '1px solid #E8D399' }}>
           <div style={{ fontSize: 9, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Bill Details</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -180,7 +179,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
       </div>
 
       {/* ── TOTALS ───────────────────────────────────────────────── */}
-      <div style={{ marginTop: 24, borderTop: '2px solid #D4AF37', paddingTop: 16 }}>
+      <div className="invoice-totals" style={{ marginTop: 24, borderTop: '2px solid #D4AF37', paddingTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ minWidth: 240, width: '100%', maxWidth: 300 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -228,28 +227,23 @@ export const Invoice: React.FC<InvoiceProps> = ({
 
       {/* ── FOOTER ───────────────────────────────────────────────── */}
       <div
+        className="invoice-footer"
         style={{
-          marginTop: 32, paddingTop: 16, borderTop: '1px dashed #d0d0d0',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+          marginTop: 24,
+          paddingTop: 16,
+          borderTop: '1px dashed #d0d0d0',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
         }}
       >
-        <div style={{ fontSize: 12, fontWeight: 800, color: '#0A0A0A' }}>Thank you for shopping at CHAJI MENS WEAR!</div>
-        <div style={{ fontSize: 10, color: '#777', marginTop: 2 }}>Follow us on Instagram: @{BRAND_INSTAGRAM}</div>
-        {onPrintReceipt && (
-          <button
-            type="button"
-            onClick={onPrintReceipt}
-            className="print:hidden"
-            style={{
-              marginTop: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              border: '1px solid #D4AF37', borderRadius: 999, padding: '9px 20px',
-              background: '#0A0A0A', color: '#D4AF37', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-            }}
-          >
-            Print Thermal Receipt
-          </button>
-        )}
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#0A0A0A', letterSpacing: 0.5 }}>
+          Thank you for shopping at CHAJI MENS WEAR!
+        </div>
+        <div style={{ fontSize: 10, color: '#666', marginTop: 3, fontWeight: 500 }}>
+          Follow us on Instagram: @{BRAND_INSTAGRAM}
+        </div>
       </div>
     </div>
   )

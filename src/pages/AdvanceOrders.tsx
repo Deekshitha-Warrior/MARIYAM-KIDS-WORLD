@@ -622,9 +622,9 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => invoiceFile(selected)}
+                onClick={() => downloadFile(selected.status === 'completed' ? invoiceFile(selected) : advanceReceiptPdf(selected))}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer transition shadow-xs"
-                title="Download PDF"
+                title={selected.status === 'completed' ? 'Download PDF Invoice' : 'Download PDF Receipt'}
               >
                 <Download size={14} /> PDF
               </button>

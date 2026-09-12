@@ -41,6 +41,7 @@ const RMIcon = ({ size = 16, className = '' }: { size?: number; className?: stri
 )
 import { useAuthStore, useProductStore, type Product } from '../store/store'
 import { formatCurrency, normalizeOrderMode, toNumber } from '../lib/retail'
+import { formatPhoneForCSV } from '../lib/phone'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
 
 type BillingOrder = {
@@ -145,16 +146,22 @@ const exportCSV = (orders: BillingOrder[]) => {
       : normalizeOrderMode(order.order_mode) === 'online'
         ? 'ONLINE'
         : 'OFFLINE'
+    let dateStr = ''
+    try {
+      dateStr = new Date(order.created_at).toISOString().slice(0, 10)
+    } catch {
+      dateStr = String(order.created_at || '')
+    }
     return [
       order.invoice_no || '—',
-      order.customer_name,
-      order.phone,
+      order.customer_name || 'Walk-in Customer',
+      formatPhoneForCSV(order.phone),
       billType,
       order.coupon_code || '',
       toNumber(order.discount_amount, 0).toFixed(2),
       toNumber(order.delivery_charge, 0).toFixed(2),
       toNumber(order.total, 0).toFixed(2),
-      new Date(order.created_at).toLocaleDateString('en-IN'),
+      dateStr,
       order.status,
     ]
   })

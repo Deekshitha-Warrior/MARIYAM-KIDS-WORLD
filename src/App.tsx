@@ -141,7 +141,7 @@ function AppShell() {
 
   return (
     <div className="h-screen w-full max-w-[100vw] overflow-hidden bg-bgMain print:block print:h-auto print:overflow-visible">
-      <main className="h-full print:block print:overflow-visible">
+      <main className="h-full print:block print:h-auto print:min-h-0 print:overflow-visible">
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route
