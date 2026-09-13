@@ -4,6 +4,7 @@ import { Lock, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react'
 import { useAdminAuthStore } from '../store/store'
 import { BRAND_EN, BRAND_TA, BRAND_SUBTITLE, BRAND_LOGO } from '../lib/brand'
 import { useLangStore } from '../store/langStore'
+import { alarmSound } from '../lib/alarmAudio'
 
 export default function AdminLogin() {
   const navigate = useNavigate()
@@ -22,6 +23,8 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Pre-unlock iOS audio context synchronously on user submit gesture
+    void alarmSound.unlock()
     setError('')
     setLoading(true)
     const role = await login(portalId.trim(), password)

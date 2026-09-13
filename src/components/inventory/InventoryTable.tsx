@@ -383,24 +383,24 @@ export const InventoryTable: React.FC = () => {
               </div>
             ) : (
               <>
-                {/* DESKTOP / TABLET VIEW (md and up) */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full min-w-[860px] text-left text-xs border-collapse">
+                {/* UNIFIED TABLE VIEW (Preserved on both mobile and laptop with horizontal scroll) */}
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full min-w-[860px] text-left text-xs border-collapse whitespace-nowrap">
                     <thead className="bg-[#FBFAF6] border-b border-gray-200 text-xs font-bold text-gray-700 select-none">
                       <tr>
-                        <th className="py-3.5 px-4 text-left min-w-[220px]">Product &amp; Variant SKU</th>
-                        <th className="py-3.5 px-4 text-left w-[140px]">Barcode</th>
-                        <th className="py-3.5 px-4 text-left w-[130px]">Category</th>
-                        <th className="py-3.5 px-4 text-center w-[130px]">Stock Level</th>
-                        <th className="py-3.5 px-4 text-right w-[130px]">Selling Price</th>
-                        <th className="py-3.5 px-4 text-right w-[180px]">Actions</th>
+                        <th className="py-3.5 px-4 text-left min-w-[220px] whitespace-nowrap">Product &amp; Variant SKU</th>
+                        <th className="py-3.5 px-4 text-left w-[140px] whitespace-nowrap">Barcode</th>
+                        <th className="py-3.5 px-4 text-left w-[130px] whitespace-nowrap">Category</th>
+                        <th className="py-3.5 px-4 text-center w-[130px] whitespace-nowrap">Stock Level</th>
+                        <th className="py-3.5 px-4 text-right w-[130px] whitespace-nowrap">Selling Price</th>
+                        <th className="py-3.5 px-4 text-right w-[180px] whitespace-nowrap">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {filtered.map((item) => (
                         <tr key={item.id} className="hover:bg-[#FBFAF6] transition-colors">
                           {/* Name & Variant */}
-                          <td className="py-3.5 px-4 text-left align-middle">
+                          <td className="py-3.5 px-4 text-left align-middle whitespace-nowrap">
                             <div className="font-black text-gray-900 text-xs leading-snug">
                               {item.name}
                             </div>
@@ -416,7 +416,7 @@ export const InventoryTable: React.FC = () => {
                           </td>
 
                           {/* Barcode */}
-                          <td className="py-3.5 px-4 text-left align-middle">
+                          <td className="py-3.5 px-4 text-left align-middle whitespace-nowrap">
                             {item.barcode ? (
                               <span className="inline-block font-mono text-xs font-bold text-gray-800 bg-gray-100 px-2 py-1 rounded-md">
                                 {item.barcode}
@@ -427,14 +427,14 @@ export const InventoryTable: React.FC = () => {
                           </td>
 
                           {/* Category */}
-                          <td className="py-3.5 px-4 text-left align-middle text-gray-600 font-semibold">
+                          <td className="py-3.5 px-4 text-left align-middle text-gray-600 font-semibold whitespace-nowrap">
                             <span className="inline-block px-2 py-0.5 bg-gray-50 rounded text-gray-700 border border-gray-200 text-[11px]">
                               {item.category || 'General'}
                             </span>
                           </td>
 
                           {/* Stock */}
-                          <td className="py-3.5 px-4 text-center align-middle">
+                          <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
                             <span
                               className={`inline-block px-2.5 py-1 rounded-full text-xs font-black tabular-nums ${
                                 item.stock <= 0
@@ -449,7 +449,7 @@ export const InventoryTable: React.FC = () => {
                           </td>
 
                           {/* Price */}
-                          <td className="py-3.5 px-4 text-right align-middle font-black text-xs text-gray-900 tabular-nums">
+                          <td className="py-3.5 px-4 text-right align-middle font-black text-xs text-gray-900 tabular-nums whitespace-nowrap">
                             <div className="inline-flex items-center justify-end gap-1.5 group">
                               <span>{formatCurrency(item.price)}</span>
                               <button
@@ -464,7 +464,7 @@ export const InventoryTable: React.FC = () => {
                           </td>
 
                           {/* Actions */}
-                          <td className="py-3.5 px-4 text-right align-middle">
+                          <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
                               {/* Adjust Stock */}
                               <button
@@ -520,112 +520,6 @@ export const InventoryTable: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
-                </div>
-
-                {/* MOBILE CARD VIEW (< md screens) */}
-                <div className="block md:hidden divide-y divide-gray-100">
-                  {filtered.map((item) => (
-                    <div key={item.id} className="p-3.5 space-y-2.5 bg-white hover:bg-[#FBFAF6] transition-colors">
-                      {/* Title & Category Row */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-black text-gray-900 text-xs leading-snug">
-                            {item.name}
-                          </h4>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            {item.variant_name && (
-                              <span className="px-2 py-0.5 rounded-md bg-[#FBFAF6] border border-[#E8D399] text-[#0A0A0A] font-bold text-[10px]">
-                                Size: {item.variant_name}
-                              </span>
-                            )}
-                            <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-600 text-[10px] font-semibold">
-                              {item.category || 'General'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Price badge */}
-                        <div className="text-right shrink-0">
-                          <div className="font-black text-xs text-gray-900 tabular-nums">
-                            {formatCurrency(item.price)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setPriceModalItem(item)}
-                            className="text-[10px] font-bold text-amber-700 hover:underline"
-                          >
-                            Edit Price
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Barcode & Stock Row */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 text-xs">
-                        <div className="text-gray-500 text-[11px]">
-                          {item.barcode ? (
-                            <span className="font-mono font-bold text-gray-800 bg-gray-100 px-1.5 py-0.5 rounded">
-                              {item.barcode}
-                            </span>
-                          ) : (
-                            <span className="italic text-gray-400">No Barcode</span>
-                          )}
-                        </div>
-                        <div>
-                          <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-black tabular-nums ${
-                              item.stock <= 0
-                                ? 'bg-red-50 text-red-700 border border-red-200'
-                                : item.stock <= (item.low_stock_threshold || 5)
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                            }`}
-                          >
-                            {item.stock} Units
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Mobile Actions Toolbar */}
-                      <div className="flex items-center justify-end gap-1.5 pt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setAdjustModalItem(item)}
-                          className="flex-1 py-1.5 px-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors flex items-center justify-center gap-1"
-                        >
-                          <SlidersHorizontal size={12} />
-                          Adjust
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setHistoryDrawerItem(item)}
-                          className="p-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
-                          title="Stock History"
-                        >
-                          <History size={14} />
-                        </button>
-                        {item.barcode && (
-                          <button
-                            type="button"
-                            onClick={() => setPrintModalItem(item)}
-                            className="p-1.5 rounded-lg bg-[#0A0A0A] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#1A1A1A] transition-colors"
-                            title="Print Barcode"
-                          >
-                            <Printer size={14} />
-                          </button>
-                        )}
-                        {role === 'admin' && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteItem(item)}
-                            className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </>
             )}

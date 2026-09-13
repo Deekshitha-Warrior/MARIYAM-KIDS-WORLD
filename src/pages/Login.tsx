@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { BRAND_EN, BRAND_TA } from '../lib/brand'
 import { isValidPhone, getSubscriberDigits } from '../lib/phone'
 import { useLangStore } from '../store/langStore'
+import { alarmSound } from '../lib/alarmAudio'
 
 const SITE_URL =
   (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '') ||
@@ -49,6 +50,7 @@ export default function Login() {
 
   /* ── Google ──────────────────────────────────────────────────── */
   const handleGoogle = async () => {
+    void alarmSound.unlock()
     if (!isSupabaseConfigured) { setError('Authentication not configured.'); return }
     setGoogleLoading(true); setError('')
     const { error: e } = await supabase.auth.signInWithOAuth({
@@ -64,6 +66,7 @@ export default function Login() {
   /* ── Email: send magic link ──────────────────────────────────── */
   const handleSendLink = async (e: React.FormEvent) => {
     e.preventDefault()
+    void alarmSound.unlock()
     const rawErrs = validate(name, phone, email)
     if (Object.keys(rawErrs).length > 0) {
       setFieldErrs({

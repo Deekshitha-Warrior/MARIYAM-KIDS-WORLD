@@ -1,17 +1,41 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { AlertTriangle, Volume2, VolumeX, Barcode, Package, ChevronRight } from 'lucide-react'
 import { useAlarmStore } from '../../store/alarmStore'
+import { alarmSound } from '../../lib/alarmAudio'
 
 export const LowStockAlarmModal: React.FC = () => {
   const isAlarmActive = useAlarmStore((state) => state.isAlarmActive)
   const lowStockItems = useAlarmStore((state) => state.lowStockItems)
   const silenceAlarm = useAlarmStore((state) => state.silenceAlarm)
+  const [isAudioBlocked, setIsAudioBlocked] = useState(() => alarmSound.isBlocked())
+
+  useEffect(() => {
+    setIsAudioBlocked(alarmSound.isBlocked())
+    const unsubscribe = alarmSound.subscribe(() => {
+      setIsAudioBlocked(alarmSound.isBlocked())
+    })
+    return unsubscribe
+  }, [])
+
+  const handleWakeAudio = () => {
+    void alarmSound.unlock()
+  }
 
   if (!isAlarmActive || lowStockItems.length === 0) return null
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border-2 border-red-500 animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+    <div
+      onClick={handleWakeAudio}
+      onTouchStart={handleWakeAudio}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => {
+          e.stopPropagation()
+          handleWakeAudio()
+        }}
+        className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border-2 border-red-500 animate-in zoom-in-95 flex flex-col max-h-[90vh]"
+      >
         {/* Pulsing Alarm Header */}
         <div className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white px-5 py-4 flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
@@ -31,11 +55,51 @@ export const LowStockAlarmModal: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white/20 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide animate-pulse">
-            <Volume2 className="w-3.5 h-3.5" />
-            <span>Alarm Sounding</span>
-          </div>
+          {isAudioBlocked ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleWakeAudio()
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation()
+                handleWakeAudio()
+              }}
+              className="flex items-center gap-1.5 bg-yellow-300 hover:bg-yellow-400 text-yellow-950 px-3 py-1.5 rounded-full text-[11px] font-black tracking-wide animate-bounce shadow-md cursor-pointer transition-transform active:scale-95 shrink-0"
+              title="Tap to enable sound on iOS"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-yellow-950 animate-pulse" />
+              <span>Tap for Sound 🔊</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-white/20 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide animate-pulse shrink-0">
+              <Volume2 className="w-3.5 h-3.5" />
+              <span>Alarm Sounding</span>
+            </div>
+          )}
         </div>
+
+        {/* Notice Banner if Mobile Audio Autoplay Was Suspended */}
+        {isAudioBlocked && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation()
+              handleWakeAudio()
+            }}
+            className="px-5 py-2.5 bg-amber-100 border-b border-amber-200 flex items-center justify-between text-xs text-amber-950 cursor-pointer hover:bg-amber-200/80 transition-colors"
+          >
+            <div className="flex items-center gap-2 min-w-0 pr-2">
+              <Volume2 className="w-4 h-4 text-amber-700 animate-pulse shrink-0" />
+              <span className="font-bold text-[11px] truncate">
+                Mobile browser sound paused. Tap here to enable audio!
+              </span>
+            </div>
+            <span className="bg-amber-800 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase shrink-0">
+              Enable Sound
+            </span>
+          </div>
+        )}
 
         {/* Alarm Details Notice */}
         <div className="px-5 py-3 bg-red-50 border-b border-red-100 flex items-center justify-between text-xs text-red-900">

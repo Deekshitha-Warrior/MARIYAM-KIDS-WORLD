@@ -88,6 +88,23 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Prevent native date/time inputs from overflowing containers on iOS/WebKit */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"] {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+
+  input[type="datetime-local"]::-webkit-date-and-time-value,
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
   table, thead, tbody, tr, th, td {
     font-family: 'DM Sans', 'Outfit', 'Noto Sans Tamil', system-ui, -apple-system, sans-serif !important;
     font-optical-sizing: auto;

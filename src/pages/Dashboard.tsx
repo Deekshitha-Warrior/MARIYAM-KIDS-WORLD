@@ -2367,20 +2367,33 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col gap-4 border-b border-[#E7E7E7] pb-4 md:flex-row md:items-center md:justify-between">
-              {/* Sub-tabs */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 md:flex md:gap-6">
+              {/* Sub-tabs enclosed in icon box */}
+              <div className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#F0F2F5] border border-gray-200/80 overflow-x-auto hide-scrollbar max-w-full">
                 {([
-                  { id: 'revenue' as const,    label: 'REVENUE' },
-                  { id: 'today' as const,      label: 'TODAY\'S SALES' },
-                  { id: 'products' as const,   label: 'PRODUCTS' },
-                  { id: 'coupons' as const,    label: 'COUPONS' },
-                ]).map(({ id, label }) => (
-                  <button key={id} onClick={() => setPosAnalyticsTab(id as PosAnalyticsTab)}
-                    className={`pb-2 md:pb-4 text-left text-[13px] font-bold tracking-wide transition-colors relative ${posAnalyticsTab === id ? 'text-[#0A0A0A]' : 'text-[#6B7280] hover:text-[#111111]'}`}>
-                    {label}
-                    {posAnalyticsTab === id && <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#0A0A0A] rounded-t-md" />}
-                  </button>
-                ))}
+                  { id: 'revenue' as const,  label: 'Revenue',       icon: <TrendingUp size={15} className="shrink-0" /> },
+                  { id: 'today' as const,    label: "Today's Sales", icon: <Receipt size={15} className="shrink-0" /> },
+                  { id: 'products' as const, label: 'Products',      icon: <Package size={15} className="shrink-0" /> },
+                  { id: 'coupons' as const,  label: 'Coupons',       icon: <Ticket size={15} className="shrink-0" /> },
+                ]).map(({ id, label, icon }) => {
+                  const isActive = posAnalyticsTab === id
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setPosAnalyticsTab(id as PosAnalyticsTab)}
+                      className={`inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-[13px] font-black tracking-wide transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                        isActive
+                          ? 'bg-white text-[#B48811] shadow-sm'
+                          : 'text-[#6B7280] hover:text-[#111111] hover:bg-white/60'
+                      }`}
+                    >
+                      <span className={isActive ? 'text-[#B48811]' : 'text-gray-400'}>
+                        {icon}
+                      </span>
+                      <span>{label}</span>
+                    </button>
+                  )
+                })}
               </div>
 
               {/* Date filter (hidden for Today's Sales) */}
