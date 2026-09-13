@@ -35,10 +35,10 @@ export interface ExpenseFilterPayload {
   categoryId?: number | string
 }
 
-const STORAGE_EXPENSES_KEY = 'chaji_expenses_records_v1'
-const LEGACY_STORAGE_EXPENSES_KEY = 'clad_expenses_records_v1'
-const STORAGE_CATEGORIES_KEY = 'chaji_expense_categories_v1'
-const LEGACY_STORAGE_CATEGORIES_KEY = 'clad_expense_categories_v1'
+const STORAGE_EXPENSES_KEY = 'clad_expenses_records_v1'
+const LEGACY_STORAGE_EXPENSES_KEY = 'chaji_expenses_records_v1'
+const STORAGE_CATEGORIES_KEY = 'clad_expense_categories_v1'
+const LEGACY_STORAGE_CATEGORIES_KEY = 'chaji_expense_categories_v1'
 
 // Default starter categories
 export const DEFAULT_EXPENSE_CATEGORIES: string[] = [
@@ -396,7 +396,7 @@ export function exportExpensesToCSV(expenses: ExpenseRecord[]): void {
     [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
   const link = document.createElement('a')
   link.href = encodeURI(csvContent)
-  link.download = `CHAJI-Expenses-${new Date().toISOString().slice(0, 10)}.csv`
+  link.download = `CLAD-Expenses-${new Date().toISOString().slice(0, 10)}.csv`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

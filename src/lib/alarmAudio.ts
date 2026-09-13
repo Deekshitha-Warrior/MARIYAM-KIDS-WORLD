@@ -298,11 +298,16 @@ class AlarmSoundManager {
 
     this.isAlarmPlaying = true
     const ctx = this.getContext()
-    if (ctx && this.masterGain) {
-      try {
-        this.masterGain.gain.setValueAtTime(1, ctx.currentTime)
-      } catch {
-        // ignore
+    if (ctx) {
+      if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') {
+        ctx.resume().catch(() => {})
+      }
+      if (this.masterGain) {
+        try {
+          this.masterGain.gain.setValueAtTime(1, ctx.currentTime)
+        } catch {
+          // ignore
+        }
       }
     }
 

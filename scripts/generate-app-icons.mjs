@@ -17,7 +17,7 @@ import fs from 'fs';
 
 const ROOT_DIR = process.cwd();
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
-const SRC_ICON = path.join(PUBLIC_DIR, 'chaji-logo.jpeg');
+const SRC_ICON = path.join(PUBLIC_DIR, 'clad-logo.png');
 
 async function main() {
   if (!fs.existsSync(SRC_ICON)) {
@@ -112,20 +112,20 @@ async function main() {
   }
 
   // 1. Android Adaptive / PWA Maskable Icons (Safe area: inner 80% circle => ~360px max width in 512x512)
-  await generateSquareIcon(512, 360, path.join(PUBLIC_DIR, 'chaji-icon-maskable-512.png'));
-  await generateSquareIcon(192, 135, path.join(PUBLIC_DIR, 'chaji-icon-maskable-192.png'));
+  await generateSquareIcon(512, 360, path.join(PUBLIC_DIR, 'clad-icon-maskable-512.png'));
+  await generateSquareIcon(192, 135, path.join(PUBLIC_DIR, 'clad-icon-maskable-192.png'));
 
   // 2. Standard Any Icons and Master Logo (clean luxury margins)
-  await generateSquareIcon(512, 420, path.join(PUBLIC_DIR, 'chaji-icon-512.png'));
-  await generateSquareIcon(192, 155, path.join(PUBLIC_DIR, 'chaji-icon-192.png'));
-  await generateSquareIcon(512, 420, path.join(PUBLIC_DIR, 'chaji-icon.png'));
-  await generateSquareIcon(512, 420, path.join(PUBLIC_DIR, 'chaji-logo.png'));
+  await generateSquareIcon(512, 420, path.join(PUBLIC_DIR, 'clad-icon-512.png'));
+  await generateSquareIcon(192, 155, path.join(PUBLIC_DIR, 'clad-icon-192.png'));
+  await generateSquareIcon(512, 420, path.join(PUBLIC_DIR, 'clad-icon.png'));
+  await generateSquareIcon(512, 420, path.join(PUBLIC_DIR, 'clad-logo.png'));
 
   // 3. Apple Touch Icon for iOS (180x180, ~65% scale to completely clear iOS squircle corners)
   await generateSquareIcon(180, 130, path.join(PUBLIC_DIR, 'apple-touch-icon.png'));
 
   // 4. Favicon (64x64)
-  await generateSquareIcon(64, 52, path.join(PUBLIC_DIR, 'chaji-favicon.png'));
+  await generateSquareIcon(64, 52, path.join(PUBLIC_DIR, 'clad-favicon.png'));
 
   console.log('\nAll PWA and app shortcut icons generated successfully with verified safe padding!');
 }

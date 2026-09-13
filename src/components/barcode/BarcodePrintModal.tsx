@@ -125,7 +125,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
             <svg class="barcode-svg" jsbarcode-value="${barcodeValue}"></svg>
           </div>
           <div class="footer">
-            <span>${mrp && mrp > price ? `<span class="mrp">MRP ₹${mrp}</span>` : '<span class="retail-tag">CHAJI RETAIL</span>'}</span>
+            <span>${mrp && mrp > price ? `<span class="mrp">MRP ₹${mrp}</span>` : '<span class="retail-tag">CLAD RETAIL</span>'}</span>
             <span class="price">₹${price}</span>
           </div>
         </div>

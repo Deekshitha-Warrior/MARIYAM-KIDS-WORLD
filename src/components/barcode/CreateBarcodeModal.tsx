@@ -123,7 +123,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
     setDropdownOpen(false)
 
     // Set default item code (product barcode or generate new code)
-    const code = prod.barcode || `CHAJI${Math.floor(1000000 + Math.random() * 9000000)}`
+    const code = prod.barcode || `CLAD${Math.floor(1000000 + Math.random() * 9000000)}`
     setItemCode(code)
     setLine1(prod.name)
     setLine2(prod.category || '')
@@ -176,7 +176,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
 
   // Update live preview SVG with dynamic dimension calculations
   useEffect(() => {
-    const codeToRender = (itemCode && itemCode.trim()) || 'CHAJI0000000'
+    const codeToRender = (itemCode && itemCode.trim()) || 'CLAD0000000'
 
     // Proportional preview dimensions: fit comfortably within preview box
     const previewScale = Math.min(230 / currentSizeConfig.widthMm, 150 / currentSizeConfig.heightMm)
@@ -229,7 +229,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
   }
 
   const handleAssignCode = () => {
-    const generated = 'CHAJI' + Math.floor(1000000 + Math.random() * 9000000)
+    const generated = 'CLAD' + Math.floor(1000000 + Math.random() * 9000000)
     setItemCode(generated)
   }
 
@@ -419,7 +419,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
               <svg class="barcode-svg" data-code="${item.barcodeValue}"></svg>
             </div>
             <div class="footer">
-              <span>${item.line2 ? `<span class="tag">${item.line2}</span>` : '<span class="tag">CHAJI RETAIL</span>'}</span>
+              <span>${item.line2 ? `<span class="tag">${item.line2}</span>` : '<span class="tag">CLAD RETAIL</span>'}</span>
               ${settings.showSalePrice ? `<span class="price">₹${item.price}</span>` : ''}
             </div>
           </div>
@@ -445,7 +445,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>CHAJI Barcode Labels</title>
+          <title>CLAD Barcode Labels</title>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
           <style>
             @page {
@@ -847,7 +847,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
                               productName: selectedProduct.name,
                               variantId: v.id,
                               variantName: v.variantName,
-                              barcodeValue: `CHAJI${Math.floor(1000000 + Math.random() * 9000000)}`,
+                              barcodeValue: `CLAD${Math.floor(1000000 + Math.random() * 9000000)}`,
                               price: v.price || selectedProduct.price,
                               costPrice: selectedProduct.cost_price || 0,
                               noOfLabels: parseInt(noOfLabels, 10) || 1,
@@ -1033,7 +1033,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
                             className="font-mono font-bold text-gray-800 tracking-wider leading-none"
                             style={{ fontSize: `${Math.max(7.5, Math.round(previewHeightPx * 0.075))}px` }}
                           >
-                            {itemCode || 'CHAJI0000000'}
+                            {itemCode || 'CLAD0000000'}
                           </span>
 
                           {/* Product Title */}

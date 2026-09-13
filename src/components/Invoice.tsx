@@ -239,7 +239,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
         }}
       >
         <div style={{ fontSize: 12, fontWeight: 800, color: '#0A0A0A', letterSpacing: 0.5 }}>
-          Thank you for shopping at CHAJI MENS WEAR!
+          Thank you for shopping at CLAD Clothing!
         </div>
         <div style={{ fontSize: 10, color: '#666', marginTop: 3, fontWeight: 500 }}>
           Follow us on Instagram: @{BRAND_INSTAGRAM}
