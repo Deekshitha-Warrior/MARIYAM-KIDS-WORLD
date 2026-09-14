@@ -317,7 +317,10 @@
     break-before: avoid !important;
   }
 
+  #invoice-print-root,
   #invoice-print-root * {
+    color: #000 !important;
+    border-color: #000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

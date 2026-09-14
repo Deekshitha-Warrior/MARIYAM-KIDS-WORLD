@@ -71,40 +71,42 @@ export function printAdvanceReceipt(order: AdvanceOrder) {
 <style>
   @page { size: 80mm auto; margin: 0; }
   @media print { @page { size: 80mm auto; margin: 0; } }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; color: #000 !important; border-color: #000 !important; font-weight: bold !important; }
   body {
     font-family: Arial, sans-serif;
     font-size: 12px;
     width: 72mm;
     padding: 4mm;
-    color: #111;
+    color: #000;
+    font-weight: bold !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .c { text-align: center; }
-  .r { display: flex; justify-content: space-between; gap: 4px; margin: 5px 0; word-break: break-word; }
-  .r span:first-child { flex-shrink: 0; max-width: 55%; }
-  .r span:last-child { text-align: right; flex: 1; }
-  .line { border-top: 1px dashed #555; margin: 8px 0; }
-  .big { font-size: 15px; font-weight: bold; }
-  .bold { font-weight: bold; }
-  .warn { font-size: 9px; font-weight: bold; margin-top: 10px; text-align: center; }
-  .label { font-size: 10px; color: #555; }
-  .balance-row { font-size: 14px; font-weight: bold; }
+  div, span, p { font-weight: bold !important; }
+  .c { text-align: center; color: #000; }
+  .r { display: flex; justify-content: space-between; gap: 4px; margin: 5px 0; word-break: break-word; color: #000; }
+  .r span:first-child { flex-shrink: 0; max-width: 55%; color: #000; }
+  .r span:last-child { text-align: right; flex: 1; color: #000; }
+  .line { border-top: 1px dashed #000; margin: 8px 0; }
+  .big { font-size: 15px; font-weight: bold; color: #000; }
+  .bold { font-weight: bold; color: #000; }
+  .warn { font-size: 9px; font-weight: bold; margin-top: 10px; text-align: center; color: #000; }
+  .label { font-size: 10px; color: #000; }
+  .balance-row { font-size: 14px; font-weight: bold; color: #000; }
 </style>
 </head><body>
 <div class="c" style="margin-bottom: 6px;">
   <img src="${LOGO_BASE64}" style="width: 50px; height: 50px; object-fit: contain; margin: 0 auto; display: block;" alt="CLAD Logo" />
 </div>
 <div class="c big">${esc(BRAND_EN)}</div>
-<div class="c" style="font-size:10px;color:#555;">${esc(BRAND_ADDRESS)}</div>
-<div class="c" style="font-size:10px;color:#555;">${esc(BRAND_PHONE_DISPLAY)}</div>
+<div class="c" style="font-size:10px;color:#000;">${esc(BRAND_ADDRESS)}</div>
+<div class="c" style="font-size:10px;color:#000;">${esc(BRAND_PHONE_DISPLAY)}</div>
 <div class="line"></div>
 <div class="c big">ADVANCE RECEIPT</div>
-<div class="c" style="font-size:10px;">Not a final tax invoice</div>
+<div class="c" style="font-size:10px;color:#000;">Not a final tax invoice</div>
 <div class="line"></div>
 <div><span class="bold">${esc(order.deposit_id)}</span></div>
-<div style="font-size:10px;color:#555;">${new Date(order.created_at).toLocaleString('en-IN')}</div>
+<div style="font-size:10px;color:#000;">${new Date(order.created_at).toLocaleString('en-IN')}</div>
 <div class="line"></div>
 <div class="r"><span class="label">Customer</span><span class="bold">${esc(order.customer_name)}</span></div>
 <div class="r"><span class="label">Phone</span><span>${esc(order.phone)}</span></div>
