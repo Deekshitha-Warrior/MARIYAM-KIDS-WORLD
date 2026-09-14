@@ -2579,14 +2579,14 @@ export default function Dashboard() {
                       <h3 className="text-[16px] font-bold text-[#111111] mb-4">Top Items by Revenue</h3>
                       <div className="space-y-3">
                         {analytics.topProducts.slice(0, 3).map((p, i) => (
-                          <div key={i} className="flex items-center justify-between text-[13px]">
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold text-[#6B7280] w-4">{i + 1}</span>
-                              <span className="font-bold text-[#111111] truncate max-w-[120px]">{p.name}</span>
+                          <div key={i} className="flex items-start justify-between gap-3 text-[13px]">
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <span className="font-bold text-[#6B7280] w-4 shrink-0 mt-0.5">{i + 1}</span>
+                              <span className="font-bold text-[#111111] break-words whitespace-normal leading-snug">{p.name}</span>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <span className="font-bold text-[#0A0A0A]">{formatCurrency(p.revenue)}</span>
-                              <span className="text-[#6B7280] text-[11px] w-8 text-right">{Math.round(p.qty)} pcs</span>
+                            <div className="flex items-center gap-3 sm:gap-4 shrink-0 text-right">
+                              <span className="font-bold text-[#0A0A0A] whitespace-nowrap">{formatCurrency(p.revenue)}</span>
+                              <span className="text-[#6B7280] text-[11px] min-w-[36px] text-right whitespace-nowrap">{Math.round(p.qty)} pcs</span>
                             </div>
                           </div>
                         ))}
@@ -2635,12 +2635,12 @@ export default function Dashboard() {
                     <h3 className="text-[16px] font-bold text-[#111111] mb-4">Top Products This Week</h3>
                     <div className="space-y-3">
                       {analytics.topProducts.slice(0, 5).map((p, i) => (
-                        <div key={`${p.name}-${i}`} className="flex items-center justify-between rounded-xl bg-[#F9FAFB] p-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-[13px] font-bold text-[#111111]">{p.name}</p>
-                            <p className="text-[11px] text-[#6B7280]">{p.billCount} bills</p>
+                        <div key={`${p.name}-${i}`} className="flex items-start justify-between gap-3 rounded-xl bg-[#F9FAFB] p-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-bold text-[#111111] break-words whitespace-normal leading-snug">{p.name}</p>
+                            <p className="text-[11px] text-[#6B7280] mt-0.5">{p.billCount} bills</p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <p className="text-[13px] font-black text-[#111111]">{Math.round(p.qty)}</p>
                             <p className="text-[11px] font-bold text-[#10B981]">{formatCurrency(p.revenue)}</p>
                           </div>
