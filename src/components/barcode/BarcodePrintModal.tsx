@@ -3,7 +3,14 @@ import { createPortal } from 'react-dom'
 import { X, Printer, Copy, Check } from 'lucide-react'
 import { BarcodeLabel } from './BarcodeLabel'
 import { BRAND_EN } from '../../lib/brand'
-import { getAllLabelSizes, generateBarcodeSvgString, getStoredBarcodeSettings, saveStoredBarcodeSettings } from '../../lib/barcode'
+import {
+  getAllLabelSizes,
+  generateBarcodeSvgString,
+  getStoredBarcodeSettings,
+  saveStoredBarcodeSettings,
+  subscribeCustomSizes,
+  fetchRemoteCustomSizes,
+} from '../../lib/barcode'
 
 export interface BarcodePrintModalProps {
   isOpen: boolean
@@ -41,13 +48,25 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
   mrp,
   defaultQuantity = 1,
 }) => {
-  const presets = getAvailablePresets()
+  const [presets, setPresets] = useState<LabelSizePreset[]>(getAvailablePresets)
   const [quantity, setQuantity] = useState<string>(String(defaultQuantity || 1))
-  const [selectedPreset, setSelectedPreset] = useState<LabelSizePreset>(presets[0] || { name: 'Thermal Standard', widthMm: 50, heightMm: 25 })
+  const [selectedPreset, setSelectedPreset] = useState<LabelSizePreset>(() => presets[0] || { name: 'Thermal Standard', widthMm: 50, heightMm: 25 })
   const [copied, setCopied] = useState(false)
   const [printerType, setPrinterType] = useState<'label' | 'regular'>(() => {
     return getStoredBarcodeSettings().printerType || 'label'
   })
+
+  // Sync custom sizes from database and subscribe
+  useEffect(() => {
+    if (!isOpen) return
+    fetchRemoteCustomSizes().then(() => {
+      setPresets(getAvailablePresets())
+    })
+    const unsubscribe = subscribeCustomSizes(() => {
+      setPresets(getAvailablePresets())
+    })
+    return unsubscribe
+  }, [isOpen])
 
   const handlePrinterTypeChange = (type: 'label' | 'regular') => {
     setPrinterType(type)

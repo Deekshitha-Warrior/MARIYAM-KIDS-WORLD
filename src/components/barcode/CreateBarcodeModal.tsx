@@ -16,8 +16,11 @@ import {
   type BarcodeQueueItem,
   type BarcodeSettings,
   type LabelSizeConfig,
+  DEFAULT_LABEL_SIZES,
   getStoredBarcodeSettings,
   getAllLabelSizes,
+  subscribeCustomSizes,
+  fetchRemoteCustomSizes,
   renderBarcodeSvg,
   generateBarcodeSvgString,
 } from '../../lib/barcode'
@@ -111,7 +114,20 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
   const previewSvgRef = useRef<SVGSVGElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const allSizes = getAllLabelSizes()
+  const [allSizes, setAllSizes] = useState<LabelSizeConfig[]>(getAllLabelSizes)
+
+  // Sync custom sizes from database and subscribe
+  useEffect(() => {
+    if (!isOpen) return
+    fetchRemoteCustomSizes().then((remote) => {
+      setAllSizes([...DEFAULT_LABEL_SIZES, ...remote])
+    })
+    const unsubscribe = subscribeCustomSizes((updated) => {
+      setAllSizes([...DEFAULT_LABEL_SIZES, ...updated])
+    })
+    return unsubscribe
+  }, [isOpen])
+
   const currentSizeConfig: LabelSizeConfig =
     allSizes.find((s) => s.id === settings.selectedSizeId) || allSizes[0]
 

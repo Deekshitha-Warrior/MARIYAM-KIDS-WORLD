@@ -1,4 +1,5 @@
 import JsBarcode from 'jsbarcode'
+import { isSupabaseConfigured, supabase } from './supabase'
 
 export interface LabelSizeConfig {
   id: string
@@ -59,6 +60,26 @@ export function saveStoredBarcodeSettings(settings: BarcodeSettings): void {
   }
 }
 
+type CustomSizeListener = (sizes: LabelSizeConfig[]) => void
+const customSizeListeners: Set<CustomSizeListener> = new Set()
+
+export function subscribeCustomSizes(listener: CustomSizeListener): () => void {
+  customSizeListeners.add(listener)
+  return () => {
+    customSizeListeners.delete(listener)
+  }
+}
+
+function notifyCustomSizesChanged(sizes: LabelSizeConfig[]) {
+  customSizeListeners.forEach((fn) => {
+    try {
+      fn(sizes)
+    } catch (e) {
+      console.warn('[barcode] Listener error:', e)
+    }
+  })
+}
+
 export function getStoredCustomSizes(): LabelSizeConfig[] {
   try {
     const raw = localStorage.getItem(CUSTOM_SIZES_KEY) || localStorage.getItem(LEGACY_CUSTOM_SIZES_KEY)
@@ -69,19 +90,121 @@ export function getStoredCustomSizes(): LabelSizeConfig[] {
   return []
 }
 
+export async function fetchRemoteCustomSizes(): Promise<LabelSizeConfig[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('barcode_custom_sizes')
+        .select('*')
+        .order('created_at', { ascending: true })
+
+      if (!error && Array.isArray(data)) {
+        const remoteSizes: LabelSizeConfig[] = data.map((row: Record<string, unknown>) => ({
+          id: String(row.id),
+          name: String(row.name),
+          labelsPerRow: Number(row.labels_per_row) || 1,
+          widthMm: Number(row.width_mm),
+          heightMm: Number(row.height_mm),
+          horizontalGapMm: Number(row.horizontal_gap_mm) || 0,
+          isCustom: true,
+        }))
+
+        // Merge remote sizes with local cache
+        const local = getStoredCustomSizes()
+        const mergedMap = new Map<string, LabelSizeConfig>()
+        local.forEach((s) => mergedMap.set(s.id, s))
+        remoteSizes.forEach((s) => mergedMap.set(s.id, s))
+        const merged = Array.from(mergedMap.values())
+
+        try {
+          localStorage.setItem(CUSTOM_SIZES_KEY, JSON.stringify(merged))
+        } catch {}
+        notifyCustomSizesChanged(merged)
+        return merged
+      }
+    } catch {
+      // Table may be pending creation in Supabase
+    }
+  }
+  return getStoredCustomSizes()
+}
+
 export function saveStoredCustomSize(size: LabelSizeConfig): LabelSizeConfig[] {
   const existing = getStoredCustomSizes().filter((s) => s.id !== size.id)
-  const updated = [...existing, { ...size, isCustom: true }]
+  const updatedSize: LabelSizeConfig = { ...size, isCustom: true }
+  const updated = [...existing, updatedSize]
+
   try {
     localStorage.setItem(CUSTOM_SIZES_KEY, JSON.stringify(updated))
   } catch (e) {
-    console.error('Failed to save custom label size:', e)
+    console.error('Failed to save custom label size locally:', e)
   }
+
+  // Dual persistence: save to Supabase asynchronously
+  if (isSupabaseConfigured) {
+    ;(async () => {
+      try {
+        const { error } = await supabase
+          .from('barcode_custom_sizes')
+          .upsert({
+            id: updatedSize.id,
+            name: updatedSize.name,
+            labels_per_row: updatedSize.labelsPerRow,
+            width_mm: updatedSize.widthMm,
+            height_mm: updatedSize.heightMm,
+            horizontal_gap_mm: updatedSize.horizontalGapMm,
+            is_custom: true,
+            updated_at: new Date().toISOString(),
+          })
+        if (error) {
+          console.warn('[barcode] Database save note:', error.message)
+        }
+      } catch (err) {
+        console.warn('[barcode] Database save error:', err)
+      }
+    })()
+  }
+
+  notifyCustomSizesChanged(updated)
   return updated
+}
+
+export function deleteStoredCustomSize(sizeId: string): LabelSizeConfig[] {
+  const existing = getStoredCustomSizes().filter((s) => s.id !== sizeId)
+  try {
+    localStorage.setItem(CUSTOM_SIZES_KEY, JSON.stringify(existing))
+  } catch (e) {
+    console.error('Failed to delete custom label size locally:', e)
+  }
+
+  // Remove from Supabase asynchronously
+  if (isSupabaseConfigured) {
+    ;(async () => {
+      try {
+        const { error } = await supabase
+          .from('barcode_custom_sizes')
+          .delete()
+          .eq('id', sizeId)
+        if (error) {
+          console.warn('[barcode] Database delete note:', error.message)
+        }
+      } catch (err) {
+        console.warn('[barcode] Database delete error:', err)
+      }
+    })()
+  }
+
+  notifyCustomSizesChanged(existing)
+  return existing
 }
 
 export function getAllLabelSizes(): LabelSizeConfig[] {
   return [...DEFAULT_LABEL_SIZES, ...getStoredCustomSizes()]
+}
+
+// Initial background sync from database if available
+if (typeof window !== 'undefined' && isSupabaseConfigured) {
+  fetchRemoteCustomSizes().catch(() => {})
 }
 
 export interface BarcodeQueueItem {
