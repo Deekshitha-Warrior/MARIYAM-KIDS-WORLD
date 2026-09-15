@@ -16,7 +16,11 @@ import {
 
 import { useAlarmStore } from './alarmStore'
 import { alarmSound } from '../lib/alarmAudio'
-import { useBranchContextStore } from './branchContextStore'
+import {
+  useBranchContextStore,
+  DEFAULT_TEXTILE_BRANCH,
+  DEFAULT_GROCERY_BRANCH,
+} from './branchContextStore'
 
 export type { ProductVariant }
 
@@ -600,28 +604,88 @@ export const useAdminAuthStore = create<AdminAuthState>()(
         const trimmedId = String(portalId || '').trim()
         const trimmedPass = String(password || '').trim()
 
-        if (branchId) {
-          useBranchContextStore.getState().setBranchById(branchId)
-        }
-
         // 1. Check Admin Credentials (support VITE_ADMIN_ID or VITE_PORTAL_ID fallback)
         const adminId = String(import.meta.env.VITE_ADMIN_ID || import.meta.env.VITE_PORTAL_ID || 'admin').trim()
         const adminPass = String(import.meta.env.VITE_ADMIN_PASSWORD || import.meta.env.VITE_PORTAL_PASSWORD || 'admin123').trim()
 
         if (trimmedId === adminId && trimmedPass === adminPass) {
+          if (branchId) {
+            useBranchContextStore.getState().setBranchById(branchId)
+          }
           useAlarmStore.getState().resetSilencedState()
           set({ isLoggedIn: true, role: 'admin', adminId: trimmedId })
           return 'admin'
         }
 
-        // 2. Check Staff Credentials
-        const staffId = String(import.meta.env.VITE_STAFF_ID || 'staff').trim()
-        const staffPass = String(import.meta.env.VITE_STAFF_PASSWORD || 'staff123').trim()
+        // 2. Branch 1 (CLAD TEXTILE) Staff Credentials
+        const b1Id = String(
+          import.meta.env.VITE_BRANCH_1_STAFF_ID ||
+          import.meta.env.VITE_STAFF_ID ||
+          'staffb1'
+        ).trim()
+        const b1Pass = String(
+          import.meta.env.VITE_BRANCH_1_STAFF_PASSWORD ||
+          import.meta.env.VITE_STAFF_PASSWORD ||
+          'staffb1123'
+        ).trim()
 
-        if (trimmedId === staffId && trimmedPass === staffPass) {
-          useAlarmStore.getState().resetSilencedState()
-          set({ isLoggedIn: true, role: 'staff', adminId: trimmedId })
-          return 'staff'
+        // 3. Branch 2 (CLAD GROCERY) Staff Credentials
+        const b2Id = String(
+          import.meta.env.VITE_BRANCH_2_STAFF_ID ||
+          'staffb2'
+        ).trim()
+        const b2Pass = String(
+          import.meta.env.VITE_BRANCH_2_STAFF_PASSWORD ||
+          'staffb2123'
+        ).trim()
+
+        const isB1 = trimmedId === b1Id && trimmedPass === b1Pass
+        const isB2 = trimmedId === b2Id && trimmedPass === b2Pass
+
+        if (branchId) {
+          const isTextile = branchId === DEFAULT_TEXTILE_BRANCH.id || branchId === 'TEXTILE'
+          const isGrocery = branchId === DEFAULT_GROCERY_BRANCH.id || branchId === 'GROCERY'
+
+          if (isTextile && isB1) {
+            useBranchContextStore.getState().setBranch(DEFAULT_TEXTILE_BRANCH)
+            useAlarmStore.getState().resetSilencedState()
+            set({ isLoggedIn: true, role: 'staff', adminId: trimmedId })
+            return 'staff'
+          }
+
+          if (isGrocery && isB2) {
+            useBranchContextStore.getState().setBranch(DEFAULT_GROCERY_BRANCH)
+            useAlarmStore.getState().resetSilencedState()
+            set({ isLoggedIn: true, role: 'staff', adminId: trimmedId })
+            return 'staff'
+          }
+
+          // Legacy fallback for generic staff credentials
+          const legacyStaffId = String(import.meta.env.VITE_STAFF_ID || '').trim()
+          const legacyStaffPass = String(import.meta.env.VITE_STAFF_PASSWORD || '').trim()
+          if (legacyStaffId && trimmedId === legacyStaffId && trimmedPass === legacyStaffPass) {
+            useBranchContextStore.getState().setBranchById(branchId)
+            useAlarmStore.getState().resetSilencedState()
+            set({ isLoggedIn: true, role: 'staff', adminId: trimmedId })
+            return 'staff'
+          }
+
+          return false
+        } else {
+          // No branch explicitly pre-selected: auto-detect branch from credentials
+          if (isB1) {
+            useBranchContextStore.getState().setBranch(DEFAULT_TEXTILE_BRANCH)
+            useAlarmStore.getState().resetSilencedState()
+            set({ isLoggedIn: true, role: 'staff', adminId: trimmedId })
+            return 'staff'
+          }
+
+          if (isB2) {
+            useBranchContextStore.getState().setBranch(DEFAULT_GROCERY_BRANCH)
+            useAlarmStore.getState().resetSilencedState()
+            set({ isLoggedIn: true, role: 'staff', adminId: trimmedId })
+            return 'staff'
+          }
         }
 
         return false

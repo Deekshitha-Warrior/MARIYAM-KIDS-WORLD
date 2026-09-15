@@ -49,7 +49,12 @@ export default function AdminLogin() {
       setError(
         mode === 'admin'
           ? l('Invalid Administrator credentials', 'தவறான நிர்வாகி விவரங்கள்')
-          : l('Invalid Staff ID or Password for selected branch', 'தேர்ந்தெடுக்கப்பட்ட கிளைக்கான தவறான பணியாளர் விவரங்கள்')
+          : l(
+              `Invalid Staff ID or Password for ${
+                selectedBranchId === DEFAULT_GROCERY_BRANCH.id ? 'CLAD GROCERY (Branch 2)' : 'CLAD TEXTILE (Branch 1)'
+              }`,
+              'தேர்ந்தெடுக்கப்பட்ட கிளைக்கான தவறான பணியாளர் விவரங்கள்'
+            )
       )
     }
   }
@@ -186,13 +191,23 @@ export default function AdminLogin() {
             <div>
               <label className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#6B7280]">
                 <ShieldCheck size={13} />
-                {mode === 'admin' ? 'Admin ID' : 'Staff ID'}
+                {mode === 'admin'
+                  ? 'Admin ID'
+                  : selectedBranchId === DEFAULT_GROCERY_BRANCH.id
+                  ? 'Branch 2 (Grocery) Staff ID'
+                  : 'Branch 1 (Textile) Staff ID'}
                 <span className="font-black text-red-500">*</span>
               </label>
               <input
                 type="text"
                 autoComplete="username"
-                placeholder={mode === 'admin' ? 'Enter admin ID' : 'Enter staff ID'}
+                placeholder={
+                  mode === 'admin'
+                    ? 'Enter admin ID'
+                    : selectedBranchId === DEFAULT_GROCERY_BRANCH.id
+                    ? 'Enter Branch 2 staff ID'
+                    : 'Enter Branch 1 staff ID'
+                }
                 className="w-full rounded-xl border-2 border-[#E8D399] bg-[#FBFAF6] px-3.5 py-2.5 text-xs sm:text-sm font-semibold outline-none transition-colors placeholder:text-[#AAA69C] focus:border-[#0A0A0A] focus:bg-white text-[#111111]"
                 value={portalId}
                 onChange={(e) => {
