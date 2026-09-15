@@ -1835,58 +1835,6 @@ export default function Dashboard() {
 
       {/* Main */}
       <main className="flex-grow flex flex-col overflow-hidden">
-        {/* Branch Verification Header Banner */}
-        <div 
-          className="w-full px-4 py-2 flex items-center justify-between border-b text-xs sm:text-sm font-medium shrink-0 transition-colors shadow-xs"
-          style={{
-            backgroundColor: branchTheme.colors.surface,
-            borderColor: branchTheme.colors.border,
-          }}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span 
-              className="w-2.5 h-2.5 rounded-full animate-pulse shrink-0" 
-              style={{ backgroundColor: branchTheme.colors.primary }} 
-            />
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <span className="font-bold text-gray-800 tracking-wide flex items-center gap-1.5 text-xs sm:text-sm">
-                <Store size={14} style={{ color: branchTheme.colors.primary }} />
-                <span>POS Branch:</span>
-                <span className="font-black" style={{ color: branchTheme.colors.primary }}>
-                  {branchTheme.branchName}
-                </span>
-              </span>
-              <span 
-                className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border shadow-xs"
-                style={{
-                  backgroundColor: branchTheme.colors.primaryMuted,
-                  color: branchTheme.colors.primary,
-                  borderColor: `${branchTheme.colors.primary}40`,
-                }}
-              >
-                {branchTheme.badge} ({activeBranch?.code || 'DEFAULT'})
-              </span>
-              <span className="hidden md:inline-block text-[11px] text-gray-400 font-normal">
-                {branchTheme.tagline}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <span 
-              className="px-2 py-0.5 rounded-md text-[10px] font-black border flex items-center gap-1.5"
-              style={{
-                backgroundColor: branchTheme.colors.accentLight,
-                borderColor: `${branchTheme.colors.primary}30`,
-                color: branchTheme.colors.primary,
-              }}
-            >
-              <CheckCircle2 size={12} />
-              <span>Verified Branch {activeBranch?.code === 'GROCERY' ? '2' : '1'}</span>
-            </span>
-          </div>
-        </div>
-
         <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto">
 
         {/* ΓöÇΓöÇ ANALYTICS TAB ΓöÇΓöÇ */}

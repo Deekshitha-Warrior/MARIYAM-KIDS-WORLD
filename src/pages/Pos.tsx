@@ -996,11 +996,17 @@ export default function Pos(props: PosProps = {}) {
           </div>
 
           {/* Bill Details Section */}
-          <div className="rounded-2xl border border-[#E8D399] bg-[#FBFAF6] p-4 shadow-sm">
+          <div className="rounded-2xl bg-[#FBFAF6] p-4 shadow-sm" style={{ border: `1px solid ${branchTheme.colors.cardBorder}` }}>
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Bill Number:</span>
-                <span className="px-2.5 py-0.5 rounded-lg bg-[#0A0A0A] text-[#D4AF37] font-black text-xs font-mono">
+                <span
+                  className="px-2.5 py-0.5 rounded-lg font-black text-xs font-mono"
+                  style={{
+                    backgroundColor: branchTheme.colors.sidebarBg,
+                    color: branchTheme.colors.primary,
+                  }}
+                >
                   #{formatInvoiceNo(invoice.invoiceNo)}
                 </span>
               </div>
@@ -1110,27 +1116,15 @@ export default function Pos(props: PosProps = {}) {
       {/* Header */}
       <div className="px-3 pt-3 pb-2.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 md:pb-4 shrink-0 flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-[18px] sm:text-[22px] md:text-[24px] font-black text-[#0A0A0A] flex items-center gap-2 leading-tight">
-              <div 
-                className="w-1.5 h-5 sm:h-6 rounded-full shrink-0"
-                style={{ backgroundColor: branchTheme.colors.primary }}
-              />
-              POS Billing Panel
-            </h2>
-            <span 
-              className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border shadow-xs"
-              style={{
-                backgroundColor: branchTheme.colors.primaryMuted,
-                color: branchTheme.colors.primary,
-                borderColor: `${branchTheme.colors.primary}40`,
-              }}
-            >
-              {branchTheme.branchName} • {branchTheme.badge}
-            </span>
-          </div>
+          <h2 className="text-[18px] sm:text-[22px] md:text-[24px] font-black text-[#0A0A0A] flex items-center gap-2 leading-tight">
+            <div 
+              className="w-1.5 h-5 sm:h-6 rounded-full shrink-0"
+              style={{ backgroundColor: branchTheme.colors.primary }}
+            />
+            POS Billing Panel
+          </h2>
           <p className="text-[11px] sm:text-[12px] text-gray-500 font-medium ml-3.5 mt-0.5 pr-2">
-            Quick Invoice generator & database synced checkout ({branchTheme.badge})
+            Quick Invoice generator & database synced checkout
           </p>
         </div>
 
@@ -1187,7 +1181,7 @@ export default function Pos(props: PosProps = {}) {
           {/* Customer Details Card */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3.5 sm:p-4 md:p-5 shrink-0 min-w-0 max-w-full">
             <h3 className="text-[14px] sm:text-[15px] font-black text-[#111111] flex items-center gap-2 mb-3 sm:mb-4">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#D4AF37]"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: branchTheme.colors.primary }}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               Customer Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 min-w-0">
@@ -1198,7 +1192,7 @@ export default function Pos(props: PosProps = {}) {
                   value={customer.name}
                   onChange={e => setCustomer({...customer, name: e.target.value})}
                   placeholder="Enter name"
-                  className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D4AF37] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[var(--pos-primary)] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
               <div className="min-w-0">
@@ -1208,7 +1202,7 @@ export default function Pos(props: PosProps = {}) {
                   value={customer.phone}
                   onChange={e => setCustomer({...customer, phone: e.target.value})}
                   placeholder="Enter WhatsApp number"
-                  className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D4AF37] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className={`w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border rounded-xl focus:outline-none ${customer.phone && !normalizePhone(customer.phone) ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[var(--pos-primary)]'} text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium`}
                 />
               </div>
               <div className="min-w-0">
@@ -1218,7 +1212,7 @@ export default function Pos(props: PosProps = {}) {
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
                   placeholder="Optional remarks"
-                  className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D4AF37] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[var(--pos-primary)] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
               <div className="min-w-0">
@@ -1228,7 +1222,7 @@ export default function Pos(props: PosProps = {}) {
                   value={referenceNumber}
                   onChange={e => setReferenceNumber(e.target.value)}
                   placeholder="Optional ref no."
-                  className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D4AF37] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[var(--pos-primary)] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
               <div className="min-w-0 md:col-span-2">
@@ -1249,7 +1243,7 @@ export default function Pos(props: PosProps = {}) {
                   type="datetime-local"
                   value={billingDate}
                   onChange={e => setBillingDate(e.target.value)}
-                  className="block w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D4AF37] text-[13px] font-bold text-[#111111]"
+                  className="block w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[var(--pos-primary)] text-[13px] font-bold text-[#111111]"
                   style={{ maxWidth: '100%', boxSizing: 'border-box' }}
                 />
                 <p className="mt-1 text-[10px] text-gray-400 font-medium">Leave blank to use today's date &amp; time</p>
@@ -1258,12 +1252,12 @@ export default function Pos(props: PosProps = {}) {
           </div>
 
           {/* Order Items Card */}
-          <div className="bg-white rounded-2xl border border-[#E8D399] shadow-sm flex-1 flex flex-col min-h-[400px]">
+          <div className="bg-white rounded-2xl shadow-sm flex-1 flex flex-col min-h-[400px]" style={{ border: `1px solid ${branchTheme.colors.cardBorder}` }}>
             {/* Card Header & Barcode Scanner */}
-            <div className="flex flex-col gap-3 p-4 md:p-5 border-b border-[#E8D399]">
+            <div className="flex flex-col gap-3 p-4 md:p-5" style={{ borderBottom: `1px solid ${branchTheme.colors.cardBorder}` }}>
               <div className="flex items-center justify-between">
                 <h3 className="text-[18px] md:text-[14px] font-black text-[#0A0A0A] flex items-center gap-2">
-                  <Receipt size={16} className="text-[#D4AF37]" />
+                  <Receipt size={16} style={{ color: branchTheme.colors.primary }} />
                   Order Items ({items.length})
                 </h3>
               </div>
@@ -1289,9 +1283,14 @@ export default function Pos(props: PosProps = {}) {
                 <button
                   type="button"
                   onClick={() => setCatalogOpen(true)}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg bg-[#0A0A0A] text-[#D4AF37] hover:bg-[#1A1A1A] border border-[#D4AF37] shadow-xs transition-all shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg shadow-xs transition-all shrink-0 cursor-pointer border"
+                  style={{
+                    backgroundColor: branchTheme.colors.sidebarBg,
+                    color: branchTheme.colors.primary,
+                    borderColor: branchTheme.colors.primary,
+                  }}
                 >
-                  <Search className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <Search className="w-3.5 h-3.5" style={{ color: branchTheme.colors.primary }} />
                   <span className="tracking-wide">Search Catalog</span>
                 </button>
 
@@ -1299,7 +1298,10 @@ export default function Pos(props: PosProps = {}) {
                 <button
                   type="button"
                   onClick={() => setAddUnregisteredOpen(true)}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 shadow-xs transition-all shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg text-white shadow-xs transition-all shrink-0 cursor-pointer hover:opacity-90"
+                  style={{
+                    backgroundColor: branchTheme.colors.primary,
+                  }}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span className="tracking-wide">Add Item</span>
@@ -1326,7 +1328,7 @@ export default function Pos(props: PosProps = {}) {
 
               {items.map(item => (
                 <div key={item.id}>
-                  <div className="md:hidden bg-white border border-gray-200/90 rounded-2xl p-3.5 shadow-sm hover:border-[#D4AF37]/50 transition-all space-y-3">
+                  <div className="md:hidden bg-white border border-gray-200/90 rounded-2xl p-3.5 shadow-sm hover:border-[var(--pos-primary)] transition-all space-y-3">
                     {/* Header Row: Product Name + Trash Delete */}
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="min-w-0 flex-1">
@@ -1336,7 +1338,7 @@ export default function Pos(props: PosProps = {}) {
                             value={item.name}
                             onChange={e => updateItem(item.id, 'name', e.target.value)}
                             placeholder="Enter item name..."
-                            className="w-full px-3 py-1.5 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[14px] font-bold text-[#111111] focus:outline-none focus:border-[#D4AF37]"
+                            className="w-full px-3 py-1.5 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[14px] font-bold text-[#111111] focus:outline-none focus:border-[var(--pos-primary)]"
                           />
                         ) : (
                           <div>
@@ -1344,7 +1346,14 @@ export default function Pos(props: PosProps = {}) {
                               {item.name}
                             </h4>
                             {item.variantName && (
-                              <span className="inline-block mt-0.5 text-[10.5px] font-semibold text-[#B48811] bg-[#FBFAF6] border border-[#E8D399]/60 px-1.5 py-0.5 rounded">
+                              <span 
+                                className="inline-block mt-0.5 text-[10.5px] font-semibold px-1.5 py-0.5 rounded border"
+                                style={{
+                                  color: branchTheme.colors.primary,
+                                  backgroundColor: branchTheme.colors.primaryLight,
+                                  borderColor: branchTheme.colors.cardBorder,
+                                }}
+                              >
                                 {item.variantName}
                               </span>
                             )}
@@ -1355,14 +1364,18 @@ export default function Pos(props: PosProps = {}) {
                           <button
                             type="button"
                             onClick={() => handleOpenPriceEdit(item)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FBF9F4] hover:bg-[#F5EEDB] border border-[#E8D399]/70 hover:border-[#D4AF37] text-[12px] text-[#374151] transition-all cursor-pointer active:scale-95"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] transition-all cursor-pointer active:scale-95 border"
+                            style={{
+                              backgroundColor: branchTheme.colors.primaryLight,
+                              borderColor: branchTheme.colors.cardBorder,
+                            }}
                             title="Tap to change unit price"
                           >
                             <span className="text-gray-500 font-medium">Rate:</span>
                             <span className="font-bold text-[#111111]">
                               ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                             </span>
-                            <Edit2 size={11} className="text-[#B48811]" />
+                            <Edit2 size={11} style={{ color: branchTheme.colors.primary }} />
                           </button>
                         </div>
                       </div>
@@ -1413,7 +1426,7 @@ export default function Pos(props: PosProps = {}) {
                     </div>
                   </div>
 
-                  <div className="hidden md:grid grid-cols-[1fr_100px_120px_40px] items-center gap-3 p-2 bg-white border border-gray-200 rounded-xl hover:border-[#D4AF37]/50 transition-colors">
+                  <div className="hidden md:grid grid-cols-[1fr_100px_120px_40px] items-center gap-3 p-2 bg-white border border-gray-200 rounded-xl hover:border-[var(--pos-primary)] transition-colors">
                     {/* Item Name */}
                     <div className="min-w-0 flex items-center gap-2">
                       {item.source === 'manual' ? (
@@ -1422,7 +1435,7 @@ export default function Pos(props: PosProps = {}) {
                           value={item.name}
                           onChange={e => updateItem(item.id, 'name', e.target.value)}
                           placeholder="Item name"
-                          className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-[13px] font-bold text-[#111111] focus:outline-none focus:border-[#D4AF37]"
+                          className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-[13px] font-bold text-[#111111] focus:outline-none focus:border-[var(--pos-primary)]"
                         />
                       ) : (
                         <div className="px-3 py-2 w-full truncate border border-transparent flex items-center gap-2">
@@ -1430,7 +1443,14 @@ export default function Pos(props: PosProps = {}) {
                         </div>
                       )}
                       {item.source !== 'manual' && (
-                        <span className="hidden sm:inline-flex px-2 py-0.5 rounded border border-[#D4AF37]/30 text-[#B48811] text-[9px] font-black tracking-wider uppercase shrink-0 bg-[#D4AF37]/10">
+                        <span 
+                          className="hidden sm:inline-flex px-2 py-0.5 rounded border text-[9px] font-black tracking-wider uppercase shrink-0"
+                          style={{
+                            borderColor: `${branchTheme.colors.primary}50`,
+                            color: branchTheme.colors.primary,
+                            backgroundColor: branchTheme.colors.primaryLight,
+                          }}
+                        >
                           CATALOG
                         </span>
                       )}
@@ -1441,13 +1461,13 @@ export default function Pos(props: PosProps = {}) {
                       <button
                         type="button"
                         onClick={() => handleOpenPriceEdit(item)}
-                        className="group flex items-center justify-end gap-1.5 px-2.5 py-1.5 rounded-lg border border-transparent hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/10 transition-all text-right cursor-pointer"
+                        className="group flex items-center justify-end gap-1.5 px-2.5 py-1.5 rounded-lg border border-transparent transition-all text-right cursor-pointer"
                         title="Click to edit price"
                       >
-                        <span className="text-[13px] font-black text-[#111111] group-hover:text-[#B48811] tracking-tight">
+                        <span className="text-[13px] font-black tracking-tight" style={{ color: branchTheme.colors.primary }}>
                           ₹{Number(item.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </span>
-                        <Edit2 size={12} className="text-gray-400 group-hover:text-[#B48811] transition-colors shrink-0" />
+                        <Edit2 size={12} className="text-gray-400 group-hover:opacity-100 transition-colors shrink-0" style={{ color: branchTheme.colors.primary }} />
                       </button>
                     </div>
 
@@ -1480,16 +1500,30 @@ export default function Pos(props: PosProps = {}) {
 
         {/* RIGHT COLUMN (approx 32%) */}
         <div className="flex-[1] flex min-h-0 flex-col gap-6 sticky top-4 h-[calc(100vh-140px)] max-h-[calc(100vh-140px)]">
-          <div className="flex min-h-0 h-full max-h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-[#FBFAF6] shadow-sm">
+          <div className="flex min-h-0 h-full max-h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: branchTheme.colors.cardBorder }}>
 
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-white shrink-0">
               <h3 className="text-[18px] md:text-[14px] font-black text-[#111111] flex items-center gap-2">
-                <Receipt size={16} className="text-[#D4AF37]" />
+                <Receipt size={16} style={{ color: branchTheme.colors.primary }} />
                 Current Order
               </h3>
-              <span className={`px-2 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase flex items-center gap-1.5 ${ordermode === 'offline' ? 'border-[#0A0A0A] text-[#0A0A0A] bg-gray-100' : 'border-[#D4AF37] text-[#B48811] bg-amber-50'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${ordermode === 'offline' ? 'bg-[#0A0A0A]' : 'bg-[#D4AF37]'}`}></div>
+              <span 
+                className="px-2 py-1 rounded-full border text-[9px] font-black tracking-wider uppercase flex items-center gap-1.5"
+                style={ordermode === 'offline' ? {
+                  borderColor: branchTheme.colors.sidebarBg,
+                  color: branchTheme.colors.sidebarBg,
+                  backgroundColor: '#F3F4F6',
+                } : {
+                  borderColor: branchTheme.colors.primary,
+                  color: branchTheme.colors.primary,
+                  backgroundColor: branchTheme.colors.primaryLight,
+                }}
+              >
+                <div 
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: ordermode === 'offline' ? branchTheme.colors.sidebarBg : branchTheme.colors.primary }}
+                />
                 {ordermode} (POS)
               </span>
             </div>
@@ -1511,7 +1545,7 @@ export default function Pos(props: PosProps = {}) {
                       value={customer.name}
                       onChange={e => setCustomer({...customer, name: e.target.value})}
                       placeholder="Enter name"
-                      className="w-full h-8 px-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-[#111111] focus:outline-none focus:border-[#D4AF37]"
+                      className="w-full h-8 px-2 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-[#111111] focus:outline-none focus:border-[var(--pos-primary)]"
                     />
                   </div>
                   <div className="p-2">
@@ -1521,7 +1555,7 @@ export default function Pos(props: PosProps = {}) {
                       value={customer.phone}
                       onChange={e => setCustomer({...customer, phone: e.target.value})}
                       placeholder="Enter WhatsApp number"
-                      className={`w-full h-8 px-2 bg-white border rounded-lg text-[12px] font-bold text-[#111111] focus:outline-none ${customer.phone && !normalizePhone(customer.phone) ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[#D4AF37]'}`}
+                      className={`w-full h-8 px-2 bg-white border rounded-lg text-[12px] font-bold text-[#111111] focus:outline-none ${customer.phone && !normalizePhone(customer.phone) ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-[var(--pos-primary)]'}`}
                     />
                   </div>
                 </div>
@@ -1554,7 +1588,7 @@ export default function Pos(props: PosProps = {}) {
                     placeholder="Enter code"
                     disabled={appliedCoupon !== null}
                     list="pos-coupons"
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-[12px] font-bold text-[#111111] focus:outline-none focus:border-[#D4AF37] uppercase disabled:bg-gray-100"
+                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-[12px] font-bold text-[#111111] focus:outline-none focus:border-[var(--pos-primary)] uppercase disabled:bg-gray-100"
                   />
                   <datalist id="pos-coupons">
                     {availableCoupons.map(c => (
@@ -1564,7 +1598,7 @@ export default function Pos(props: PosProps = {}) {
                   {appliedCoupon ? (
                     <button
                       onClick={removeCoupon}
-                      className="h-9 px-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-xl text-[11px] font-black transition-colors shrink-0"
+                      className="h-9 px-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-xl text-[11px] font-black transition-colors shrink-0 cursor-pointer"
                     >
                       Remove
                     </button>
@@ -1572,7 +1606,12 @@ export default function Pos(props: PosProps = {}) {
                     <button
                       onClick={() => void applyCoupon()}
                       disabled={couponLoading || !couponInput.trim()}
-                      className="h-9 px-3 bg-[#0A0A0A] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#1A1A1A] rounded-xl text-[11px] font-black transition-colors disabled:opacity-50 shrink-0"
+                      className="h-9 px-3 rounded-xl text-[11px] font-black transition-colors disabled:opacity-50 shrink-0 border shadow-xs cursor-pointer"
+                      style={{
+                        backgroundColor: branchTheme.colors.sidebarBg,
+                        color: branchTheme.colors.primary,
+                        borderColor: branchTheme.colors.primary,
+                      }}
                     >
                       Apply
                     </button>
@@ -1592,7 +1631,7 @@ export default function Pos(props: PosProps = {}) {
                     <select
                       value={manualDiscountType}
                       onChange={e => setManualDiscountType(e.target.value as 'flat'|'percent')}
-                      className="appearance-none h-9 bg-white border border-gray-200 rounded-xl pl-2 pr-7 text-[12px] font-black text-[#111111] focus:outline-none focus:border-[#D4AF37]"
+                      className="appearance-none h-9 bg-white border border-gray-200 rounded-xl pl-2 pr-7 text-[12px] font-black text-[#111111] focus:outline-none focus:border-[var(--pos-primary)]"
                     >
                       <option value="flat">₹</option>
                       <option value="percent">%</option>
@@ -1604,7 +1643,7 @@ export default function Pos(props: PosProps = {}) {
                     value={manualDiscountValue}
                     onChange={e => setManualDiscountValue(e.target.value)}
                     placeholder="0"
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-[12px] font-black text-[#111111] text-right focus:outline-none focus:border-[#D4AF37]"
+                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-[12px] font-black text-[#111111] text-right focus:outline-none focus:border-[var(--pos-primary)]"
                   />
                 </div>
               </div>
@@ -1615,7 +1654,8 @@ export default function Pos(props: PosProps = {}) {
                 <button
                   type="button"
                   onClick={() => setBillGstEnabled(!billGstEnabled)}
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors ${billGstEnabled ? 'bg-[#0A0A0A]' : 'bg-gray-200'}`}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-colors ${!billGstEnabled ? 'bg-gray-200' : ''}`}
+                  style={billGstEnabled ? { backgroundColor: branchTheme.colors.primary } : {}}
                 >
                   <div className={`w-4 h-4 rounded-full bg-white transition-transform ${billGstEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
                 </button>
@@ -1627,7 +1667,7 @@ export default function Pos(props: PosProps = {}) {
                     <select
                       value={gstType}
                       onChange={e => setGstType(e.target.value as 'flat'|'percent')}
-                      className="appearance-none h-9 bg-white border border-gray-200 rounded-xl pl-2 pr-7 text-[12px] font-black text-[#111111] focus:outline-none focus:border-[#D4AF37]"
+                      className="appearance-none h-9 bg-white border border-gray-200 rounded-xl pl-2 pr-7 text-[12px] font-black text-[#111111] focus:outline-none focus:border-[var(--pos-primary)]"
                     >
                       <option value="percent">%</option>
                       <option value="flat">₹</option>
@@ -1639,7 +1679,7 @@ export default function Pos(props: PosProps = {}) {
                     value={gstInput}
                     onChange={e => setGstInput(e.target.value)}
                     placeholder={gstType === 'percent' ? "e.g. 6" : "0"}
-                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-[12px] font-black text-[#111111] text-right focus:outline-none focus:border-[#D4AF37]"
+                    className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-[12px] font-black text-[#111111] text-right focus:outline-none focus:border-[var(--pos-primary)]"
                   />
                 </div>
               )}
@@ -1664,7 +1704,7 @@ export default function Pos(props: PosProps = {}) {
                     type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     value={shipping}
                     onChange={e => setShipping(e.target.value)}
-                    className="w-20 h-8 px-2 bg-white border border-gray-200 rounded-lg text-[12px] font-black text-[#111111] text-right focus:outline-none focus:border-[#D4AF37]"
+                    className="w-20 h-8 px-2 bg-white border border-gray-200 rounded-lg text-[12px] font-black text-[#111111] text-right focus:outline-none focus:border-[var(--pos-primary)]"
                   />
                 </div>
 
@@ -1686,11 +1726,16 @@ export default function Pos(props: PosProps = {}) {
                       key={mode}
                       type="button"
                       onClick={() => setPaymentType(mode)}
-                      className={`py-2 rounded-xl text-[11px] font-black uppercase tracking-wide border-2 transition-colors ${
+                      className={`py-2 rounded-xl text-[11px] font-black uppercase tracking-wide border-2 transition-colors cursor-pointer ${
                         paymentType === mode
-                          ? 'bg-[#0A0A0A] text-[#D4AF37] border-[#0A0A0A]'
+                          ? 'shadow-xs'
                           : 'bg-white text-[#374151] border-gray-200 hover:border-gray-300'
                       }`}
+                      style={paymentType === mode ? {
+                        backgroundColor: branchTheme.colors.sidebarBg,
+                        color: branchTheme.colors.primary,
+                        borderColor: branchTheme.colors.sidebarBg,
+                      } : {}}
                     >
                       {mode === 'qr' ? 'QR' : mode === 'card' ? 'Card' : 'Cash'}
                     </button>
@@ -1710,7 +1755,7 @@ export default function Pos(props: PosProps = {}) {
                     value={cashReceived}
                     onChange={e => setCashReceived(e.target.value)}
                     placeholder="0.00"
-                    className="w-full h-9 px-3 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[13px] font-black text-[#111111] focus:outline-none focus:border-[#D4AF37]"
+                    className="w-full h-9 px-3 bg-[#FAFAFA] border border-gray-200 rounded-xl text-[13px] font-black text-[#111111] focus:outline-none focus:border-[var(--pos-primary)]"
                   />
                   {cashReceivedNum > 0 && (
                     <div className="mt-2 flex justify-between items-center bg-[#F9FAFB] px-3 py-1.5 rounded-lg border border-gray-200">
@@ -1828,7 +1873,10 @@ export default function Pos(props: PosProps = {}) {
       {/* Variant Picker Modal for Multi-Variant Products */}
       {variantPickerProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full border border-[#E8D399] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+          <div
+            className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+            style={{ border: `1px solid ${branchTheme.colors.cardBorder}` }}
+          >
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-[#FBFAF6]">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-[#0A0A0A]">
@@ -1856,25 +1904,32 @@ export default function Pos(props: PosProps = {}) {
                   Available Sizes &amp; Options ({availableVariants.length})
                 </label>
                 <div className="grid grid-cols-2 gap-2.5 max-h-52 overflow-y-auto pr-1">
-                  {availableVariants.map((v) => (
-                    <div
-                      key={v.id}
-                      onClick={() => setSelectedVariant(v)}
-                      className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
-                        selectedVariant?.id === v.id
-                          ? 'border-[#0A0A0A] bg-[#FFF9E6] shadow-xs'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="font-black text-xs text-gray-900">
-                        {v.variantName}
+                  {availableVariants.map((v) => {
+                    const isSelected = selectedVariant?.id === v.id
+                    return (
+                      <div
+                        key={v.id}
+                        onClick={() => setSelectedVariant(v)}
+                        style={isSelected ? {
+                          borderColor: branchTheme.colors.primary,
+                          backgroundColor: branchTheme.colors.primaryLight,
+                        } : {}}
+                        className={`p-3 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                          isSelected
+                            ? 'shadow-xs'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-black text-xs text-gray-900">
+                          {v.variantName}
+                        </div>
+                        <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-100 text-[11px]">
+                          <span className="font-black text-black">₹{v.price}</span>
+                          <span className="text-[10px] text-emerald-700 font-bold">Stock: {v.stock}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-100 text-[11px]">
-                        <span className="font-black text-black">₹{v.price}</span>
-                        <span className="text-[10px] text-emerald-700 font-bold">Stock: {v.stock}</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
@@ -1906,7 +1961,12 @@ export default function Pos(props: PosProps = {}) {
               <button
                 type="button"
                 onClick={addVariantToItems}
-                className="w-full py-3 rounded-2xl bg-[#0A0A0A] border border-[#D4AF37] text-[#D4AF37] text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                style={{
+                  backgroundColor: branchTheme.colors.sidebarBg,
+                  color: branchTheme.colors.primary,
+                  borderColor: branchTheme.colors.primary,
+                }}
+                className="w-full py-3 rounded-2xl border text-xs font-black uppercase tracking-wider hover:brightness-110 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 Add to Order (₹{((selectedVariant?.price || variantPickerProduct.price || 0) * variantPickerQty).toFixed(2)})
               </button>
@@ -1919,9 +1979,15 @@ export default function Pos(props: PosProps = {}) {
       {priceEditModal.isOpen && priceEditModal.item && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-amber-50/50 to-white">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center text-[#B48811]">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{
+                    backgroundColor: branchTheme.colors.primaryLight,
+                    color: branchTheme.colors.primary,
+                  }}
+                >
                   <Edit2 size={16} />
                 </div>
                 <div>
@@ -1964,7 +2030,7 @@ export default function Pos(props: PosProps = {}) {
                         void handleSavePrice(false)
                       }
                     }}
-                    className="w-full h-12 pl-8 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-lg font-black text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:bg-white transition-all"
+                    className="w-full h-12 pl-8 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-lg font-black text-gray-900 focus:outline-none focus:border-[var(--pos-primary)] focus:bg-white transition-all"
                   />
                 </div>
                 {priceEditModal.error && (
@@ -1972,12 +2038,12 @@ export default function Pos(props: PosProps = {}) {
                 )}
               </div>
 
-              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-xs text-amber-900 space-y-1">
-                <p className="font-bold flex items-center gap-1.5 text-amber-800">
-                  <AlertCircle size={14} className="shrink-0 text-[#B48811]" />
+              <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-800 space-y-1">
+                <p className="font-bold flex items-center gap-1.5 text-gray-900">
+                  <AlertCircle size={14} className="shrink-0" style={{ color: branchTheme.colors.primary }} />
                   Do you want to update this price in inventory also?
                 </p>
-                <p className="text-[11px] text-amber-700/90 pl-5 leading-relaxed">
+                <p className="text-[11px] text-gray-600 pl-5 leading-relaxed">
                   Selecting <strong>Yes</strong> updates the price in your master product catalog and inventory database. Selecting <strong>No</strong> updates it for this billing session only.
                 </p>
               </div>
@@ -1987,7 +2053,12 @@ export default function Pos(props: PosProps = {}) {
                   type="button"
                   disabled={priceEditModal.isSubmitting}
                   onClick={() => void handleSavePrice(true)}
-                  className="h-11 px-3 bg-[#0A0A0A] hover:bg-[#1A1A1A] text-[#D4AF37] border border-[#D4AF37] font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  style={{
+                    backgroundColor: branchTheme.colors.sidebarBg,
+                    color: branchTheme.colors.primary,
+                    borderColor: branchTheme.colors.primary,
+                  }}
+                  className="h-11 px-3 border font-bold text-xs rounded-xl shadow-sm hover:brightness-110 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
                   {priceEditModal.isSubmitting ? (
                     <RefreshCw size={14} className="animate-spin" />

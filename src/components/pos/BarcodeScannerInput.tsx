@@ -4,6 +4,8 @@ import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser'
 import { barcodeService } from '../../services/barcodeService'
 import { BRAND_EN } from '../../lib/brand'
 import { normalizeBarcode } from '../../lib/barcode'
+import { useBranchContextStore } from '../../store/branchContextStore'
+import { getBranchTheme } from '../../lib/branchTheme'
 
 export interface ScannedItemPayload {
   product_id: number
@@ -29,6 +31,8 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
   onItemScanned,
   disabled = false,
 }) => {
+  const { activeBranch } = useBranchContextStore()
+  const branchTheme = getBranchTheme(activeBranch?.code)
   const [manualCode, setManualCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -343,7 +347,7 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
           }}
           className="relative flex-1 flex items-center"
         >
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#D4AF37] flex items-center pointer-events-none">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none" style={{ color: branchTheme.colors.primary }}>
             <ScanLine size={18} />
           </div>
 
@@ -354,7 +358,11 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
             disabled={disabled || loading}
-            className="w-full pl-10 pr-24 py-3 rounded-2xl border-2 border-[#E8D399] bg-[#FBFAF6] font-bold text-sm text-black placeholder:text-gray-400 outline-none focus:border-[#0A0A0A] focus:bg-white shadow-xs transition-all"
+            className="w-full pl-10 pr-24 py-3 rounded-2xl border-2 font-bold text-sm text-black placeholder:text-gray-400 outline-none focus:bg-white shadow-xs transition-all"
+            style={{
+              borderColor: branchTheme.colors.cardBorder,
+              backgroundColor: branchTheme.colors.primaryLight,
+            }}
           />
 
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -362,7 +370,11 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="px-3 py-1.5 rounded-xl bg-[#0A0A0A] text-[#D4AF37] text-xs font-black hover:bg-[#1A1A1A] cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer shadow-xs transition-all"
+                style={{
+                  backgroundColor: branchTheme.colors.sidebarBg,
+                  color: branchTheme.colors.primary,
+                }}
               >
                 {loading ? '...' : 'Add'}
               </button>
@@ -371,9 +383,12 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
               type="button"
               onClick={() => setIsCameraOpen(true)}
               title="Scan with Camera"
-              className="p-2 rounded-xl bg-white border border-[#E8D399] text-gray-700 hover:text-black hover:border-black transition-all cursor-pointer shadow-xs"
+              className="p-2 rounded-xl bg-white border text-gray-700 hover:text-black transition-all cursor-pointer shadow-xs"
+              style={{
+                borderColor: branchTheme.colors.cardBorder,
+              }}
             >
-              <Camera size={16} />
+              <Camera size={16} style={{ color: branchTheme.colors.primary }} />
             </button>
           </div>
         </form>

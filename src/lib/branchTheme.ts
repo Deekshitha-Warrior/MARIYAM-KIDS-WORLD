@@ -99,6 +99,8 @@ export function applyBranchThemeCssVariables(theme: BranchThemeConfig): void {
   root.style.setProperty('--pos-sidebar-border', c.sidebarBorder)
   root.style.setProperty('--pos-sidebar-active', c.sidebarActiveTab)
   root.style.setProperty('--pos-sidebar-active-text', c.sidebarActiveText)
+  root.style.setProperty('--pos-card-border', c.cardBorder)
+  root.style.setProperty('--pos-accent-light', c.accentLight)
   root.style.setProperty('--pos-badge-bg', c.sidebarBadgeBg)
   root.style.setProperty('--pos-badge-text', c.sidebarBadgeText)
   root.style.setProperty('--pos-badge-border', c.sidebarBadgeBorder)
