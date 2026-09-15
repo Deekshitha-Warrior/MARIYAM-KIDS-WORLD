@@ -14,6 +14,8 @@ import { supabase } from '../../lib/supabase'
 import { useProductStore, type Product } from '../../store/store'
 import { fetchVariantsByProduct } from '../../services/variantService'
 import { inventoryService, type CategoryRecord } from '../../services/inventoryService'
+import { normalizeBarcode } from '../../lib/barcode'
+import { useBranchContextStore } from '../../store/branchContextStore'
 
 export const STANDARD_LETTER_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', 'Free Size'] as const
 export const STANDARD_NUMERIC_SIZES = ['28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'] as const
@@ -297,6 +299,7 @@ export const AddEditProductView: React.FC<{
     const alertThreshold = Number(lowStockAlert) > 0 ? Number(lowStockAlert) : 5
 
     setLoading(true)
+    const branchId = useBranchContextStore.getState().activeBranch.id
 
     try {
       if (selectedProductId) {
@@ -313,6 +316,7 @@ export const AddEditProductView: React.FC<{
 
           const prevStock = currentProd ? (currentProd.stock_quantity ?? currentProd.stock ?? 0) : 0
           const delta = inputStock - prevStock
+          const cleanBarcode = barcode.trim() ? normalizeBarcode(barcode) : null
 
           const { error: updErr } = await supabase
             .from('products')
@@ -325,7 +329,7 @@ export const AddEditProductView: React.FC<{
               offer_price: priceNum,
               purchase_price: costNum,
               low_stock_alert: alertThreshold,
-              barcode: barcode.trim() || null,
+              barcode: cleanBarcode,
               description: description.trim() || '',
               has_variants: false,
               stock_quantity: inputStock,
@@ -337,6 +341,7 @@ export const AddEditProductView: React.FC<{
 
           if (delta !== 0) {
             await supabase.from('inventory_movements').insert({
+              branch_id: branchId,
               product_id: selectedProductId,
               variant_id: null,
               movement_type: delta > 0 ? 'RESTOCK' : 'CORRECTION',
@@ -350,15 +355,18 @@ export const AddEditProductView: React.FC<{
             })
           }
 
-          if (barcode.trim()) {
+          if (cleanBarcode) {
             await supabase.from('barcode_registry').upsert(
               {
-                barcode: barcode.trim(),
+                barcode_value: cleanBarcode,
+                entity_type: 'product',
                 product_id: selectedProductId,
                 variant_id: null,
                 is_active: true,
+                branch_id: branchId,
+                updated_at: new Date().toISOString(),
               },
-              { onConflict: 'barcode' }
+              { onConflict: 'barcode_value' }
             )
           }
 
@@ -374,6 +382,7 @@ export const AddEditProductView: React.FC<{
             const vPrice = Number(v.price) > 0 ? Number(v.price) : priceNum
             const vCost = Number(v.costPrice) > 0 ? Number(v.costPrice) : costNum
             const vStock = Math.max(0, Number(v.stock) || 0)
+            const cleanVarBarcode = v.customBarcode?.trim() ? normalizeBarcode(v.customBarcode) : null
             totalVariantStock += vStock
 
             if (v.id.startsWith('var_')) {
@@ -381,31 +390,50 @@ export const AddEditProductView: React.FC<{
               const { data: createdVar, error: vErr } = await supabase
                 .from('product_variants')
                 .insert({
+                  branch_id: branchId,
                   product_id: selectedProductId,
                   variant_name: v.variantName.trim(),
                   size_label: v.sizeLabel?.trim() || v.variantName.trim(),
                   price: vPrice,
                   purchase_price: vCost,
                   stock: vStock,
-                  barcode: v.customBarcode?.trim() || null,
+                  barcode: cleanVarBarcode,
                   is_active: true,
                 })
                 .select()
                 .single()
 
-              if (!vErr && createdVar && vStock > 0) {
-                await supabase.from('inventory_movements').insert({
-                  product_id: selectedProductId,
-                  variant_id: createdVar.id,
-                  movement_type: 'RESTOCK',
-                  quantity_delta: vStock,
-                  quantity_before: 0,
-                  quantity_after: vStock,
-                  unit_cost: vCost || null,
-                  reference_type: 'PRODUCT_UPDATE',
-                  note: `Added variant ${v.variantName.trim()} with stock`,
-                  created_by_name: 'Admin',
-                })
+              if (!vErr && createdVar) {
+                if (cleanVarBarcode) {
+                  await supabase.from('barcode_registry').upsert(
+                    {
+                      barcode_value: cleanVarBarcode,
+                      entity_type: 'variant',
+                      product_id: selectedProductId,
+                      variant_id: createdVar.id,
+                      is_active: true,
+                      branch_id: branchId,
+                      updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'barcode_value' }
+                  )
+                }
+
+                if (vStock > 0) {
+                  await supabase.from('inventory_movements').insert({
+                    branch_id: branchId,
+                    product_id: selectedProductId,
+                    variant_id: createdVar.id,
+                    movement_type: 'RESTOCK',
+                    quantity_delta: vStock,
+                    quantity_before: 0,
+                    quantity_after: vStock,
+                    unit_cost: vCost || null,
+                    reference_type: 'PRODUCT_UPDATE',
+                    note: `Added variant ${v.variantName.trim()} with stock`,
+                    created_by_name: 'Admin',
+                  })
+                }
               }
             } else {
               // Update existing variant
@@ -426,12 +454,28 @@ export const AddEditProductView: React.FC<{
                   price: vPrice,
                   purchase_price: vCost,
                   stock: vStock,
-                  barcode: v.customBarcode?.trim() || null,
+                  barcode: cleanVarBarcode,
                 })
                 .eq('id', v.id)
 
+              if (cleanVarBarcode) {
+                await supabase.from('barcode_registry').upsert(
+                  {
+                    barcode_value: cleanVarBarcode,
+                    entity_type: 'variant',
+                    product_id: selectedProductId,
+                    variant_id: v.id,
+                    is_active: true,
+                    branch_id: branchId,
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: 'barcode_value' }
+                )
+              }
+
               if (varDelta !== 0) {
                 await supabase.from('inventory_movements').insert({
+                  branch_id: branchId,
                   product_id: selectedProductId,
                   variant_id: v.id,
                   movement_type: varDelta > 0 ? 'RESTOCK' : 'CORRECTION',
@@ -476,10 +520,12 @@ export const AddEditProductView: React.FC<{
         // CREATE NEW PRODUCT
         if (!hasVariants) {
           const inputStock = Math.max(0, parseInt(stockQuantity) || 0)
+          const cleanBarcode = barcode.trim() ? normalizeBarcode(barcode) : null
 
           const { data: newProd, error: insErr } = await supabase
             .from('products')
             .insert({
+              branch_id: branchId,
               name: trimmedName,
               name_ta: nameTa.trim() || '',
               category: categoryName,
@@ -488,7 +534,7 @@ export const AddEditProductView: React.FC<{
               offer_price: priceNum,
               purchase_price: costNum,
               low_stock_alert: alertThreshold,
-              barcode: barcode.trim() || null,
+              barcode: cleanBarcode,
               description: description.trim() || '',
               has_variants: false,
               stock_quantity: inputStock,
@@ -500,20 +546,24 @@ export const AddEditProductView: React.FC<{
 
           if (insErr || !newProd) throw insErr || new Error('Failed to create product')
 
-          if (barcode.trim()) {
+          if (cleanBarcode) {
             await supabase.from('barcode_registry').upsert(
               {
-                barcode: barcode.trim(),
+                barcode_value: cleanBarcode,
+                entity_type: 'product',
                 product_id: newProd.id,
                 variant_id: null,
                 is_active: true,
+                branch_id: branchId,
+                updated_at: new Date().toISOString(),
               },
-              { onConflict: 'barcode' }
+              { onConflict: 'barcode_value' }
             )
           }
 
           if (inputStock > 0) {
             await supabase.from('inventory_movements').insert({
+              branch_id: branchId,
               product_id: newProd.id,
               variant_id: null,
               movement_type: 'RESTOCK',
@@ -544,6 +594,7 @@ export const AddEditProductView: React.FC<{
           const { data: newProd, error: insErr } = await supabase
             .from('products')
             .insert({
+              branch_id: branchId,
               name: trimmedName,
               name_ta: nameTa.trim() || '',
               category: categoryName,
@@ -569,36 +620,42 @@ export const AddEditProductView: React.FC<{
             const vPrice = Number(v.price) > 0 ? Number(v.price) : priceNum
             const vCost = Number(v.costPrice) > 0 ? Number(v.costPrice) : costNum
             const vStock = Math.max(0, Number(v.stock) || 0)
+            const cleanVarBarcode = v.customBarcode?.trim() ? normalizeBarcode(v.customBarcode) : null
 
             const { data: createdVar } = await supabase
               .from('product_variants')
               .insert({
+                branch_id: branchId,
                 product_id: newProd.id,
                 variant_name: v.variantName.trim(),
                 size_label: v.sizeLabel?.trim() || v.variantName.trim(),
                 price: vPrice,
                 purchase_price: vCost,
                 stock: vStock,
-                barcode: v.customBarcode?.trim() || null,
+                barcode: cleanVarBarcode,
                 is_active: true,
               })
               .select('id')
               .single()
 
-            if (createdVar && v.customBarcode?.trim()) {
+            if (createdVar && cleanVarBarcode) {
               await supabase.from('barcode_registry').upsert(
                 {
-                  barcode: v.customBarcode.trim(),
+                  barcode_value: cleanVarBarcode,
+                  entity_type: 'variant',
                   product_id: newProd.id,
                   variant_id: createdVar.id,
                   is_active: true,
+                  branch_id: branchId,
+                  updated_at: new Date().toISOString(),
                 },
-                { onConflict: 'barcode' }
+                { onConflict: 'barcode_value' }
               )
             }
 
             if (createdVar && vStock > 0) {
               await supabase.from('inventory_movements').insert({
+                branch_id: branchId,
                 product_id: newProd.id,
                 variant_id: createdVar.id,
                 movement_type: 'RESTOCK',

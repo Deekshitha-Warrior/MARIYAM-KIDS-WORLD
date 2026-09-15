@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigationStore } from '../store/navigationStore'
+import { normalizeBarcode } from '../lib/barcode'
 
 interface UseHardwareBarcodeScannerOptions {
   onScanDirect?: (barcode: string) => void
@@ -34,7 +35,7 @@ export function useHardwareBarcodeScanner({
 
       // Hardware scanners end with 'Enter'
       if (e.key === 'Enter') {
-        const buffered = bufferRef.current.code.trim()
+        const buffered = normalizeBarcode(bufferRef.current.code)
 
         // Verify if rapid keystrokes (< 50ms average) accumulated >= 4 characters
         if (buffered.length >= 4 && diff < 150) {

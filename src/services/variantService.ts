@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { useBranchContextStore } from '../store/branchContextStore'
 
 export type ProductVariant = {
   id: string
@@ -18,6 +19,7 @@ export type ProductVariant = {
   sortOrder: number
   imageUrl: string | null
   groupName: string | null   // Brand name for Type D (Brand+Weight) products e.g. "Sithanathan"
+  branchId?: string | null
 }
 
 export type VariantInput = {
@@ -35,10 +37,11 @@ export type VariantInput = {
   isDefault?: boolean
   sortOrder?: number
   imageUrl?: string | null
+  branchId?: string | null
 }
 
 const VARIANT_COLS =
-  'id, product_id, variant_name, size_label, weight_value, weight_unit, sku, barcode, purchase_price, mrp, price, stock, is_default, is_active, sort_order, image_url, group_name'
+  'id, product_id, variant_name, size_label, weight_value, weight_unit, sku, barcode, purchase_price, mrp, price, stock, is_default, is_active, sort_order, image_url, group_name, branch_id'
 
 function mapVariant(r: Record<string, unknown>): ProductVariant {
   return {
@@ -64,14 +67,16 @@ function mapVariant(r: Record<string, unknown>): ProductVariant {
 
 // ── Read ──────────────────────────────────────────────────────────
 
-export async function fetchAllVariants(): Promise<{ data: ProductVariant[]; error: string | null }> {
+export async function fetchAllVariants(branchId?: string): Promise<{ data: ProductVariant[]; error: string | null }> {
   if (!isSupabaseConfigured) return { data: [], error: null }
 
-  const { data, error } = await supabase
-    .from('product_variants')
-    .select(VARIANT_COLS)
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true })
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  let query = supabase.from('product_variants').select(VARIANT_COLS).eq('is_active', true)
+  if (targetBranch) {
+    query = query.eq('branch_id', targetBranch)
+  }
+
+  const { data, error } = await query.order('sort_order', { ascending: true })
 
   if (error) return { data: [], error: error.message }
   return {
@@ -98,6 +103,8 @@ export async function fetchVariantsByProduct(productId: string): Promise<Product
 export async function createVariant(input: VariantInput): Promise<{ data: ProductVariant | null; error: string | null }> {
   if (!isSupabaseConfigured) return { data: null, error: 'Not configured' }
 
+  const targetBranch = input.branchId || useBranchContextStore.getState().activeBranch.id
+
   const { data, error } = await supabase
     .from('product_variants')
     .insert({
@@ -116,6 +123,7 @@ export async function createVariant(input: VariantInput): Promise<{ data: Produc
       sort_order:   input.sortOrder ?? 0,
       image_url:    input.imageUrl ?? null,
       is_active:    true,
+      branch_id:    targetBranch,
     })
     .select(VARIANT_COLS)
     .single()

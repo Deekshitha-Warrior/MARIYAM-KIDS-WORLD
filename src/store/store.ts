@@ -16,6 +16,7 @@ import {
 
 import { useAlarmStore } from './alarmStore'
 import { alarmSound } from '../lib/alarmAudio'
+import { useBranchContextStore } from './branchContextStore'
 
 export type { ProductVariant }
 
@@ -542,7 +543,13 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   fetchSettings: async () => {
     set({ loading: true })
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase.from('store_settings').select('*').limit(1).single()
+      const branchId = useBranchContextStore.getState().activeBranch.id
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('*')
+        .eq('branch_id', branchId)
+        .limit(1)
+        .maybeSingle()
       if (!error && data) {
         set({
           settings: {
@@ -558,9 +565,10 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
       }
     }
     // Fallback/Demo settings
+    const activeBranch = useBranchContextStore.getState().activeBranch
     set({
       settings: {
-        name: BRAND_EN,
+        name: activeBranch.name || BRAND_EN,
         ownerName: BRAND_EN,
         phone: BRAND_PHONE_DISPLAY,
         address: BRAND_ADDRESS,
@@ -578,7 +586,7 @@ interface AdminAuthState {
   isLoggedIn: boolean
   role: AdminRole
   adminId: string | null
-  login: (portalId: string, password: string) => Promise<AdminRole | false>
+  login: (portalId: string, password: string, branchId?: string) => Promise<AdminRole | false>
   logout: () => void
 }
 
@@ -588,9 +596,13 @@ export const useAdminAuthStore = create<AdminAuthState>()(
       isLoggedIn: false,
       role: null,
       adminId: null,
-      login: async (portalId: string, password: string) => {
+      login: async (portalId: string, password: string, branchId?: string) => {
         const trimmedId = String(portalId || '').trim()
         const trimmedPass = String(password || '').trim()
+
+        if (branchId) {
+          useBranchContextStore.getState().setBranchById(branchId)
+        }
 
         // 1. Check Admin Credentials (support VITE_ADMIN_ID or VITE_PORTAL_ID fallback)
         const adminId = String(import.meta.env.VITE_ADMIN_ID || import.meta.env.VITE_PORTAL_ID || 'admin').trim()

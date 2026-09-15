@@ -77,7 +77,8 @@ export default function CatalogModal({ isOpen, onClose, onAdd }: CatalogModalPro
     if (q) src = src.filter(p =>
       p.name.toLowerCase().includes(q) ||
       (p.nameTa || '').toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q)
+      p.category.toLowerCase().includes(q) ||
+      (p.barcode && p.barcode.toLowerCase().includes(q))
     )
     return src
   }, [products, search, activeCategory])

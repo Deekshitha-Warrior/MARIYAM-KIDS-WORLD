@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase'
+import { normalizeBarcode } from '../lib/barcode'
+import { useBranchContextStore } from '../store/branchContextStore'
 
 export interface BarcodeRegistryRecord {
   id: string
@@ -38,6 +40,17 @@ export interface CreateBarcodeAndReceivePayload {
   note?: string
 }
 
+export interface AssignBarcodePayload {
+  product_id: number
+  variant_id?: string | null
+  barcode: string
+  shouldUpdateStock?: boolean
+  stockDelta?: number
+  unit_cost?: number | null
+  created_by_name?: string
+  note?: string
+}
+
 export interface CreateBarcodeResponse {
   success: boolean
   barcode_id: string
@@ -55,16 +68,75 @@ export interface CreateBarcodeResponse {
 
 export const barcodeService = {
   /**
+   * Assign or update a barcode for a product or variant.
+   * By default, does NOT alter inventory stock unless explicitly instructed.
+   */
+  async assignBarcode(payload: AssignBarcodePayload): Promise<{ barcode: string }> {
+    const cleanBarcode = normalizeBarcode(payload.barcode)
+    const branchId = useBranchContextStore.getState().activeBranch.id
+
+    // 1. If user explicitly opted in to increment stock (inward arrival):
+    if (payload.shouldUpdateStock && payload.stockDelta && payload.stockDelta > 0) {
+      await this.receiveStockWithBarcode({
+        product_id: payload.product_id,
+        variant_id: payload.variant_id || null,
+        quantity_received: payload.stockDelta,
+        unit_cost: payload.unit_cost ?? null,
+        created_by_name: payload.created_by_name || 'Admin',
+        custom_barcode: cleanBarcode,
+        note: payload.note || `Barcode assignment with stock intake (+${payload.stockDelta})`,
+      })
+      return { barcode: cleanBarcode }
+    }
+
+    // 2. Pure barcode tagging WITHOUT altering product stock:
+    if (payload.variant_id) {
+      const { error: varErr } = await supabase
+        .from('product_variants')
+        .update({ barcode: cleanBarcode, updated_at: new Date().toISOString() })
+        .eq('id', payload.variant_id)
+      if (varErr) throw varErr
+    } else {
+      const { error: prodErr } = await supabase
+        .from('products')
+        .update({ barcode: cleanBarcode, updated_at: new Date().toISOString() })
+        .eq('id', payload.product_id)
+      if (prodErr) throw prodErr
+    }
+
+    // Register in barcode_registry
+    try {
+      await supabase
+        .from('barcode_registry')
+        .upsert({
+          barcode_value: cleanBarcode,
+          entity_type: payload.variant_id ? 'variant' : 'product',
+          product_id: payload.product_id,
+          variant_id: payload.variant_id || null,
+          is_active: true,
+          created_by_name: payload.created_by_name || 'Admin',
+          branch_id: branchId,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'barcode_value' })
+    } catch (regErr) {
+      console.warn('Non-fatal barcode registry note:', regErr)
+    }
+
+    return { barcode: cleanBarcode }
+  },
+
+  /**
    * Receive stock and create/reuse barcode in a single atomic transaction.
    */
   async receiveStockWithBarcode(payload: CreateBarcodeAndReceivePayload): Promise<CreateBarcodeResponse> {
+    const cleanBarcode = payload.custom_barcode ? normalizeBarcode(payload.custom_barcode) : null
     const { data, error } = await supabase.rpc('create_barcode_and_receive_stock', {
       p_product_id: payload.product_id,
       p_variant_id: payload.variant_id || null,
       p_quantity_received: payload.quantity_received,
       p_unit_cost: payload.unit_cost ?? null,
       p_created_by_name: payload.created_by_name || 'Admin',
-      p_custom_barcode: payload.custom_barcode || null,
+      p_custom_barcode: cleanBarcode,
       p_note: payload.note || ''
     })
 
@@ -77,10 +149,10 @@ export const barcodeService = {
   },
 
   /**
-   * Lookup barcode value in registry and resolve product + variant info.
+   * Lookup barcode value in registry and resolve product + variant info (case-insensitive).
    */
   async lookupBarcode(barcodeValue: string): Promise<BarcodeRegistryRecord | null> {
-    const cleanValue = barcodeValue.trim()
+    const cleanValue = normalizeBarcode(barcodeValue)
     if (!cleanValue) return null
 
     // 1. Direct registry lookup
@@ -91,7 +163,7 @@ export const barcodeService = {
         product:products (id, name, name_ta, price, offer_price, image_url, category),
         variant:product_variants (id, variant_name, price, stock, sku)
       `)
-      .eq('barcode_value', cleanValue)
+      .ilike('barcode_value', cleanValue)
       .eq('is_active', true)
       .maybeSingle()
 
@@ -114,7 +186,7 @@ export const barcodeService = {
     const { data: varData } = await supabase
       .from('product_variants')
       .select('id, product_id, variant_name, price, stock, sku, barcode, product:products (id, name, name_ta, price, offer_price, image_url, category)')
-      .eq('barcode', cleanValue)
+      .ilike('barcode', cleanValue)
       .maybeSingle()
 
     if (varData) {
@@ -144,7 +216,7 @@ export const barcodeService = {
     const { data: prodData } = await supabase
       .from('products')
       .select('id, name, name_ta, price, offer_price, image_url, category, barcode, stock_quantity')
-      .eq('barcode', cleanValue)
+      .ilike('barcode', cleanValue)
       .maybeSingle()
 
     if (prodData) {

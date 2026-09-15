@@ -298,3 +298,11 @@ export function formatBarcodeDisplay(value?: string | null): string {
 export function isValidBarcodeValue(value: string): boolean {
   return /^[A-Z0-9_-]{4,32}$/i.test(value.trim())
 }
+
+/**
+ * Standardize barcode normalization across scanner inputs, database lookups, and storage.
+ */
+export const normalizeBarcode = (code: string | null | undefined): string => {
+  return (code || '').trim().toUpperCase()
+}
+

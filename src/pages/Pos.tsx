@@ -27,6 +27,7 @@ import {
   formatQuantityDisplay,
   formatInvoiceNo,
 } from '../lib/retail'
+import { normalizeBarcode } from '../lib/barcode'
 import { buildProfessionalWhatsAppMessage, buildAdvanceDepositWhatsAppMessage, publicInvoiceUrl } from '../lib/whatsappMessage'
 import { normalizePhone, toWhatsAppUrl } from '../lib/phone'
 import { useLangStore } from '../store/langStore'
@@ -419,7 +420,7 @@ export default function Pos(props: PosProps = {}) {
   const setExternalScannedCode = useNavigationStore((s) => s.setExternalScannedCode)
 
   const processIncomingCode = useCallback(async (codeToProcess: string) => {
-    const clean = codeToProcess.trim()
+    const clean = normalizeBarcode(codeToProcess)
     if (!clean) return
     try {
       const record = await barcodeService.lookupBarcode(clean)

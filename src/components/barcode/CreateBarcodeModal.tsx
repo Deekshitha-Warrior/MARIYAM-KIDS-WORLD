@@ -23,6 +23,7 @@ import {
   fetchRemoteCustomSizes,
   renderBarcodeSvg,
   generateBarcodeSvgString,
+  normalizeBarcode,
 } from '../../lib/barcode'
 import { BRAND_EN } from '../../lib/brand'
 import { barcodeService } from '../../services/barcodeService'
@@ -105,6 +106,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
 
   // Queue of items to generate (Bottom Table)
   const [queue, setQueue] = useState<BarcodeQueueItem[]>([])
+  const [updateStock, setUpdateStock] = useState<boolean>(false)
 
   // Submission & Status
   const [generating, setGenerating] = useState(false)
@@ -291,7 +293,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
       productName: selectedProduct.name,
       variantId: selectedVariant?.id || null,
       variantName: selectedVariant?.variantName || undefined,
-      barcodeValue: itemCode.trim(),
+      barcodeValue: normalizeBarcode(itemCode),
       price: selectedVariant?.price || selectedProduct.price,
       costPrice: selectedProduct.cost_price || 0,
       noOfLabels: finalLabels,
@@ -345,26 +347,29 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
     try {
       // Process all queued items sequentially or in parallel
       for (const item of selectedItems) {
-        await barcodeService.receiveStockWithBarcode({
+        await barcodeService.assignBarcode({
           product_id: item.productId,
           variant_id: item.variantId || null,
-          quantity_received: item.noOfLabels,
+          barcode: normalizeBarcode(item.barcodeValue),
+          shouldUpdateStock: updateStock,
+          stockDelta: updateStock ? item.noOfLabels : 0,
           unit_cost: item.costPrice || null,
-          custom_barcode: item.barcodeValue,
-          note: `Received via Barcode Generator (${item.noOfLabels} labels)`,
+          note: `Barcode Generator (${item.noOfLabels} labels printed)`,
           created_by_name: 'Admin',
         })
       }
 
       setStatusMessage({
         type: 'success',
-        text: `Successfully generated barcodes & added stock for ${selectedItems.length} items (${totalLabelsNeeded} total units)!`,
+        text: updateStock
+          ? `Successfully assigned barcodes & added +${totalLabelsNeeded} units to stock for ${selectedItems.length} items!`
+          : `Successfully generated barcode labels for ${selectedItems.length} items (${totalLabelsNeeded} labels). Existing stock was preserved!`,
       })
 
       onSuccess?.()
       setShowSheetPreviewModal(true)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to receive stock with barcodes'
+      const msg = err instanceof Error ? err.message : 'Failed to process barcodes'
       setStatusMessage({ type: 'error', text: msg })
     } finally {
       setGenerating(false)
@@ -1263,17 +1268,30 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
             </div>
           </div>
 
-          {/* MODAL FOOTER matching Screenshot 195637 */}
-          <div className="px-3 py-2.5 sm:px-6 sm:py-4 border-t border-gray-200 bg-white flex items-center justify-between shrink-0 gap-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
-            >
-              Close
-            </button>
+          {/* MODAL FOOTER */}
+          <div className="px-3 py-2.5 sm:px-6 sm:py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between shrink-0 gap-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+            <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
+              >
+                Close
+              </button>
 
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-[11px] sm:text-xs text-gray-800 font-bold bg-gray-50 border border-gray-200 px-3 py-1.5 sm:py-2 rounded-xl hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={updateStock}
+                  onChange={(e) => setUpdateStock(e.target.checked)}
+                  className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+                />
+                <span className="hidden sm:inline">Stock Inward (add label count to inventory stock)</span>
+                <span className="sm:hidden">Inward Stock</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto justify-end">
               {queue.length > 0 && (
                 <button
                   type="button"
@@ -1293,12 +1311,19 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
                 {generating ? (
                   <>
                     <span className="w-3.5 h-3.5 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin inline-block" />
-                    <span className="hidden sm:inline">Receiving Stock &amp; Generating...</span>
-                    <span className="sm:hidden">Adding...</span>
+                    <span className="hidden sm:inline">
+                      {updateStock ? 'Adding Stock & Generating...' : 'Generating Barcodes...'}
+                    </span>
+                    <span className="sm:hidden">Processing...</span>
                   </>
                 ) : (
                   <>
-                    <Printer size={15} /> <span>Generate &amp; Add ({totalLabelsNeeded})</span>
+                    <Printer size={15} />{' '}
+                    <span>
+                      {updateStock
+                        ? `Generate & Inward Stock (${totalLabelsNeeded})`
+                        : `Generate & Print (${totalLabelsNeeded})`}
+                    </span>
                   </>
                 )}
               </button>

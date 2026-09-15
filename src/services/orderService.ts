@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { StructuredOrderItem } from '../lib/retail'
+import { useBranchContextStore } from '../store/branchContextStore'
 
 type CreateOrderInput = {
   customerName: string
@@ -81,6 +82,7 @@ export const createOrderWithStock = async (input: CreateOrderInput): Promise<Cre
     p_gst_enabled:            gstEnabled,
     p_payment_method:         paymentMethod,
     p_split_details:          splitDetails,
+    p_branch_id:              useBranchContextStore.getState().activeBranch.id,
   }
 
   // 1. Try complete_pos_sale_with_inventory (inventory-aware transaction with atomic stock checks & movements ledger)

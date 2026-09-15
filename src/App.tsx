@@ -40,6 +40,7 @@ const Pos = lazyWithRetry(() => import('./pages/Pos'))
 const DigitalInvoice = lazyWithRetry(() => import('./pages/DigitalInvoice'))
 const Login = lazyWithRetry(() => import('./pages/Login'))
 const AdminLogin = lazyWithRetry(() => import('./pages/AdminLogin'))
+const AdminDashboard = lazyWithRetry(() => import('./pages/admin/AdminDashboard'))
 
 function LoadingSpinner() {
   return (
@@ -73,7 +74,7 @@ function AdminOnlyGuard({ children }: { children: React.ReactNode }) {
     return <Navigate to="/admin-login" state={{ from: location }} replace />
   }
   if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/pos" replace />
   }
   return <>{children}</>
 }
@@ -143,7 +144,20 @@ function AppShell() {
     <div className="h-screen w-full max-w-[100vw] overflow-hidden bg-bgMain print:block print:h-auto print:overflow-visible">
       <main className="h-full print:block print:h-auto print:min-h-0 print:overflow-visible">
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/"
+            element={
+              isLoggedIn ? (
+                role === 'admin' ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <Navigate to="/pos" replace />
+                )
+              ) : (
+                <Navigate to="/admin-login" replace />
+              )
+            }
+          />
           <Route
             path="/login"
             element={
@@ -162,6 +176,29 @@ function AppShell() {
               </Suspense>
             }
           />
+
+          {/* Admin Orchestrator (Dedicated multi-branch command center) */}
+          <Route
+            path="/admin/*"
+            element={
+              <AdminOnlyGuard>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminDashboard />
+                </Suspense>
+              </AdminOnlyGuard>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminOnlyGuard>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminDashboard />
+                </Suspense>
+              </AdminOnlyGuard>
+            }
+          />
+
           {/* Common Admin & Staff Portal Routes */}
           <Route
             element={
@@ -172,7 +209,6 @@ function AppShell() {
               </AdminGuard>
             }
           >
-            <Route path="/admin" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/advance-orders" element={<Dashboard />} />
           </Route>

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { useBranchContextStore } from '../store/branchContextStore'
 
 export interface InventoryStockItem {
   id: string // compound id: prod-{id} or var-{id}
@@ -22,6 +23,7 @@ export interface InventoryStockItem {
   is_active: boolean
   low_stock_threshold?: number
   updated_at?: string
+  branch_id?: string
 }
 
 export interface InventoryMovement {
@@ -87,11 +89,18 @@ export const inventoryService = {
    * Fetch complete SKU/variant level inventory list.
    */
   async fetchInventoryItems(): Promise<InventoryStockItem[]> {
+    const branchId = useBranchContextStore.getState().activeBranch.id
+
     // 1. Fetch products
-    const { data: products, error: prodErr } = await supabase
+    let prodQuery = supabase
       .from('products')
-      .select('id, name, name_ta, price, offer_price, purchase_price, stock_quantity, low_stock_alert, unit, unit_type, category, category_id, image_url, barcode, sku, is_active, updated_at')
-      .order('name', { ascending: true })
+      .select('id, name, name_ta, price, offer_price, purchase_price, stock_quantity, low_stock_alert, unit, unit_type, category, category_id, image_url, barcode, sku, is_active, updated_at, branch_id')
+
+    if (branchId) {
+      prodQuery = prodQuery.eq('branch_id', branchId)
+    }
+
+    const { data: products, error: prodErr } = await prodQuery.order('name', { ascending: true })
 
     if (prodErr) {
       console.error('[inventoryService.fetchInventoryItems] Products error:', prodErr)
@@ -99,10 +108,15 @@ export const inventoryService = {
     }
 
     // 2. Fetch variants
-    const { data: variants, error: varErr } = await supabase
+    let varQuery = supabase
       .from('product_variants')
-      .select('id, product_id, variant_name, price, purchase_price, stock, barcode, sku, is_active, updated_at')
-      .order('sort_order', { ascending: true })
+      .select('id, product_id, variant_name, price, purchase_price, stock, barcode, sku, is_active, updated_at, branch_id')
+
+    if (branchId) {
+      varQuery = varQuery.eq('branch_id', branchId)
+    }
+
+    const { data: variants, error: varErr } = await varQuery.order('sort_order', { ascending: true })
 
     if (varErr) {
       console.error('[inventoryService.fetchInventoryItems] Variants error:', varErr)
@@ -264,6 +278,11 @@ export const inventoryService = {
         variant:product_variants (id, variant_name, sku)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
+
+    const branchId = useBranchContextStore.getState().activeBranch.id
+    if (branchId) {
+      query = query.eq('branch_id', branchId)
+    }
 
     if (params?.product_id) {
       query = query.eq('product_id', params.product_id)

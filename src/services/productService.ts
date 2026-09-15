@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase'
+import { useBranchContextStore } from '../store/branchContextStore'
+import { normalizeBarcode } from '../lib/barcode'
 
 /**
  * Explicit column list — avoids transferring large unused columns (description,
@@ -10,20 +12,35 @@ const PRODUCT_COLUMNS = [
   'base_quantity', 'stock_quantity', 'stock_unit', 'allow_decimal_quantity',
   'predefined_options', 'is_active', 'sort_order', 'unit', 'rating',
   'description', 'description_ta', 'benefits', 'benefits_ta',
-  'image_url', 'image', 'has_variants', 'barcode', 'sku',
+  'image_url', 'image', 'has_variants', 'barcode', 'sku', 'branch_id',
 ].join(', ')
 
-export function fetchAllCategories() {
-  return supabase
-    .from('categories')
-    .select('id, name_en')
+export function fetchAllCategories(branchId?: string) {
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  let query = supabase.from('categories').select('id, name_en')
+  if (targetBranch) {
+    query = query.eq('branch_id', targetBranch)
+  }
+  return query
 }
 
-export function fetchAllProducts() {
-  return supabase
-    .from('products')
-    .select(PRODUCT_COLUMNS)
-    .order('sort_order', { ascending: true })
+export function fetchAllProducts(branchId?: string) {
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  let query = supabase.from('products').select(PRODUCT_COLUMNS)
+  if (targetBranch) {
+    query = query.eq('branch_id', targetBranch)
+  }
+  return query.order('sort_order', { ascending: true })
+}
+
+export async function fetchProductByBarcode(barcode: string, branchId?: string) {
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  const cleanBarcode = normalizeBarcode(barcode)
+  let query = supabase.from('products').select(PRODUCT_COLUMNS).ilike('barcode', cleanBarcode)
+  if (targetBranch) {
+    query = query.eq('branch_id', targetBranch)
+  }
+  return query.maybeSingle()
 }
 
 export async function updateItemPrice(params: {
