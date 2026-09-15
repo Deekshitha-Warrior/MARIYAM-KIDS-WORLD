@@ -14,8 +14,8 @@ interface CatalogModalProps {
 type CategoryOption = { id: string | number; name_en: string; is_active?: boolean; sort_order?: number }
 
 export default function CatalogModal({ isOpen, onClose, onAdd }: CatalogModalProps) {
-  const { branchType } = useBranchContextStore()
-  const branchTheme = useMemo(() => getBranchTheme(branchType), [branchType])
+  const { activeBranch } = useBranchContextStore()
+  const branchTheme = useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
   const { fetchProducts, products, loading, error } = useProductStore()
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')

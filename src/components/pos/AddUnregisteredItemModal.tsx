@@ -17,8 +17,8 @@ interface Props {
 
 export const AddUnregisteredItemModal: React.FC<Props> = ({ isOpen, onClose, onSubmit }) => {
   const { lang } = useLangStore()
-  const { branchType } = useBranchContextStore()
-  const branchTheme = useMemo(() => getBranchTheme(branchType), [branchType])
+  const { activeBranch } = useBranchContextStore()
+  const branchTheme = useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
   const l = (en: string, ta: string) => (lang === 'ta' ? ta : en)
 
   const [name, setName] = useState('')
