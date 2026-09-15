@@ -114,7 +114,7 @@ interface ProductState {
   loading: boolean
   error: string | null
   lastFetch: number
-  fetchProducts: (force?: boolean) => Promise<void>
+  fetchProducts: (force?: boolean, branchId?: string) => Promise<void>
 }
 
 interface CartState {
@@ -356,8 +356,8 @@ export const useProductStore = create<ProductState>((set, get) => ({
   loading: false,
   error: null,
   lastFetch: 0,
-  fetchProducts: async (force = false) => {
-    if (!force && Date.now() - get().lastFetch < 300000 && get().products.length > 0) return
+  fetchProducts: async (force = false, branchId?: string) => {
+    if (!force && !branchId && Date.now() - get().lastFetch < 300000 && get().products.length > 0) return
 
     if (!isSupabaseConfigured) {
       set({
@@ -371,9 +371,15 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
     set({ loading: true, error: null })
     try {
+      let prodQuery = supabase.from('products').select('*').order('sort_order')
+      let catQuery = supabase.from('categories').select('*').order('sort_order')
+      if (branchId) {
+        prodQuery = prodQuery.eq('branch_id', branchId)
+        catQuery = catQuery.eq('branch_id', branchId)
+      }
       const [{ data, error }, { data: categoryData }] = await Promise.all([
-        fetchAllProducts(),
-        fetchAllCategories(),
+        prodQuery,
+        catQuery,
       ])
 
       if (error) throw error

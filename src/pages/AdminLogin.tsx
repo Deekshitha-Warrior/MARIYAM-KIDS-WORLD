@@ -44,7 +44,7 @@ export default function AdminLogin() {
     if (role === 'admin') {
       navigate('/admin', { replace: true })
     } else if (role === 'staff') {
-      navigate('/pos', { replace: true })
+      navigate('/dashboard', { replace: true })
     } else {
       setError(
         mode === 'admin'

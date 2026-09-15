@@ -173,6 +173,11 @@ export const createOrderWithStock = async (input: CreateOrderInput): Promise<Cre
   // NOTE: coupon usage_count is already incremented atomically inside the
   // create_order_with_stock DB function. Do NOT increment it again here.
 
+  const activeBranchId = useBranchContextStore.getState().activeBranch?.id
+  if (activeBranchId && orderId) {
+    void supabase.from('orders').update({ branch_id: activeBranchId }).eq('id', orderId)
+  }
+
   return {
     orderId,
     invoiceNo,

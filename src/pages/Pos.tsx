@@ -35,6 +35,8 @@ import { fetchVariantsByProduct, type ProductVariant } from '../services/variant
 import { BarcodeScannerInput, type ScannedItemPayload } from '../components/pos/BarcodeScannerInput'
 import { AddUnregisteredItemModal } from '../components/pos/AddUnregisteredItemModal'
 import { getOrCreateUnregisteredProduct } from '../services/productService'
+import { useBranchContextStore } from '../store/branchContextStore'
+import { getBranchTheme } from '../lib/branchTheme'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type PosItem = Product & {
@@ -130,6 +132,8 @@ export default function Pos(props: PosProps = {}) {
   const embeddedMode = Boolean(props.isEmbedded)
   const { products, fetchProducts } = useProductStore()
   const { getVariants, fetchVariants } = useVariantStore()
+  const { activeBranch } = useBranchContextStore()
+  const branchTheme = useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
   const { lang } = useLangStore()
   const l = (en: string, ta: string) => lang === 'ta' ? ta : en
   const navigate = useNavigate()
@@ -190,7 +194,7 @@ export default function Pos(props: PosProps = {}) {
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    void fetchProducts()
+    void fetchProducts(false, activeBranch?.id)
     void fetchVariants()
     if (!isSupabaseConfigured) return
 
@@ -201,17 +205,20 @@ export default function Pos(props: PosProps = {}) {
       })
 
     const productChannel = supabase.channel('pos-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => void fetchProducts())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => void fetchProducts(false, activeBranch?.id))
       .subscribe()
 
-    // Load active categories in sort_order
-    supabase.from('categories').select('name_en').eq('is_active', true).order('sort_order')
-      .then(({ data }) => {
-        if (data) setDbCategories(data.map(c => c.name_en as string))
-      })
+    // Load active categories in sort_order scoped to branch if available
+    let catQuery = supabase.from('categories').select('name_en').eq('is_active', true).order('sort_order')
+    if (activeBranch?.id) {
+      catQuery = catQuery.eq('branch_id', activeBranch.id)
+    }
+    catQuery.then(({ data }) => {
+      if (data) setDbCategories(data.map(c => c.name_en as string))
+    })
 
     return () => { void supabase.removeChannel(productChannel) }
-  }, [fetchProducts, fetchVariants])
+  }, [fetchProducts, fetchVariants, activeBranch?.id])
 
   // ── Derived data ──────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1103,11 +1110,28 @@ export default function Pos(props: PosProps = {}) {
       {/* Header */}
       <div className="px-3 pt-3 pb-2.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 md:pb-4 shrink-0 flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
         <div className="min-w-0">
-          <h2 className="text-[18px] sm:text-[22px] md:text-[24px] font-black text-[#0A0A0A] flex items-center gap-2 leading-tight">
-            <div className="w-1.5 h-5 sm:h-6 bg-[#D4AF37] rounded-full shrink-0"></div>
-            POS Billing Panel
-          </h2>
-          <p className="text-[11px] sm:text-[12px] text-gray-500 font-medium ml-3.5 mt-0.5 pr-2">Quick Invoice generator & database synced checkout</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-[18px] sm:text-[22px] md:text-[24px] font-black text-[#0A0A0A] flex items-center gap-2 leading-tight">
+              <div 
+                className="w-1.5 h-5 sm:h-6 rounded-full shrink-0"
+                style={{ backgroundColor: branchTheme.colors.primary }}
+              />
+              POS Billing Panel
+            </h2>
+            <span 
+              className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border shadow-xs"
+              style={{
+                backgroundColor: branchTheme.colors.primaryMuted,
+                color: branchTheme.colors.primary,
+                borderColor: `${branchTheme.colors.primary}40`,
+              }}
+            >
+              {branchTheme.branchName} • {branchTheme.badge}
+            </span>
+          </div>
+          <p className="text-[11px] sm:text-[12px] text-gray-500 font-medium ml-3.5 mt-0.5 pr-2">
+            Quick Invoice generator & database synced checkout ({branchTheme.badge})
+          </p>
         </div>
 
         {/* Online/Offline Toggle & Logout */}
@@ -1115,13 +1139,21 @@ export default function Pos(props: PosProps = {}) {
           <div className="grid grid-cols-2 bg-white rounded-xl border border-gray-200 p-1 shadow-sm flex-1 min-[480px]:flex-none">
             <button
               onClick={() => setOrdermode('offline')}
-              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'offline' ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
+              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'offline' ? 'shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
+              style={ordermode === 'offline' ? {
+                backgroundColor: branchTheme.colors.sidebarBg,
+                color: branchTheme.colors.primary,
+              } : {}}
             >
               Offline
             </button>
             <button
               onClick={() => setOrdermode('online')}
-              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'online' ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
+              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'online' ? 'shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
+              style={ordermode === 'online' ? {
+                backgroundColor: branchTheme.colors.sidebarBg,
+                color: branchTheme.colors.primary,
+              } : {}}
             >
               Online
             </button>
@@ -1704,7 +1736,11 @@ export default function Pos(props: PosProps = {}) {
                   type="button"
                   onClick={openDepositOrder}
                   disabled={saving || items.length === 0}
-                  className="min-h-[44px] rounded-xl border-2 border-[#0A0A0A] bg-white px-3 py-3 text-[12px] font-black uppercase tracking-wide text-[#0A0A0A] transition-colors hover:bg-[#0A0A0A] hover:text-[#D4AF37] disabled:opacity-40 cursor-pointer"
+                  className="min-h-[44px] rounded-xl border-2 bg-white px-3 py-3 text-[12px] font-black uppercase tracking-wide transition-colors disabled:opacity-40 cursor-pointer"
+                  style={{
+                    borderColor: branchTheme.colors.sidebarBg,
+                    color: branchTheme.colors.sidebarBg,
+                  }}
                 >
                   Save as Deposit Order
                 </button>
@@ -1712,7 +1748,10 @@ export default function Pos(props: PosProps = {}) {
                   type="button"
                   onClick={generateBill}
                   disabled={saving}
-                  className="min-h-[44px] rounded-xl bg-emerald-600 px-3 py-3 text-[13px] font-black uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:opacity-50 cursor-pointer shadow-md"
+                  className="min-h-[44px] rounded-xl px-3 py-3 text-[13px] font-black uppercase tracking-wider text-white transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer shadow-md"
+                  style={{
+                    backgroundColor: branchTheme.colors.primary,
+                  }}
                 >
                   {saving ? 'Processing...' : 'Complete Sale'}
                 </button>

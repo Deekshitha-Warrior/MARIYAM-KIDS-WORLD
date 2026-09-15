@@ -74,7 +74,7 @@ function AdminOnlyGuard({ children }: { children: React.ReactNode }) {
     return <Navigate to="/admin-login" state={{ from: location }} replace />
   }
   if (role !== 'admin') {
-    return <Navigate to="/pos" replace />
+    return <Navigate to="/dashboard" replace />
   }
   return <>{children}</>
 }
@@ -151,7 +151,7 @@ function AppShell() {
                 role === 'admin' ? (
                   <Navigate to="/admin" replace />
                 ) : (
-                  <Navigate to="/pos" replace />
+                  <Navigate to="/dashboard" replace />
                 )
               ) : (
                 <Navigate to="/admin-login" replace />

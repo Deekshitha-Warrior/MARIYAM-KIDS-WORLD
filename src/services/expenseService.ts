@@ -33,6 +33,7 @@ export interface ExpenseFilterPayload {
   fromDate?: string
   toDate?: string
   categoryId?: number | string
+  branchId?: string
 }
 
 const STORAGE_EXPENSES_KEY = 'clad_expenses_records_v1'
@@ -176,6 +177,9 @@ export const expenseService = {
           } else {
             query = query.ilike('category_name', String(filters.categoryId))
           }
+        }
+        if (filters?.branchId) {
+          query = query.eq('branch_id', filters.branchId)
         }
 
         const { data, error } = await query

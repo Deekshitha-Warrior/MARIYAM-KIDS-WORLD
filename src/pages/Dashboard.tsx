@@ -63,6 +63,9 @@ import { useHardwareBarcodeScanner } from '../hooks/useHardwareBarcodeScanner'
 import { BarcodeRedirectDialog } from '../components/pos/BarcodeRedirectDialog'
 import { exportAnalyticsToCSV, exportAnalyticsToPDF } from '../services/analyticsExport'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
+import { useBranchContextStore } from '../store/branchContextStore'
+import { getBranchTheme, applyBranchThemeCssVariables } from '../lib/branchTheme'
+import { Store, ShoppingBag } from 'lucide-react'
 import {
   ResponsiveContainer,
   XAxis,
@@ -199,6 +202,12 @@ export default function Dashboard() {
   })
   const { setCurrentTab } = useNavigationStore()
   const [cartItemToInject, setCartItemToInject] = useState<string | null>(null)
+  const { activeBranch } = useBranchContextStore()
+  const branchTheme = useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
+
+  useEffect(() => {
+    applyBranchThemeCssVariables(branchTheme)
+  }, [branchTheme])
 
   // Sync tab with navigation store
   useEffect(() => {
@@ -810,17 +819,27 @@ export default function Dashboard() {
     if (!isSupabaseConfigured) return
     setLoading(true)
     try {
-      const productsPromise = fetchProducts(true)
+      const targetBranchId = useBranchContextStore.getState().activeBranch.id
+      const productsPromise = fetchProducts(true, targetBranchId)
+
+      let catQuery = supabase.from('categories').select('id, name_en, name_ta, is_active, sort_order').order('sort_order')
+      let ordersQuery = supabase.from('orders')
+        .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, user_id, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, remarks, reference_number')
+        .order('created_at', { ascending: false })
+        .limit(1000)
+
+      if (targetBranchId) {
+        catQuery = catQuery.eq('branch_id', targetBranchId)
+        ordersQuery = ordersQuery.eq('branch_id', targetBranchId)
+      }
+
       const [cRes, oRes, couponRes, expList] = await Promise.all([
-        supabase.from('categories').select('id, name_en, name_ta, is_active, sort_order').order('sort_order'),
-        supabase.from('orders')
-          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, user_id, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, remarks, reference_number')
-          .order('created_at', { ascending: false })
-          .limit(1000),
+        catQuery,
+        ordersQuery,
         supabase.from('coupons')
           .select('id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value')
           .order('created_at', { ascending: false }),
-        expenseService.getExpenses(),
+        expenseService.getExpenses(targetBranchId ? { branchId: targetBranchId } : undefined),
       ])
       if (cRes.error) throw cRes.error
       if (oRes.error) throw oRes.error
@@ -1214,6 +1233,11 @@ export default function Dashboard() {
         .neq('order_type', 'online_request')
         .order('created_at', { ascending: false })
         .limit(hasQuery ? 1000 : 500)
+
+      const targetBranchId = useBranchContextStore.getState().activeBranch.id
+      if (targetBranchId) {
+        q = q.eq('branch_id', targetBranchId)
+      }
 
       if (qText) {
         const digitsOnly = qText.replace(/\D/g, '')
@@ -1648,23 +1672,47 @@ export default function Dashboard() {
       {/* Sidebar */}
       <aside
         className={[
-          'w-full bg-[#0A0A0A] text-white border-b lg:border-b-0 lg:border-r border-[#D4AF37]/20 flex flex-col shrink-0 h-auto lg:h-full lg:max-h-screen',
+          'w-full text-white border-b lg:border-b-0 lg:border-r flex flex-col shrink-0 h-auto lg:h-full lg:max-h-screen',
           'transition-[width] duration-300 ease-in-out overflow-hidden',
           sidebarCollapsed ? 'lg:w-[76px]' : 'lg:w-[240px] xl:w-[250px]',
         ].join(' ')}
+        style={{
+          backgroundColor: branchTheme.colors.sidebarBg,
+          borderColor: branchTheme.colors.sidebarBorder,
+        }}
       >
         {/* Desktop brand header */}
         <div className={`hidden lg:flex items-center relative transition-all duration-300 shrink-0 ${sidebarCollapsed ? 'flex-col items-center pt-4 pb-3 px-2 gap-2' : 'px-4 py-3.5 justify-between border-b border-white/5'}`}>
           <Link to="/pos" title="Go to Billing Panel" className={`flex items-center gap-2.5 min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'justify-center' : 'flex-1'}`}>
-            <div className="flex items-center justify-center shrink-0 w-9 h-9 rounded-xl bg-[#141414] border border-[#D4AF37]/50 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden">
-              <img src={BRAND_ICON} alt={BRAND_EN} className="w-full h-full object-contain" />
+            <div 
+              className="flex items-center justify-center shrink-0 w-9 h-9 rounded-xl border shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden"
+              style={{
+                backgroundColor: branchTheme.colors.surface,
+                borderColor: branchTheme.colors.primary,
+              }}
+            >
+              <img src={BRAND_ICON} alt={branchTheme.branchName} className="w-full h-full object-contain" />
             </div>
             {!sidebarCollapsed && (
               <div className="flex flex-col min-w-0">
-                <h1 className="text-[15px] font-black text-white truncate tracking-wider">{BRAND_EN}</h1>
-                <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
-                  {role === 'admin' ? 'ADMIN' : 'STAFF'}
-                </span>
+                <h1 className="text-[14px] font-black text-white truncate tracking-wider">
+                  {branchTheme.branchName}
+                </h1>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span 
+                    className="text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit border"
+                    style={{
+                      backgroundColor: branchTheme.colors.primaryMuted,
+                      color: branchTheme.colors.primary,
+                      borderColor: `${branchTheme.colors.primary}40`,
+                    }}
+                  >
+                    {branchTheme.badge}
+                  </span>
+                  <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
+                    {role === 'admin' ? 'ADMIN' : 'STAFF'}
+                  </span>
+                </div>
               </div>
             )}
           </Link>
@@ -1679,14 +1727,36 @@ export default function Dashboard() {
           </button>
         </div>
         {/* Mobile mini-header */}
-        <div className="flex lg:hidden items-center justify-between px-3 py-2 border-b border-white/10 bg-[#0A0A0A] shrink-0 gap-2">
+        <div 
+          className="flex lg:hidden items-center justify-between px-3 py-2 border-b shrink-0 gap-2"
+          style={{
+            backgroundColor: branchTheme.colors.sidebarBg,
+            borderColor: branchTheme.colors.sidebarBorder,
+          }}
+        >
           <Link to="/pos" title="Go to Billing Panel" className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#141414] border border-[#D4AF37]/50 shrink-0 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden">
-              <img src={BRAND_ICON} alt={BRAND_EN} className="w-full h-full object-contain" />
+            <div 
+              className="flex h-8 w-8 items-center justify-center rounded-lg border shrink-0 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden"
+              style={{
+                backgroundColor: branchTheme.colors.surface,
+                borderColor: branchTheme.colors.primary,
+              }}
+            >
+              <img src={BRAND_ICON} alt={branchTheme.branchName} className="w-full h-full object-contain" />
             </div>
             <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
               <span className="text-[13px] sm:text-[14px] font-black text-white tracking-wide truncate min-w-0">
-                {BRAND_EN}
+                {branchTheme.branchName}
+              </span>
+              <span 
+                className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap border"
+                style={{
+                  backgroundColor: branchTheme.colors.primaryMuted,
+                  color: branchTheme.colors.primary,
+                  borderColor: `${branchTheme.colors.primary}40`,
+                }}
+              >
+                {branchTheme.badge}
               </span>
               <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
                 {role === 'admin' ? 'ADMIN' : 'STAFF'}
@@ -1709,29 +1779,36 @@ export default function Dashboard() {
         <nav
           className={`flex overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto lg:flex-col gap-1 lg:gap-1 px-2 py-2 lg:px-2.5 lg:py-2.5 flex-1 min-h-0 transition-all duration-300 hide-scrollbar ${sidebarCollapsed ? 'lg:px-1.5' : 'lg:px-2.5'}`}
         >
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => handleTabClick(item.id)}
-              title={item.label}
-              className={[
-                'shrink-0 flex flex-col lg:flex-row items-center justify-center lg:justify-start',
-                'gap-1 lg:gap-2.5',
-                'h-[46px] min-w-[56px] lg:min-w-0 lg:w-full lg:h-[38px] xl:h-[40px]',
-                sidebarCollapsed ? 'lg:w-[42px] lg:justify-center mx-auto' : 'lg:px-3',
-                'px-1 py-1 lg:py-0',
-                'rounded-xl font-medium text-[10px] lg:text-[12.5px] xl:text-[13px] transition-all overflow-hidden cursor-pointer',
-                tab === item.id ? 'bg-[#D4AF37] text-[#0A0A0A] font-black shadow-md' : 'text-white/70 hover:bg-white/10 hover:text-[#D4AF37]',
-              ].join(' ')}
-            >
-              <span className="shrink-0 flex items-center">
-                {item.icon}
-              </span>
-              <span className={`hidden lg:block truncate text-left transition-all duration-200 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
-                {item.label}
-              </span>
-            </button>
-          ))}
+          {navItems.map(item => {
+            const isActive = tab === item.id
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabClick(item.id)}
+                title={item.label}
+                className={[
+                  'shrink-0 flex flex-col lg:flex-row items-center justify-center lg:justify-start',
+                  'gap-1 lg:gap-2.5',
+                  'h-[46px] min-w-[56px] lg:min-w-0 lg:w-full lg:h-[38px] xl:h-[40px]',
+                  sidebarCollapsed ? 'lg:w-[42px] lg:justify-center mx-auto' : 'lg:px-3',
+                  'px-1 py-1 lg:py-0',
+                  'rounded-xl font-medium text-[10px] lg:text-[12.5px] xl:text-[13px] transition-all overflow-hidden cursor-pointer',
+                  isActive ? 'font-black shadow-md' : 'text-white/70 hover:bg-white/10',
+                ].join(' ')}
+                style={isActive ? {
+                  backgroundColor: branchTheme.colors.sidebarActiveTab,
+                  color: branchTheme.colors.sidebarActiveText,
+                } : {}}
+              >
+                <span className="shrink-0 flex items-center">
+                  {item.icon}
+                </span>
+                <span className={`hidden lg:block truncate text-left transition-all duration-200 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
+                  {item.label}
+                </span>
+              </button>
+            )
+          })}
         </nav>
 
         {/* Desktop Logout Button anchored at bottom */}
@@ -1758,6 +1835,58 @@ export default function Dashboard() {
 
       {/* Main */}
       <main className="flex-grow flex flex-col overflow-hidden">
+        {/* Branch Verification Header Banner */}
+        <div 
+          className="w-full px-4 py-2 flex items-center justify-between border-b text-xs sm:text-sm font-medium shrink-0 transition-colors shadow-xs"
+          style={{
+            backgroundColor: branchTheme.colors.surface,
+            borderColor: branchTheme.colors.border,
+          }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span 
+              className="w-2.5 h-2.5 rounded-full animate-pulse shrink-0" 
+              style={{ backgroundColor: branchTheme.colors.primary }} 
+            />
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <span className="font-bold text-gray-800 tracking-wide flex items-center gap-1.5 text-xs sm:text-sm">
+                <Store size={14} style={{ color: branchTheme.colors.primary }} />
+                <span>POS Branch:</span>
+                <span className="font-black" style={{ color: branchTheme.colors.primary }}>
+                  {branchTheme.branchName}
+                </span>
+              </span>
+              <span 
+                className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border shadow-xs"
+                style={{
+                  backgroundColor: branchTheme.colors.primaryMuted,
+                  color: branchTheme.colors.primary,
+                  borderColor: `${branchTheme.colors.primary}40`,
+                }}
+              >
+                {branchTheme.badge} ({activeBranch?.code || 'DEFAULT'})
+              </span>
+              <span className="hidden md:inline-block text-[11px] text-gray-400 font-normal">
+                {branchTheme.tagline}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span 
+              className="px-2 py-0.5 rounded-md text-[10px] font-black border flex items-center gap-1.5"
+              style={{
+                backgroundColor: branchTheme.colors.accentLight,
+                borderColor: `${branchTheme.colors.primary}30`,
+                color: branchTheme.colors.primary,
+              }}
+            >
+              <CheckCircle2 size={12} />
+              <span>Verified Branch {activeBranch?.code === 'GROCERY' ? '2' : '1'}</span>
+            </span>
+          </div>
+        </div>
+
         <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto">
 
         {/* ΓöÇΓöÇ ANALYTICS TAB ΓöÇΓöÇ */}
