@@ -158,14 +158,14 @@ export default function AdminLogin() {
                     onClick={() => setSelectedBranchId(DEFAULT_TEXTILE_BRANCH.id)}
                     className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
                       selectedBranchId === DEFAULT_TEXTILE_BRANCH.id
-                        ? 'border-black bg-black text-[#D4AF37] shadow-sm'
+                        ? 'border-[#2563EB] bg-[#0B132B] text-white shadow-sm'
                         : 'border-gray-200 bg-[#FBFAF6] text-gray-700 hover:border-gray-400'
                     }`}
                   >
-                    <Store size={16} />
-                    <div>
-                      <div className="text-xs font-black">CLAD TEXTILE</div>
-                      <div className="text-[9px] opacity-75">Retail & Menswear</div>
+                    <Store size={16} className={selectedBranchId === DEFAULT_TEXTILE_BRANCH.id ? 'text-[#60A5FA]' : ''} />
+                    <div className="min-w-0">
+                      <div className="text-xs font-black break-words leading-tight">Taj textiles</div>
+                      <div className="text-[9px] opacity-75 mt-0.5">Retail & Textiles</div>
                     </div>
                   </button>
 
@@ -174,14 +174,14 @@ export default function AdminLogin() {
                     onClick={() => setSelectedBranchId(DEFAULT_GROCERY_BRANCH.id)}
                     className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
                       selectedBranchId === DEFAULT_GROCERY_BRANCH.id
-                        ? 'border-black bg-black text-[#D4AF37] shadow-sm'
+                        ? 'border-[#DB2777] bg-[#1F0A17] text-white shadow-sm'
                         : 'border-gray-200 bg-[#FBFAF6] text-gray-700 hover:border-gray-400'
                     }`}
                   >
-                    <ShoppingBag size={16} />
-                    <div>
-                      <div className="text-xs font-black">CLAD GROCERY</div>
-                      <div className="text-[9px] opacity-75">Supermarket & FMCG</div>
+                    <ShoppingBag size={16} className={selectedBranchId === DEFAULT_GROCERY_BRANCH.id ? 'text-[#F472B6]' : ''} />
+                    <div className="min-w-0">
+                      <div className="text-xs font-black break-words leading-tight">MARIYAM KIDS WORLD</div>
+                      <div className="text-[9px] opacity-75 mt-0.5">Kids World & Clothing</div>
                     </div>
                   </button>
                 </div>
