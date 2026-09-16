@@ -34,6 +34,10 @@ export interface BranchThemeConfig {
   tagline: string
   badge: string
   icon: string
+  userName?: string
+  phone?: string
+  email?: string
+  address?: string
   colors: BranchThemeColors
 }
 
@@ -49,15 +53,19 @@ export function getBranchTheme(branchCode?: string | null): BranchThemeConfig {
   // Default to TEXTILE if not found
   return themesMap['TEXTILE'] || {
     branchCode: 'TEXTILE',
-    branchName: 'CLAD TEXTILE',
-    tagline: 'Retail POS',
+    branchName: 'Taj textiles',
+    tagline: 'Exclusive Retail & Textiles',
     badge: 'Branch 1',
     icon: 'store',
+    userName: 'Mohammed ansari',
+    phone: '9442711949 / 9445050934',
+    email: 'tajtextiles1965@gmail.com',
+    address: '111, P.V. Vaithiyalingam road old Pallavaram Chennai 600117',
     colors: {
-      primary: '#D4AF37',
-      primaryHover: '#C59F2E',
-      primaryLight: '#FBF7ED',
-      primaryMuted: '#E8D399',
+      primary: '#2563EB',
+      primaryHover: '#1D4ED8',
+      primaryLight: '#EFF6FF',
+      primaryMuted: '#BFDBFE',
       accent: '#0A0A0A',
       accentLight: '#FEF3C7',
       surface: '#141414',

@@ -7,22 +7,34 @@ export interface Branch {
   name: string
   branchType: 'retail' | 'grocery' | string
   isActive: boolean
+  userName?: string
+  phone?: string
+  email?: string
+  address?: string
 }
 
 export const DEFAULT_TEXTILE_BRANCH: Branch = {
   id: 'b0000000-0000-0000-0000-000000000001',
   code: 'TEXTILE',
-  name: 'CLAD TEXTILE',
+  name: 'Taj textiles',
   branchType: 'retail',
   isActive: true,
+  userName: 'Mohammed ansari',
+  phone: '9442711949 / 9445050934',
+  email: 'tajtextiles1965@gmail.com',
+  address: '111, P.V. Vaithiyalingam road old Pallavaram Chennai 600117',
 }
 
 export const DEFAULT_GROCERY_BRANCH: Branch = {
   id: 'b0000000-0000-0000-0000-000000000002',
   code: 'GROCERY',
-  name: 'CLAD GROCERY',
+  name: 'MARIYAM KIDS WORLD',
   branchType: 'grocery',
   isActive: true,
+  userName: 'AANISHA BANU MOHAMMED ANSARI',
+  phone: '9003024922 | 9445050934',
+  email: 'mariyamkidsworld2025@gmail.com',
+  address: '100, P.V. VAITHIYALINGAM road old Pallavaram Chennai 600117',
 }
 
 interface BranchContextState {

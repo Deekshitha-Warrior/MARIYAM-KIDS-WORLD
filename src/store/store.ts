@@ -4,7 +4,7 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { supabase } from '../lib/supabase'
 import { fetchAllCategories, fetchAllProducts } from '../services/productService'
 import { fetchAllVariants, type ProductVariant } from '../services/variantService'
-import { BRAND_ADDRESS, BRAND_EN, BRAND_PHONE_DISPLAY } from '../lib/brand'
+import { BRAND_ADDRESS, BRAND_EN, BRAND_PHONE_DISPLAY, BRAND_OWNER_NAME } from '../lib/brand'
 import {
   calculateLineTotal,
   normalizeSelectedQuantity,
@@ -579,9 +579,9 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     set({
       settings: {
         name: activeBranch.name || BRAND_EN,
-        ownerName: BRAND_EN,
-        phone: BRAND_PHONE_DISPLAY,
-        address: BRAND_ADDRESS,
+        ownerName: activeBranch.userName || BRAND_OWNER_NAME,
+        phone: activeBranch.phone || BRAND_PHONE_DISPLAY,
+        address: activeBranch.address || BRAND_ADDRESS,
         gstEnabled: false
       },
       loading: false
@@ -623,7 +623,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
           return 'admin'
         }
 
-        // 2. Branch 1 (CLAD TEXTILE) Staff Credentials
+        // 2. Branch 1 (Taj textiles) Staff Credentials
         const b1Id = String(
           import.meta.env.VITE_BRANCH_1_STAFF_ID ||
           import.meta.env.VITE_STAFF_ID ||
@@ -635,7 +635,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
           'staffb1123'
         ).trim()
 
-        // 3. Branch 2 (CLAD GROCERY) Staff Credentials
+        // 3. Branch 2 (MARIYAM KIDS WORLD) Staff Credentials
         const b2Id = String(
           import.meta.env.VITE_BRANCH_2_STAFF_ID ||
           'staffb2'

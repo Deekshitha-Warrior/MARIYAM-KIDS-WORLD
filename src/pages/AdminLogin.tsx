@@ -51,7 +51,7 @@ export default function AdminLogin() {
           ? l('Invalid Administrator credentials', 'தவறான நிர்வாகி விவரங்கள்')
           : l(
               `Invalid Staff ID or Password for ${
-                selectedBranchId === DEFAULT_GROCERY_BRANCH.id ? 'CLAD GROCERY (Branch 2)' : 'CLAD TEXTILE (Branch 1)'
+                selectedBranchId === DEFAULT_GROCERY_BRANCH.id ? 'MARIYAM KIDS WORLD (Branch 2)' : 'Taj textiles (Branch 1)'
               }`,
               'தேர்ந்தெடுக்கப்பட்ட கிளைக்கான தவறான பணியாளர் விவரங்கள்'
             )
@@ -78,8 +78,8 @@ export default function AdminLogin() {
               />
             </div>
             <div className="mt-4 text-center">
-              <span className="text-xs font-bold text-amber-300">CLAD MULTI-BRANCH NETWORK</span>
-              <p className="text-[10px] text-gray-400 mt-0.5">Textile & Grocery POS Engine</p>
+              <span className="text-xs font-bold text-amber-300">MULTI-BRANCH NETWORK</span>
+              <p className="text-[10px] text-gray-400 mt-0.5">Taj textiles & MARIYAM KIDS WORLD</p>
             </div>
           </div>
           <div className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[#D4AF37]">
