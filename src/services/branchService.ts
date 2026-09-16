@@ -93,7 +93,7 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
         {
           branch_id: DEFAULT_TEXTILE_BRANCH.id,
           code: 'TEXTILE',
-          name: 'CLAD TEXTILE',
+          name: DEFAULT_TEXTILE_BRANCH.name,
           branch_type: 'retail',
           is_active: true,
           today_sales: 42850,
@@ -104,7 +104,7 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
         {
           branch_id: DEFAULT_GROCERY_BRANCH.id,
           code: 'GROCERY',
-          name: 'CLAD GROCERY',
+          name: DEFAULT_GROCERY_BRANCH.name,
           branch_type: 'grocery',
           is_active: true,
           today_sales: 31420,
@@ -132,7 +132,7 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
         {
           branch_id: DEFAULT_TEXTILE_BRANCH.id,
           code: 'TEXTILE',
-          name: 'CLAD TEXTILE',
+          name: DEFAULT_TEXTILE_BRANCH.name,
           branch_type: 'retail',
           is_active: true,
           today_sales: 0,
@@ -143,7 +143,7 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
         {
           branch_id: DEFAULT_GROCERY_BRANCH.id,
           code: 'GROCERY',
-          name: 'CLAD GROCERY',
+          name: DEFAULT_GROCERY_BRANCH.name,
           branch_type: 'grocery',
           is_active: true,
           today_sales: 0,

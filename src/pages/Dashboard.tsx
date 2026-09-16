@@ -1667,6 +1667,10 @@ export default function Dashboard() {
         { id: 'coupons',        icon: <Box size={18} />,          label: 'Coupons' },
       ]
 
+  const branchLogo = (activeBranch?.code === 'GROCERY' || activeBranch?.code === 'BRANCH_2')
+    ? '/mariyam_kids_world_logo.png'
+    : '/taj_textiles_logo.png'
+
   return (
     <div className="admin-shell h-screen max-h-screen min-h-screen bg-bgMain flex flex-col lg:flex-row overflow-hidden">
       {/* Sidebar */}
@@ -1682,7 +1686,7 @@ export default function Dashboard() {
         }}
       >
         {/* Desktop brand header */}
-        <div className={`hidden lg:flex items-center relative transition-all duration-300 shrink-0 ${sidebarCollapsed ? 'flex-col items-center pt-4 pb-3 px-2 gap-2' : 'px-4 py-3.5 justify-between border-b border-white/5'}`}>
+        <div className={`hidden lg:flex items-center relative transition-all duration-300 shrink-0 ${sidebarCollapsed ? 'flex-col items-center pt-4 pb-3 px-2 gap-2' : 'px-3.5 py-3 justify-between border-b border-white/5'}`}>
           <Link to="/pos" title="Go to Billing Panel" className={`flex items-center gap-2.5 min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'justify-center' : 'flex-1'}`}>
             <div 
               className="flex items-center justify-center shrink-0 w-9 h-9 rounded-xl border shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden"
@@ -1691,14 +1695,21 @@ export default function Dashboard() {
                 borderColor: branchTheme.colors.primary,
               }}
             >
-              <img src={BRAND_ICON} alt={branchTheme.branchName} className="w-full h-full object-contain" />
+              <img 
+                src={branchLogo} 
+                alt={branchTheme.branchName} 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none'
+                }}
+              />
             </div>
             {!sidebarCollapsed && (
-              <div className="flex flex-col min-w-0">
-                <h1 className="text-[14px] font-black text-white truncate tracking-wider">
+              <div className="flex flex-col min-w-0 flex-1">
+                <h1 className="text-[12.5px] font-black text-white tracking-wide break-words whitespace-normal leading-snug">
                   {branchTheme.branchName}
                 </h1>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <span 
                     className="text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit border"
                     style={{
@@ -1734,7 +1745,7 @@ export default function Dashboard() {
             borderColor: branchTheme.colors.sidebarBorder,
           }}
         >
-          <Link to="/pos" title="Go to Billing Panel" className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+          <Link to="/pos" title="Go to Billing Panel" className="flex items-center gap-2 min-w-0 flex-1">
             <div 
               className="flex h-8 w-8 items-center justify-center rounded-lg border shrink-0 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden"
               style={{
@@ -1742,25 +1753,34 @@ export default function Dashboard() {
                 borderColor: branchTheme.colors.primary,
               }}
             >
-              <img src={BRAND_ICON} alt={branchTheme.branchName} className="w-full h-full object-contain" />
+              <img 
+                src={branchLogo} 
+                alt={branchTheme.branchName} 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none'
+                }}
+              />
             </div>
-            <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-              <span className="text-[13px] sm:text-[14px] font-black text-white tracking-wide truncate min-w-0">
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[13px] font-black text-white tracking-wide break-words whitespace-normal leading-tight">
                 {branchTheme.branchName}
               </span>
-              <span 
-                className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap border"
-                style={{
-                  backgroundColor: branchTheme.colors.primaryMuted,
-                  color: branchTheme.colors.primary,
-                  borderColor: `${branchTheme.colors.primary}40`,
-                }}
-              >
-                {branchTheme.badge}
-              </span>
-              <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
-                {role === 'admin' ? 'ADMIN' : 'STAFF'}
-              </span>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span 
+                  className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap border"
+                  style={{
+                    backgroundColor: branchTheme.colors.primaryMuted,
+                    color: branchTheme.colors.primary,
+                    borderColor: `${branchTheme.colors.primary}40`,
+                  }}
+                >
+                  {branchTheme.badge}
+                </span>
+                <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
+                  {role === 'admin' ? 'ADMIN' : 'STAFF'}
+                </span>
+              </div>
             </div>
           </Link>
           <button
