@@ -21,7 +21,7 @@ export const ReportsView: React.FC = () => {
             </div>
             <h3 className="text-sm font-bold text-white">Monthly Consolidated Sales</h3>
             <p className="text-xs text-gray-400 mt-1">
-              Combined ledger of Textile & Grocery sales, discounts, and payment methods.
+              Combined ledger of Taj Textiles & Mariyam Kids World sales, discounts, and payment methods.
             </p>
           </div>
           <button className="mt-5 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#1A1A1A] border border-[#2B2B2B] text-xs font-bold text-gray-200 hover:text-white hover:bg-[#222222] transition-colors">

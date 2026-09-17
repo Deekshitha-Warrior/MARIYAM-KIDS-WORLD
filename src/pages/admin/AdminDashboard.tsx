@@ -1,28 +1,70 @@
-import React, { useState } from 'react'
-import { AdminLayout, type AdminTab } from './AdminLayout'
+import React, { useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { AdminLayout } from './AdminLayout'
 import { AdminOverview } from './AdminOverview'
-import { BranchMonitoringView } from './BranchMonitoringView'
 import { StaffManagementView } from './StaffManagementView'
 import { CrossBranchSalesView } from './CrossBranchSalesView'
 import { CrossBranchInventoryView } from './CrossBranchInventoryView'
 import { ReportsView } from './ReportsView'
+import { BranchWorkspaceContainer } from './BranchWorkspaceContainer'
+import { useBranchContextStore } from '../../store/branchContextStore'
+
+function GlobalModeSync({ children }: { children: React.ReactNode }) {
+  const exitBranch = useBranchContextStore((s) => s.exitBranch)
+  useEffect(() => {
+    exitBranch()
+  }, [exitBranch])
+  return <>{children}</>
+}
 
 export default function AdminDashboard() {
-  const [currentTab, setCurrentTab] = useState<AdminTab>('overview')
-
   return (
-    <AdminLayout currentTab={currentTab} onSelectTab={setCurrentTab}>
-      {currentTab === 'overview' && <AdminOverview onNavigateTab={setCurrentTab} />}
-      {currentTab === 'branch_textile' && (
-        <BranchMonitoringView branchCode="TEXTILE" onBack={() => setCurrentTab('overview')} />
-      )}
-      {currentTab === 'branch_grocery' && (
-        <BranchMonitoringView branchCode="GROCERY" onBack={() => setCurrentTab('overview')} />
-      )}
-      {currentTab === 'sales' && <CrossBranchSalesView />}
-      {currentTab === 'inventory' && <CrossBranchInventoryView />}
-      {currentTab === 'staff' && <StaffManagementView />}
-      {currentTab === 'reports' && <ReportsView />}
+    <AdminLayout>
+      <Routes>
+        <Route
+          path=""
+          element={
+            <GlobalModeSync>
+              <AdminOverview />
+            </GlobalModeSync>
+          }
+        />
+        <Route
+          path="sales"
+          element={
+            <GlobalModeSync>
+              <CrossBranchSalesView />
+            </GlobalModeSync>
+          }
+        />
+        <Route
+          path="inventory"
+          element={
+            <GlobalModeSync>
+              <CrossBranchInventoryView />
+            </GlobalModeSync>
+          }
+        />
+        <Route
+          path="staff"
+          element={
+            <GlobalModeSync>
+              <StaffManagementView />
+            </GlobalModeSync>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <GlobalModeSync>
+              <ReportsView />
+            </GlobalModeSync>
+          }
+        />
+        <Route path="branches/:branchId" element={<BranchWorkspaceContainer />} />
+        <Route path="branches/:branchId/:tab" element={<BranchWorkspaceContainer />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
     </AdminLayout>
   )
 }

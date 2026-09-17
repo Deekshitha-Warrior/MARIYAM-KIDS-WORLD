@@ -553,35 +553,38 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   fetchSettings: async () => {
     set({ loading: true })
     if (isSupabaseConfigured) {
-      const branchId = useBranchContextStore.getState().activeBranch.id
-      const { data, error } = await supabase
-        .from('store_settings')
-        .select('*')
-        .eq('branch_id', branchId)
-        .limit(1)
-        .maybeSingle()
-      if (!error && data) {
-        set({
-          settings: {
-            name: data.name,
-            ownerName: data.owner_name,
-            phone: data.phone,
-            address: data.address,
-            gstEnabled: data.gst_enabled
-          },
-          loading: false
-        })
-        return
+      const activeBranch = useBranchContextStore.getState().activeBranch
+      const branchId = activeBranch?.id
+      if (branchId) {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('*')
+          .eq('branch_id', branchId)
+          .limit(1)
+          .maybeSingle()
+        if (!error && data) {
+          set({
+            settings: {
+              name: data.name,
+              ownerName: data.owner_name,
+              phone: data.phone,
+              address: data.address,
+              gstEnabled: data.gst_enabled
+            },
+            loading: false
+          })
+          return
+        }
       }
     }
     // Fallback/Demo settings
     const activeBranch = useBranchContextStore.getState().activeBranch
     set({
       settings: {
-        name: activeBranch.name || BRAND_EN,
-        ownerName: activeBranch.userName || BRAND_OWNER_NAME,
-        phone: activeBranch.phone || BRAND_PHONE_DISPLAY,
-        address: activeBranch.address || BRAND_ADDRESS,
+        name: activeBranch?.name || BRAND_EN,
+        ownerName: activeBranch?.userName || BRAND_OWNER_NAME,
+        phone: activeBranch?.phone || BRAND_PHONE_DISPLAY,
+        address: activeBranch?.address || BRAND_ADDRESS,
         gstEnabled: false
       },
       loading: false

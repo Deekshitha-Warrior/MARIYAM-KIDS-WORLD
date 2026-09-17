@@ -15,37 +15,37 @@ export const StaffManagementView: React.FC = () => {
   const [members] = useState<StaffMember[]>([
     {
       id: '1',
-      name: 'Ravi Kumar',
-      email: 'ravi.textile@clad.com',
-      role: 'staff',
-      branchName: 'CLAD TEXTILE',
+      name: 'Mohammed ansari',
+      email: 'tajtextiles1965@gmail.com',
+      role: 'manager',
+      branchName: 'Taj Textiles',
       branchCode: 'TEXTILE',
       isActive: true,
     },
     {
       id: '2',
-      name: 'Arun V.',
-      email: 'arun.textile@clad.com',
+      name: 'Textiles Billing Staff',
+      email: 'staff.textile@tajtextiles.com',
       role: 'staff',
-      branchName: 'CLAD TEXTILE',
+      branchName: 'Taj Textiles',
       branchCode: 'TEXTILE',
       isActive: true,
     },
     {
       id: '3',
-      name: 'Priya Sundaram',
-      email: 'priya.grocery@clad.com',
+      name: 'AANISHA BANU MOHAMMED ANSARI',
+      email: 'mariyamkidsworld2025@gmail.com',
       role: 'manager',
-      branchName: 'CLAD GROCERY',
+      branchName: 'MARIYAM KIDS WORLD',
       branchCode: 'GROCERY',
       isActive: true,
     },
     {
       id: '4',
-      name: 'Karthik Raja',
-      email: 'karthik.grocery@clad.com',
+      name: 'Kids World Counter Staff',
+      email: 'staff.kids@mariyamkidsworld.com',
       role: 'staff',
-      branchName: 'CLAD GROCERY',
+      branchName: 'MARIYAM KIDS WORLD',
       branchCode: 'GROCERY',
       isActive: true,
     },
@@ -70,7 +70,7 @@ export const StaffManagementView: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-[#141414] rounded-3xl border border-[#262626] overflow-hidden">
+      <div className="bg-[#141414] rounded-3xl border border-[#262626] overflow-hidden shadow-xl">
         <div className="p-4 border-b border-[#262626] flex items-center justify-between bg-[#1A1A1A]/40">
           <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
             Active Staff Roster ({members.length})
@@ -87,8 +87,8 @@ export const StaffManagementView: React.FC = () => {
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black ${
                     m.branchCode === 'TEXTILE'
-                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                      : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                      : 'bg-pink-500/15 text-pink-400 border border-pink-500/30'
                   }`}
                 >
                   {m.name.charAt(0)}
@@ -99,8 +99,8 @@ export const StaffManagementView: React.FC = () => {
                     <span
                       className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
                         m.role === 'manager'
-                          ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40'
-                          : 'bg-[#222222] text-gray-300'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'bg-gray-800 text-gray-300'
                       }`}
                     >
                       {m.role}
@@ -111,19 +111,17 @@ export const StaffManagementView: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-4">
-                <span
-                  className={`text-xs font-bold px-2.5 py-1 rounded-xl border ${
-                    m.branchCode === 'TEXTILE'
-                      ? 'bg-amber-950/30 text-amber-300 border-amber-800/40'
-                      : 'bg-emerald-950/30 text-emerald-300 border-emerald-800/40'
-                  }`}
-                >
-                  {m.branchName}
-                </span>
-
-                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold">
-                  <UserCheck size={13} /> Active
-                </span>
+                <div className="text-right">
+                  <div
+                    className={`text-xs font-black uppercase ${
+                      m.branchCode === 'TEXTILE' ? 'text-blue-400' : 'text-pink-400'
+                    }`}
+                  >
+                    {m.branchName}
+                  </div>
+                  <div className="text-[10px] text-gray-500">RLS Branch ID Bound</div>
+                </div>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
               </div>
             </div>
           ))}

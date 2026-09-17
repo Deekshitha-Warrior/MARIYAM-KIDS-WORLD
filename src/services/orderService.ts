@@ -24,6 +24,7 @@ type CreateOrderInput = {
   splitDetails?: Record<string, unknown>
   totalGst?: number
   gstEnabled?: boolean
+  branchId?: string
 }
 
 type CreatedOrder = {
@@ -82,7 +83,7 @@ export const createOrderWithStock = async (input: CreateOrderInput): Promise<Cre
     p_gst_enabled:            gstEnabled,
     p_payment_method:         paymentMethod,
     p_split_details:          splitDetails,
-    p_branch_id:              useBranchContextStore.getState().activeBranch.id,
+    p_branch_id:              input.branchId || useBranchContextStore.getState().activeBranch?.id || null,
   }
 
   // 1. Try complete_pos_sale_with_inventory (inventory-aware transaction with atomic stock checks & movements ledger)

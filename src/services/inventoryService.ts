@@ -88,8 +88,8 @@ export const inventoryService = {
   /**
    * Fetch complete SKU/variant level inventory list.
    */
-  async fetchInventoryItems(): Promise<InventoryStockItem[]> {
-    const branchId = useBranchContextStore.getState().activeBranch.id
+  async fetchInventoryItems(targetBranchId?: string): Promise<InventoryStockItem[]> {
+    const branchId = targetBranchId || useBranchContextStore.getState().activeBranch?.id
 
     // 1. Fetch products
     let prodQuery = supabase
@@ -279,7 +279,7 @@ export const inventoryService = {
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
-    const branchId = useBranchContextStore.getState().activeBranch.id
+    const branchId = useBranchContextStore.getState().activeBranch?.id
     if (branchId) {
       query = query.eq('branch_id', branchId)
     }

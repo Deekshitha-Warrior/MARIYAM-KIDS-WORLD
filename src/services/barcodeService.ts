@@ -73,7 +73,7 @@ export const barcodeService = {
    */
   async assignBarcode(payload: AssignBarcodePayload): Promise<{ barcode: string }> {
     const cleanBarcode = normalizeBarcode(payload.barcode)
-    const branchId = useBranchContextStore.getState().activeBranch.id
+    const branchId = useBranchContextStore.getState().activeBranch?.id
 
     // 1. If user explicitly opted in to increment stock (inward arrival):
     if (payload.shouldUpdateStock && payload.stockDelta && payload.stockDelta > 0) {

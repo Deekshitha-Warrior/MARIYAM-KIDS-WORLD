@@ -299,7 +299,7 @@ export const AddEditProductView: React.FC<{
     const alertThreshold = Number(lowStockAlert) > 0 ? Number(lowStockAlert) : 5
 
     setLoading(true)
-    const branchId = useBranchContextStore.getState().activeBranch.id
+    const branchId = useBranchContextStore.getState().activeBranch?.id
 
     try {
       if (selectedProductId) {

@@ -9,6 +9,7 @@ export interface AdminOverviewData {
   today_sales: number
   today_bills: number
   today_expenses: number
+  total_inventory_value?: number
   branches: Array<{
     branch_id: string
     code: string

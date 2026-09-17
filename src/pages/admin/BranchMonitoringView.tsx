@@ -10,28 +10,54 @@ import {
   AlertTriangle,
   Users,
   RefreshCw,
+  Barcode,
+  Layers,
+  FileSpreadsheet,
+  PlusCircle,
+  ExternalLink,
 } from 'lucide-react'
 import {
   fetchBranchDashboard,
   type BranchDashboardData,
 } from '../../services/branchService'
 import {
+  useBranchContextStore,
   DEFAULT_TEXTILE_BRANCH,
-  DEFAULT_GROCERY_BRANCH,
+  type Branch,
 } from '../../store/branchContextStore'
+import { getBranchBusinessDetails } from '../../lib/brand'
 
-interface BranchMonitoringViewProps {
-  branchCode: 'TEXTILE' | 'GROCERY'
-  onBack: () => void
+export interface BranchMonitoringViewProps {
+  branchCode?: string
+  branch?: Branch
+  branchId?: string
+  onBack?: () => void
+  onSelectTab?: (tab: string) => void
 }
 
 export const BranchMonitoringView: React.FC<BranchMonitoringViewProps> = ({
   branchCode,
+  branch: propBranch,
+  branchId: propBranchId,
   onBack,
+  onSelectTab,
 }) => {
-  const branchId =
-    branchCode === 'GROCERY' ? DEFAULT_GROCERY_BRANCH.id : DEFAULT_TEXTILE_BRANCH.id
-  const isGrocery = branchCode === 'GROCERY'
+  const { availableBranches, activeBranch } = useBranchContextStore()
+
+  const currentBranch: Branch =
+    propBranch ||
+    (propBranchId ? availableBranches.find((b) => b.id === propBranchId) : null) ||
+    (branchCode
+      ? availableBranches.find(
+          (b) => b.code.toLowerCase() === branchCode.toLowerCase()
+        )
+      : null) ||
+    activeBranch ||
+    DEFAULT_TEXTILE_BRANCH
+
+  const branchId = currentBranch.id
+  const isGrocery = currentBranch.code.toUpperCase() === 'GROCERY'
+  const details = getBranchBusinessDetails(currentBranch.code)
 
   const [data, setData] = useState<BranchDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,40 +78,125 @@ export const BranchMonitoringView: React.FC<BranchMonitoringViewProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Back Button & Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-xl bg-[#1A1A1A] border border-[#2B2B2B] text-gray-400 hover:text-white hover:bg-[#242424] transition-colors"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white tracking-tight">
-                {isGrocery ? 'CLAD GROCERY' : 'CLAD TEXTILE'}
-              </h1>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/50 text-emerald-400 border border-emerald-800/40">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Operational
-              </span>
+      {/* Header & Branch Overview Card */}
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-[#141414] to-[#1A1A1A] border border-[#2B2B2B] shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="p-2.5 rounded-xl bg-[#222] border border-[#333] text-gray-400 hover:text-white hover:bg-[#2c2c2c] transition-colors cursor-pointer mt-1"
+                title="Return"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
+            <div className="w-14 h-14 rounded-2xl bg-[#222] border border-[#333] p-1.5 flex items-center justify-center shadow-inner shrink-0">
+              <img
+                src={details.logo}
+                alt={currentBranch.name}
+                className="w-full h-full object-contain"
+              />
             </div>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {isGrocery
-                ? 'Provisions, Grains, Edible Oils & Supermarket Catalog'
-                : 'Menswear, Casual, Formals, Kids & Fabrics Catalog'}
-            </p>
+            <div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-2xl font-black text-white tracking-tight">
+                  {currentBranch.name}
+                </h1>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    isGrocery
+                      ? 'bg-pink-950/60 text-pink-400 border border-pink-700/50'
+                      : 'bg-blue-950/60 text-blue-400 border border-blue-700/50'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isGrocery ? 'bg-pink-400' : 'bg-blue-400'
+                    } animate-pulse`}
+                  />
+                  {currentBranch.branchType.toUpperCase()} NODE • ACTIVE
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                <span className="text-gray-300 font-semibold">{currentBranch.userName}</span> •{' '}
+                {currentBranch.phone} • {currentBranch.address}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#222] border border-[#333] text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin text-amber-400' : ''} />
+              <span>Refresh Metrics</span>
+            </button>
           </div>
         </div>
 
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1A1A1A] border border-[#2B2B2B] text-xs font-semibold text-gray-300 hover:text-white transition-colors"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin text-amber-400' : ''} />
-          <span>Sync Node</span>
-        </button>
+        {/* Quick Operations Launchpad */}
+        {onSelectTab && (
+          <div className="mt-6 pt-5 border-t border-[#262626]">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-3 flex items-center gap-1.5">
+              <span>Quick Branch Operations</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+              <button
+                type="button"
+                onClick={() => onSelectTab('pos')}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition-all text-xs font-bold shadow-sm cursor-pointer"
+              >
+                <Receipt size={15} className="text-amber-400 shrink-0" />
+                <span className="truncate">Open POS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab('inventory')}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#202020] border border-[#303030] text-gray-200 hover:bg-[#282828] hover:text-white transition-all text-xs font-semibold cursor-pointer"
+              >
+                <Package size={15} className="text-blue-400 shrink-0" />
+                <span className="truncate">Stock Control</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab('products')}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#202020] border border-[#303030] text-gray-200 hover:bg-[#282828] hover:text-white transition-all text-xs font-semibold cursor-pointer"
+              >
+                <Layers size={15} className="text-emerald-400 shrink-0" />
+                <span className="truncate">Categories</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab('barcodes')}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#202020] border border-[#303030] text-gray-200 hover:bg-[#282828] hover:text-white transition-all text-xs font-semibold cursor-pointer"
+              >
+                <Barcode size={15} className="text-purple-400 shrink-0" />
+                <span className="truncate">Barcodes</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab('expenses')}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#202020] border border-[#303030] text-gray-200 hover:bg-[#282828] hover:text-white transition-all text-xs font-semibold cursor-pointer"
+              >
+                <FileSpreadsheet size={15} className="text-rose-400 shrink-0" />
+                <span className="truncate">Expenses</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectTab('orders')}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#202020] border border-[#303030] text-gray-200 hover:bg-[#282828] hover:text-white transition-all text-xs font-semibold cursor-pointer"
+              >
+                <ExternalLink size={15} className="text-sky-400 shrink-0" />
+                <span className="truncate">Orders</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Key Stats Grid */}
@@ -169,7 +280,7 @@ export const BranchMonitoringView: React.FC<BranchMonitoringViewProps> = ({
                       <div className="flex-1 h-5 bg-[#1F1F1F] rounded-lg overflow-hidden flex items-center px-2">
                         <div
                           className={`h-full rounded-md ${
-                            isGrocery ? 'bg-emerald-500' : 'bg-amber-500'
+                            isGrocery ? 'bg-pink-500' : 'bg-blue-500'
                           } transition-all duration-500`}
                           style={{ width: `${Math.max(percentage, 6)}%` }}
                         />
@@ -189,7 +300,7 @@ export const BranchMonitoringView: React.FC<BranchMonitoringViewProps> = ({
           </div>
 
           <div className="mt-6 pt-4 border-t border-[#222222] flex items-center justify-between text-xs text-gray-400">
-            <span>Branch Database Isolated</span>
+            <span>Branch Scoped Node</span>
             <span className="text-emerald-400 font-bold">100% Stock Data Integrity</span>
           </div>
         </div>
@@ -275,37 +386,37 @@ export const BranchMonitoringView: React.FC<BranchMonitoringViewProps> = ({
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
               <Users size={15} className="text-sky-400" /> Branch Staff Roster
             </h3>
-            <span className="text-[11px] text-emerald-400 font-semibold">Active RLS Policy</span>
+            <span className="text-[11px] text-emerald-400 font-semibold">Branch Scoped</span>
           </div>
 
           <div className="space-y-2">
             <div className="p-3 rounded-2xl bg-[#1A1A1A] border border-[#262626] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center">
-                  R
+                  {currentBranch.userName ? currentBranch.userName.charAt(0).toUpperCase() : 'M'}
                 </div>
                 <div>
                   <div className="text-xs font-bold text-gray-200">
-                    {isGrocery ? 'Priya (Groceries Lead)' : 'Ravi (Billing Lead)'}
+                    {currentBranch.userName} (Branch Manager)
                   </div>
-                  <div className="text-[10px] text-gray-500">Staff • POS & Inventory</div>
+                  <div className="text-[10px] text-gray-500">{currentBranch.phone}</div>
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-950/50 text-emerald-400 border border-emerald-800/40">
-                Active Duty
+                Supervisor
               </span>
             </div>
 
             <div className="p-3 rounded-2xl bg-[#1A1A1A] border border-[#262626] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center">
-                  A
+                  C
                 </div>
                 <div>
                   <div className="text-xs font-bold text-gray-200">
-                    {isGrocery ? 'Karthik (Stock Inward)' : 'Arun (Counter Staff)'}
+                    {isGrocery ? 'Grocery Counter Staff' : 'Textiles Counter Staff'}
                   </div>
-                  <div className="text-[10px] text-gray-500">Staff • Barcode & Billing</div>
+                  <div className="text-[10px] text-gray-500">Staff • POS & Inventory</div>
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-950/50 text-emerald-400 border border-emerald-800/40">

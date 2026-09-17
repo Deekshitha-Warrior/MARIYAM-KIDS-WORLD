@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/retail'
 
-const COUPON_COLUMNS = 'id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value'
+const COUPON_COLUMNS = 'id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value, branch_id'
 
 export type AppliedCoupon = {
   code: string
@@ -12,6 +12,7 @@ export type AppliedCoupon = {
 export async function validateCoupon(
   rawCode: string,
   subtotal: number,
+  branchId?: string | null,
 ): Promise<{ data: AppliedCoupon | null; error: string | null }> {
   const code = rawCode.trim().toUpperCase()
 
@@ -28,6 +29,10 @@ export async function validateCoupon(
       .single()
 
     if (dbErr || !data) return { data: null, error: 'Invalid or expired coupon code' }
+
+    if (branchId && data.branch_id && data.branch_id !== branchId) {
+      return { data: null, error: 'This coupon is not valid for this branch' }
+    }
 
     if (data.expiry_date && new Date(data.expiry_date) < new Date()) {
       return { data: null, error: 'This coupon has expired' }

@@ -122,8 +122,10 @@ const CAT_COLOR: Record<string, string> = {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-type PosProps = {
+export interface PosProps {
   isEmbedded?: boolean
+  accessMode?: 'admin' | 'staff'
+  branchId?: string
   externalScannedCode?: string | null
   onCodeProcessed?: () => void
 }
@@ -133,6 +135,7 @@ export default function Pos(props: PosProps = {}) {
   const { products, fetchProducts } = useProductStore()
   const { getVariants, fetchVariants } = useVariantStore()
   const { activeBranch } = useBranchContextStore()
+  const effectiveBranchId = props.branchId || activeBranch?.id
   const branchTheme = useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
   const { lang } = useLangStore()
   const l = (en: string, ta: string) => lang === 'ta' ? ta : en
@@ -194,31 +197,40 @@ export default function Pos(props: PosProps = {}) {
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    void fetchProducts(false, activeBranch?.id)
+    void fetchProducts(false, effectiveBranchId)
     void fetchVariants()
     if (!isSupabaseConfigured) return
 
-    supabase.from('coupons').select('code').eq('is_active', true).order('created_at', { ascending: false }).limit(20)
+    let couponQuery = supabase
+      .from('coupons')
+      .select('code, branch_id')
+      .eq('is_active', true)
+    if (effectiveBranchId) {
+      couponQuery = couponQuery.or(`branch_id.eq.${effectiveBranchId},branch_id.is.null`)
+    }
+    couponQuery
+      .order('created_at', { ascending: false })
+      .limit(20)
       .then(({ data, error }) => {
         if (error) console.error('Failed to fetch coupons', error)
         else if (data) setAvailableCoupons(data)
       })
 
     const productChannel = supabase.channel('pos-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => void fetchProducts(false, activeBranch?.id))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => void fetchProducts(false, effectiveBranchId))
       .subscribe()
 
     // Load active categories in sort_order scoped to branch if available
     let catQuery = supabase.from('categories').select('name_en').eq('is_active', true).order('sort_order')
-    if (activeBranch?.id) {
-      catQuery = catQuery.eq('branch_id', activeBranch.id)
+    if (effectiveBranchId) {
+      catQuery = catQuery.eq('branch_id', effectiveBranchId)
     }
     catQuery.then(({ data }) => {
       if (data) setDbCategories(data.map(c => c.name_en as string))
     })
 
     return () => { void supabase.removeChannel(productChannel) }
-  }, [fetchProducts, fetchVariants, activeBranch?.id])
+  }, [fetchProducts, fetchVariants, effectiveBranchId])
 
   // ── Derived data ──────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -693,6 +705,11 @@ export default function Pos(props: PosProps = {}) {
         return
       }
 
+      if (effectiveBranchId && data.branch_id && data.branch_id !== effectiveBranchId) {
+        setCouponError('This coupon is not valid for this branch')
+        return
+      }
+
       if (data.expiry_date && new Date(data.expiry_date) < new Date()) {
         setCouponError('This coupon has expired')
         return
@@ -825,7 +842,8 @@ export default function Pos(props: PosProps = {}) {
         couponPercentage: appliedCoupon?.percentage,
         totalGst,
         gstEnabled: billGstEnabled,
-        paymentMethod: paymentMode
+        paymentMethod: paymentMode,
+        branchId: effectiveBranchId,
       })
 
       // ── CRITICAL: immediately fix totals in DB, independent of PDF upload ──
@@ -1113,6 +1131,37 @@ export default function Pos(props: PosProps = {}) {
   // ══ MAIN POS SCREEN ══════════════════════════════════════════════════
   return (
     <div data-embedded={embeddedMode} data-panel={mobilePanelView} className="flex flex-col h-full bg-[#FAFAFA] print:hidden overflow-y-auto overflow-x-hidden hide-scrollbar">
+      {/* Admin Operating Mode Top Banner */}
+      {props.accessMode === 'admin' && (
+        <div className="bg-[#121212] border-b border-[#2A2A2A] px-4 py-2 flex flex-wrap items-center justify-between text-xs text-gray-200 shrink-0 z-10">
+          <div className="flex items-center gap-2">
+            <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-sm">
+              Admin Operating Mode
+            </span>
+            <span className="text-gray-300 font-medium">
+              Operating in: <strong className="text-white font-bold">{activeBranch?.name || 'Selected Branch'}</strong>
+            </span>
+            <span className="text-gray-500 text-[11px] hidden sm:inline">• Transactions & inventory mutations scoped to this branch</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(`/admin/branches/${effectiveBranchId}/overview`)}
+              className="text-amber-400 hover:text-amber-300 text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              Branch Overview →
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/admin')}
+              className="text-gray-400 hover:text-white text-xs font-medium hover:underline cursor-pointer"
+            >
+              Exit to Global Admin
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-3 pt-3 pb-2.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 md:pb-4 shrink-0 flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
         <div className="min-w-0">
@@ -1154,16 +1203,25 @@ export default function Pos(props: PosProps = {}) {
           </div>
           {!embeddedMode && (
             <>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center justify-center min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 rounded-xl bg-[#111111] text-white hover:bg-[#3d4f3a] transition-colors text-[11px] font-black tracking-wider uppercase"
-              >
-                Dashboard
-              </button>
+              {props.accessMode === 'admin' ? (
+                <button
+                  onClick={() => navigate(`/admin/branches/${effectiveBranchId}/overview`)}
+                  className="flex items-center justify-center min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 rounded-xl bg-[#111111] text-white hover:bg-[#3d4f3a] transition-colors text-[11px] font-black tracking-wider uppercase cursor-pointer"
+                >
+                  Branch Hub
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="flex items-center justify-center min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 rounded-xl bg-[#111111] text-white hover:bg-[#3d4f3a] transition-colors text-[11px] font-black tracking-wider uppercase cursor-pointer"
+                >
+                  Dashboard
+                </button>
+              )}
               <button
                 onClick={() => { logout(); navigate('/admin-login', { replace: true }) }}
                 title="Logout"
-                className="flex items-center justify-center min-h-[38px] sm:min-h-[42px] px-3 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                className="flex items-center justify-center min-h-[38px] sm:min-h-[42px] px-3 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
               >
                 <Power size={16} />
               </button>

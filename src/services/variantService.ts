@@ -70,7 +70,7 @@ function mapVariant(r: Record<string, unknown>): ProductVariant {
 export async function fetchAllVariants(branchId?: string): Promise<{ data: ProductVariant[]; error: string | null }> {
   if (!isSupabaseConfigured) return { data: [], error: null }
 
-  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch?.id
   let query = supabase.from('product_variants').select(VARIANT_COLS).eq('is_active', true)
   if (targetBranch) {
     query = query.eq('branch_id', targetBranch)
@@ -103,7 +103,7 @@ export async function fetchVariantsByProduct(productId: string): Promise<Product
 export async function createVariant(input: VariantInput): Promise<{ data: ProductVariant | null; error: string | null }> {
   if (!isSupabaseConfigured) return { data: null, error: 'Not configured' }
 
-  const targetBranch = input.branchId || useBranchContextStore.getState().activeBranch.id
+  const targetBranch = input.branchId || useBranchContextStore.getState().activeBranch?.id
 
   const { data, error } = await supabase
     .from('product_variants')

@@ -819,7 +819,7 @@ export default function Dashboard() {
     if (!isSupabaseConfigured) return
     setLoading(true)
     try {
-      const targetBranchId = useBranchContextStore.getState().activeBranch.id
+      const targetBranchId = useBranchContextStore.getState().activeBranch?.id
       const productsPromise = fetchProducts(true, targetBranchId)
 
       let catQuery = supabase.from('categories').select('id, name_en, name_ta, is_active, sort_order').order('sort_order')
@@ -1234,7 +1234,7 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
         .limit(hasQuery ? 1000 : 500)
 
-      const targetBranchId = useBranchContextStore.getState().activeBranch.id
+      const targetBranchId = useBranchContextStore.getState().activeBranch?.id
       if (targetBranchId) {
         q = q.eq('branch_id', targetBranchId)
       }

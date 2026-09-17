@@ -16,7 +16,7 @@ export interface Branch {
 export const DEFAULT_TEXTILE_BRANCH: Branch = {
   id: 'b0000000-0000-0000-0000-000000000001',
   code: 'TEXTILE',
-  name: 'Taj textiles',
+  name: 'Taj Textiles',
   branchType: 'retail',
   isActive: true,
   userName: 'Mohammed ansari',
@@ -28,7 +28,7 @@ export const DEFAULT_TEXTILE_BRANCH: Branch = {
 export const DEFAULT_GROCERY_BRANCH: Branch = {
   id: 'b0000000-0000-0000-0000-000000000002',
   code: 'GROCERY',
-  name: 'MARIYAM KIDS WORLD',
+  name: 'Mariyam Kids World',
   branchType: 'grocery',
   isActive: true,
   userName: 'AANISHA BANU MOHAMMED ANSARI',
@@ -37,40 +37,60 @@ export const DEFAULT_GROCERY_BRANCH: Branch = {
   address: '100, P.V. VAITHIYALINGAM road old Pallavaram Chennai 600117',
 }
 
-interface BranchContextState {
-  activeBranch: Branch
+export interface BranchContextState {
+  mode: 'global' | 'branch'
+  activeBranch: Branch | null
   availableBranches: Branch[]
+  enterBranch: (branchIdOrCode: string) => boolean
+  exitBranch: () => void
+  switchBranch: (branchIdOrCode: string) => boolean
   setBranch: (branch: Branch) => void
   setBranchById: (branchId: string) => void
   setAvailableBranches: (branches: Branch[]) => void
-  getActiveBranchId: () => string
+  getActiveBranchId: () => string | null
 }
 
 export const useBranchContextStore = create<BranchContextState>()(
   persist(
     (set, get) => ({
+      mode: 'branch',
       activeBranch: DEFAULT_TEXTILE_BRANCH,
       availableBranches: [DEFAULT_TEXTILE_BRANCH, DEFAULT_GROCERY_BRANCH],
-      setBranch: (branch) => set({ activeBranch: branch }),
-      setBranchById: (branchId) => {
-        const found = get().availableBranches.find((b) => b.id === branchId)
+      enterBranch: (branchIdOrCode: string) => {
+        const needle = String(branchIdOrCode || '').trim().toLowerCase()
+        const found = get().availableBranches.find(
+          (b) => b.id.toLowerCase() === needle || b.code.toLowerCase() === needle
+        )
         if (found) {
-          set({ activeBranch: found })
+          set({ activeBranch: found, mode: 'branch' })
+          return true
         }
+        return false
+      },
+      exitBranch: () => {
+        set({ activeBranch: null, mode: 'global' })
+      },
+      switchBranch: (branchIdOrCode: string) => {
+        return get().enterBranch(branchIdOrCode)
+      },
+      setBranch: (branch) => set({ activeBranch: branch, mode: 'branch' }),
+      setBranchById: (branchId) => {
+        get().enterBranch(branchId)
       },
       setAvailableBranches: (branches) => {
         set({ availableBranches: branches })
-        // If current active branch isn't in new list, fallback to first active
         const current = get().activeBranch
-        const exists = branches.find((b) => b.id === current.id)
-        if (!exists && branches.length > 0) {
-          set({ activeBranch: branches[0] })
+        if (current) {
+          const exists = branches.find((b) => b.id === current.id)
+          if (!exists && branches.length > 0) {
+            set({ activeBranch: branches[0], mode: 'branch' })
+          }
         }
       },
-      getActiveBranchId: () => get().activeBranch.id,
+      getActiveBranchId: () => get().activeBranch?.id ?? null,
     }),
     {
-      name: 'clad-pos-branch-context',
+      name: 'pos-branch-context',
     }
   )
 )

@@ -16,7 +16,7 @@ const PRODUCT_COLUMNS = [
 ].join(', ')
 
 export function fetchAllCategories(branchId?: string) {
-  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch?.id
   let query = supabase.from('categories').select('id, name_en')
   if (targetBranch) {
     query = query.eq('branch_id', targetBranch)
@@ -25,7 +25,7 @@ export function fetchAllCategories(branchId?: string) {
 }
 
 export function fetchAllProducts(branchId?: string) {
-  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch?.id
   let query = supabase.from('products').select(PRODUCT_COLUMNS)
   if (targetBranch) {
     query = query.eq('branch_id', targetBranch)
@@ -34,7 +34,7 @@ export function fetchAllProducts(branchId?: string) {
 }
 
 export async function fetchProductByBarcode(barcode: string, branchId?: string) {
-  const targetBranch = branchId || useBranchContextStore.getState().activeBranch.id
+  const targetBranch = branchId || useBranchContextStore.getState().activeBranch?.id
   const cleanBarcode = normalizeBarcode(barcode)
   let query = supabase.from('products').select(PRODUCT_COLUMNS).ilike('barcode', cleanBarcode)
   if (targetBranch) {
