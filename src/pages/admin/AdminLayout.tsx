@@ -1,5 +1,5 @@
 import React from 'react'
-import { useLocation, useNavigate, Link } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   TrendingUp,
@@ -61,6 +61,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const isGrocery = currentBranch?.code.toUpperCase() === 'GROCERY'
 
+  // If viewing POS in Branch Mode, render as a WHOLE PAGE without sidebar or framed padding
+  if (isBranchMode && currentTab === 'pos') {
+    return (
+      <div className="h-screen w-full bg-white overflow-hidden flex flex-col font-sans">
+        {children}
+      </div>
+    )
+  }
+
   // Global navigation items
   const globalNavItems = [
     { id: 'overview', label: 'Business Overview', path: '/admin', icon: <LayoutDashboard size={18} /> },
@@ -73,47 +82,85 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   // Branch workspace navigation items
   const branchNavItems = currentBranch
     ? [
-        { id: 'overview', label: 'Branch Overview', path: `/admin/branches/${currentBranch.id}/overview`, icon: <Store size={18} className={isGrocery ? 'text-pink-400' : 'text-blue-400'} /> },
-        { id: 'pos', label: 'POS Billing Counter', path: `/admin/branches/${currentBranch.id}/pos`, icon: <Receipt size={18} className="text-amber-400" />, badge: 'Live POS' },
-        { id: 'inventory', label: 'Stock & Inventory', path: `/admin/branches/${currentBranch.id}/inventory`, icon: <Package size={18} className="text-blue-400" /> },
-        { id: 'products', label: 'Categories & Catalog', path: `/admin/branches/${currentBranch.id}/products`, icon: <Layers size={18} className="text-emerald-400" /> },
-        { id: 'barcodes', label: 'Barcode Generation', path: `/admin/branches/${currentBranch.id}/barcodes`, icon: <Barcode size={18} className="text-purple-400" /> },
-        { id: 'expenses', label: 'Expenses Ledger', path: `/admin/branches/${currentBranch.id}/expenses`, icon: <FileSpreadsheet size={18} className="text-rose-400" /> },
-        { id: 'orders', label: 'Advance & Custom Orders', path: `/admin/branches/${currentBranch.id}/orders`, icon: <ExternalLink size={18} className="text-sky-400" /> },
+        {
+          id: 'overview',
+          label: 'Branch Hub',
+          path: `/admin/branches/${currentBranch.id}/overview`,
+          icon: <Store size={18} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} />,
+        },
+        {
+          id: 'pos',
+          label: 'POS Billing Counter',
+          path: `/admin/branches/${currentBranch.id}/pos`,
+          icon: <Receipt size={18} className="text-amber-500" />,
+          badge: 'Whole Page POS',
+        },
+        {
+          id: 'inventory',
+          label: 'Stock & Inventory',
+          path: `/admin/branches/${currentBranch.id}/inventory`,
+          icon: <Package size={18} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} />,
+        },
+        {
+          id: 'products',
+          label: 'Categories & Catalog',
+          path: `/admin/branches/${currentBranch.id}/products`,
+          icon: <Layers size={18} className="text-emerald-600" />,
+        },
+        {
+          id: 'barcodes',
+          label: 'Barcode Generator',
+          path: `/admin/branches/${currentBranch.id}/barcodes`,
+          icon: <Barcode size={18} className="text-purple-600" />,
+        },
+        {
+          id: 'expenses',
+          label: 'Expenses Ledger',
+          path: `/admin/branches/${currentBranch.id}/expenses`,
+          icon: <FileSpreadsheet size={18} className="text-rose-600" />,
+        },
+        {
+          id: 'orders',
+          label: 'Advance & Custom Orders',
+          path: `/admin/branches/${currentBranch.id}/orders`,
+          icon: <ExternalLink size={18} className="text-sky-600" />,
+        },
       ]
     : []
 
   return (
-    <div className="flex h-screen w-full bg-[#0A0A0A] text-white font-sans overflow-hidden">
+    <div className="flex h-screen w-full bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-[#121212] border-r border-[#222222] flex flex-col justify-between z-20">
+      <aside className="w-64 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col justify-between z-20 shadow-xs">
         <div className="flex flex-col overflow-y-auto hide-scrollbar flex-1">
           {/* Logo & Header */}
-          <div className="p-4 border-b border-[#222222] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1c1c1c] border border-[#D4AF37]/40 flex items-center justify-center p-1.5 shadow-md shrink-0">
+          <div className="p-4 border-b border-slate-100 flex items-center gap-3 bg-white">
+            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center p-1.5 shadow-xs shrink-0">
               <img src={BRAND_LOGO} alt={BRAND_EN} className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xs font-black tracking-wider uppercase text-[#D4AF37] truncate">
+              <h2 className="text-xs font-black tracking-wider uppercase text-slate-900 truncate">
                 {BRAND_EN}
               </h2>
-              <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                <ShieldCheck size={12} className="text-amber-400 shrink-0" />
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                <ShieldCheck size={12} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} />
                 <span className="truncate">Admin Orchestrator</span>
               </div>
             </div>
           </div>
 
           {/* SINGLE AUTHORITATIVE BRANCH SELECTOR */}
-          <div className="p-3 border-b border-[#222222] bg-[#0F0F0F]">
-            <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 flex items-center justify-between">
+          <div className="p-3 border-b border-slate-100 bg-slate-50/70">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 flex items-center justify-between">
               <span>Operating Branch</span>
               {isBranchMode && (
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${
-                  isGrocery
-                    ? 'bg-pink-950/60 text-pink-300 border-pink-700/40'
-                    : 'bg-blue-950/60 text-blue-300 border-blue-700/40'
-                }`}>
+                <span
+                  className={`text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${
+                    isGrocery
+                      ? 'bg-pink-100 text-pink-700 border-pink-200'
+                      : 'bg-blue-100 text-blue-700 border-blue-200'
+                  }`}
+                >
                   {currentBranch?.code}
                 </span>
               )}
@@ -132,28 +179,34 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     navigate(`/admin/branches/${val}/overview`)
                   }
                 }}
-                className="w-full h-10 px-3 pr-8 bg-[#1A1A1A] hover:bg-[#222] border border-[#333] hover:border-[#444] rounded-xl text-xs font-bold text-white transition-colors cursor-pointer appearance-none outline-none focus:border-amber-400"
+                className={`w-full h-10 px-3 pr-8 bg-white hover:bg-slate-50 border rounded-xl text-xs font-bold transition-all cursor-pointer appearance-none outline-none shadow-xs ${
+                  isBranchMode
+                    ? isGrocery
+                      ? 'border-pink-300 text-pink-900 focus:border-pink-500'
+                      : 'border-blue-300 text-blue-900 focus:border-blue-500'
+                    : 'border-slate-300 text-slate-800 focus:border-slate-500'
+                }`}
               >
-                <option value="__global__">
-                  🌐 Global Admin (All Branches)
-                </option>
+                <option value="__global__">🌐 Global Admin (All Branches)</option>
                 <option disabled>──────────────</option>
                 {availableBranches.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.code === 'TEXTILE' ? '🔵 Taj Textiles (White & Blue)' : '🌸 Mariyam Kids World (White & Pink)'}
+                    {b.code === 'TEXTILE'
+                      ? '🔵 Taj Textiles (White & Blue)'
+                      : '🌸 Mariyam Kids World (White & Pink)'}
                   </option>
                 ))}
               </select>
               <ChevronDown
                 size={14}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
               />
             </div>
           </div>
 
           {/* Navigation Links based on mode */}
           <div className="p-3 space-y-1 flex-1">
-            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               {isBranchMode ? `${currentBranch?.name || 'Branch'} Workspace` : 'Global Management'}
             </div>
 
@@ -165,24 +218,45 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                       key={item.id}
                       type="button"
                       onClick={() => navigate(item.path)}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
                         active
-                          ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-300 border border-amber-500/30 shadow-sm font-bold'
-                          : 'text-gray-400 hover:text-white hover:bg-[#1A1A1A]'
+                          ? isGrocery
+                            ? 'bg-pink-50 text-pink-700 border border-pink-200 font-bold shadow-xs'
+                            : 'bg-blue-50 text-blue-700 border border-blue-200 font-bold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
                       }`}
                     >
                       <div className="flex items-center gap-3 truncate">
-                        <span className={active ? 'text-amber-400' : 'text-gray-400'}>
+                        <span
+                          className={
+                            active
+                              ? isGrocery
+                                ? 'text-pink-600'
+                                : 'text-blue-600'
+                              : 'text-slate-400'
+                          }
+                        >
                           {item.icon}
                         </span>
                         <span className="truncate">{item.label}</span>
                       </div>
                       {item.badge ? (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <span
+                          className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${
+                            isGrocery
+                              ? 'bg-pink-100 text-pink-700 border-pink-200'
+                              : 'bg-blue-100 text-blue-700 border-blue-200'
+                          }`}
+                        >
                           {item.badge}
                         </span>
                       ) : (
-                        active && <ChevronRight size={14} className="text-amber-400 shrink-0" />
+                        active && (
+                          <ChevronRight
+                            size={14}
+                            className={isGrocery ? 'text-pink-600' : 'text-blue-600'}
+                          />
+                        )
                       )}
                     </button>
                   )
@@ -194,32 +268,32 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                       key={item.id}
                       type="button"
                       onClick={() => navigate(item.path)}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
                         active
-                          ? 'bg-gradient-to-r from-[#D4AF37]/20 to-[#D4AF37]/5 text-amber-300 border border-[#D4AF37]/30 shadow-sm font-bold'
-                          : 'text-gray-400 hover:text-white hover:bg-[#1A1A1A]'
+                          ? 'bg-slate-900 text-white font-bold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
                       }`}
                     >
                       <div className="flex items-center gap-3 truncate">
-                        <span className={active ? 'text-amber-400' : 'text-gray-400'}>
+                        <span className={active ? 'text-white' : 'text-slate-400'}>
                           {item.icon}
                         </span>
                         <span className="truncate">{item.label}</span>
                       </div>
-                      {active && <ChevronRight size={14} className="text-amber-400 shrink-0" />}
+                      {active && <ChevronRight size={14} className="text-white shrink-0" />}
                     </button>
                   )
                 })}
 
             {isBranchMode && (
-              <div className="pt-4 mt-4 border-t border-[#222222]">
+              <div className="pt-3 mt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
                     exitBranch()
                     navigate('/admin')
                   }}
-                  className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-[#1A1A1A] transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <ArrowLeft size={15} />
                   <span>Exit to Global Admin</span>
@@ -230,54 +304,69 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
           {/* Quick branch buttons when in Global mode */}
           {!isBranchMode && (
-            <div className="p-3 border-t border-[#222222] bg-[#0E0E0E]">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2 px-1">
-                Enter Branch Node
+            <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">
+                Enter Branch Workspace
               </div>
               <div className="space-y-1.5">
-                {availableBranches.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => {
-                      enterBranch(b.id)
-                      navigate(`/admin/branches/${b.id}/overview`)
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#181818] hover:bg-[#202020] border border-[#262626] text-xs font-semibold text-gray-300 transition-colors cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          b.code === 'GROCERY' ? 'bg-pink-400' : 'bg-blue-400'
-                        }`}
-                      />
-                      <span className="truncate">{b.name}</span>
-                    </span>
-                    <ChevronRight size={13} className="text-gray-500 shrink-0" />
-                  </button>
-                ))}
+                {availableBranches.map((b) => {
+                  const isB2 = b.code === 'GROCERY'
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => {
+                        enterBranch(b.id)
+                        navigate(`/admin/branches/${b.id}/overview`)
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                        isB2
+                          ? 'bg-pink-50/50 hover:bg-pink-50 border-pink-200/80 text-pink-900'
+                          : 'bg-blue-50/50 hover:bg-blue-50 border-blue-200/80 text-blue-900'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            isB2 ? 'bg-pink-500' : 'bg-blue-500'
+                          }`}
+                        />
+                        <span className="truncate">{b.name}</span>
+                      </span>
+                      <ChevronRight size={13} className="text-slate-400 shrink-0" />
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
         </div>
 
         {/* User Info & Logout */}
-        <div className="p-4 border-t border-[#222222] bg-[#0A0A0A] shrink-0">
+        <div className="p-4 border-t border-slate-200 bg-white shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xs font-bold shrink-0">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
+                  isBranchMode
+                    ? isGrocery
+                      ? 'bg-pink-100 text-pink-700 border border-pink-200'
+                      : 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'bg-slate-100 text-slate-800 border border-slate-200'
+                }`}
+              >
                 AD
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-bold text-gray-200 truncate">Administrator</div>
-                <div className="text-[10px] text-gray-400 truncate">Taj & Mariyam HQ</div>
+                <div className="text-xs font-bold text-slate-800 truncate">Administrator</div>
+                <div className="text-[10px] text-slate-500 truncate">Taj & Mariyam HQ</div>
               </div>
             </div>
             <button
               type="button"
               onClick={logout}
               title="Logout"
-              className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-950/20 transition-colors cursor-pointer shrink-0"
+              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
             >
               <LogOut size={16} />
             </button>
@@ -286,37 +375,37 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0A0A]">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#F8FAFC]">
         {/* Top App Bar */}
-        <header className="h-14 border-b border-[#222222] bg-[#111111]/90 backdrop-blur px-6 flex items-center justify-between flex-shrink-0 z-10">
+        <header className="h-14 border-b border-slate-200 bg-white/95 backdrop-blur px-6 flex items-center justify-between flex-shrink-0 z-10 shadow-xs">
           <div className="flex items-center gap-3">
             {isBranchMode && currentBranch ? (
               <>
                 <span
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
                     isGrocery
-                      ? 'bg-pink-950/60 text-pink-300 border border-pink-700/50'
-                      : 'bg-blue-950/60 text-blue-300 border border-blue-700/50'
+                      ? 'bg-pink-50 text-pink-700 border border-pink-200'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200'
                   }`}
                 >
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      isGrocery ? 'bg-pink-400' : 'bg-blue-400'
+                      isGrocery ? 'bg-pink-500' : 'bg-blue-500'
                     } animate-pulse`}
                   />
                   Operating in: {currentBranch.name}
                 </span>
-                <span className="text-xs text-gray-400 hidden lg:inline">
+                <span className="text-xs text-slate-500 hidden lg:inline">
                   {currentBranch.userName} • {currentBranch.address}
                 </span>
               </>
             ) : (
               <>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-950/40 border border-emerald-800/40 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   All {availableBranches.length} Branches Online
                 </span>
-                <span className="text-xs text-gray-400 hidden sm:inline">
+                <span className="text-xs text-slate-500 hidden sm:inline">
                   Global Control Plane • Taj & Mariyam Retail Group
                 </span>
               </>
@@ -331,16 +420,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   exitBranch()
                   navigate('/admin')
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1E1E1E] hover:bg-[#282828] border border-[#333] text-xs font-bold text-amber-300 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold text-slate-700 transition-colors cursor-pointer shadow-xs"
               >
                 <ArrowLeft size={13} /> Exit to Global
               </button>
             ) : (
               <div className="text-right">
-                <div className="text-[11px] font-bold text-gray-300 tracking-wide">
+                <div className="text-[11px] font-bold text-slate-800 tracking-wide">
                   TAJ & MARIYAM RETAIL GROUP
                 </div>
-                <div className="text-[9px] text-gray-500">Pallavaram, Chennai</div>
+                <div className="text-[9px] text-slate-500">Pallavaram, Chennai</div>
               </div>
             )}
           </div>

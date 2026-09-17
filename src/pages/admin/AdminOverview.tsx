@@ -55,78 +55,75 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
       {/* Title & Refresh */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2">
             Business Overview
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
               Live Aggregation
             </span>
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Consolidated real-time operational metrics across Taj Textiles and Mariyam Kids World.
           </p>
         </div>
         <button
           onClick={loadData}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1A1A1A] border border-[#2B2B2B] text-xs font-semibold text-gray-300 hover:text-white hover:bg-[#222222] transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer shadow-xs"
         >
-          <RefreshCw size={13} className={loading ? 'animate-spin text-amber-400' : ''} />
+          <RefreshCw size={13} className={loading ? 'animate-spin text-blue-600' : ''} />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* Top Level Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-[#141414] border border-[#262626] shadow-lg relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors" />
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Today's Consolidated Sales
             </span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
               <IndianRupee size={18} />
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">
+          <div className="text-3xl font-black text-slate-900 tracking-tight">
             ₹{Number(data?.today_sales || 0).toLocaleString('en-IN')}
           </div>
-          <div className="mt-2 text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-            <TrendingUp size={13} /> Across all retail branches
+          <div className="mt-2 text-[11px] text-emerald-600 flex items-center gap-1 font-semibold">
+            <TrendingUp size={13} /> Across both active retail branches
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#141414] border border-[#262626] shadow-lg relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl group-hover:bg-sky-500/10 transition-colors" />
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Total Invoices Issued
             </span>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
+            <div className="p-2 rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
               <Receipt size={18} />
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">
+          <div className="text-3xl font-black text-slate-900 tracking-tight">
             {Number(data?.today_bills || 0).toLocaleString('en-IN')}
           </div>
-          <div className="mt-2 text-[11px] text-gray-400 font-medium">
-            Completed POS transactions today
+          <div className="mt-2 text-[11px] text-slate-500 font-medium">
+            Completed POS checkout orders today
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#141414] border border-[#262626] shadow-lg relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors" />
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Consolidated Stock Value
             </span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
+            <div className="p-2 rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
               <CreditCard size={18} />
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">
+          <div className="text-3xl font-black text-slate-900 tracking-tight">
             ₹{(Number(data?.total_inventory_value || 0) / 100000).toFixed(2)}L
           </div>
-          <div className="mt-2 text-[11px] text-purple-400 font-medium">
+          <div className="mt-2 text-[11px] text-purple-600 font-medium">
             Retail inventory across 2 locations
           </div>
         </div>
@@ -135,19 +132,19 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
       {/* Branch Monitoring Cards */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-600">
             Operating Branch Nodes
           </h2>
-          <span className="text-xs text-gray-500">Autonomous Branch Workspaces</span>
+          <span className="text-xs text-slate-400">Autonomous Branch Workspaces</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* TAJ TEXTILES CARD */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-[#161616] to-[#121212] border border-[#2A2A2A] hover:border-blue-500/40 transition-all duration-300 shadow-xl relative flex flex-col justify-between">
+          <div className="p-6 rounded-3xl bg-white border-2 border-blue-200 hover:border-blue-500 transition-all duration-300 shadow-xs hover:shadow-md relative flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/15 border border-blue-500/30 p-1 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 p-1 flex items-center justify-center shrink-0">
                     <img
                       src="/taj_textiles_logo.png"
                       alt="Taj Textiles"
@@ -155,31 +152,31 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
                     />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-white">Taj Textiles</h3>
-                    <p className="text-xs text-gray-400">Mohammed ansari • White & Blue Theme</p>
+                    <h3 className="text-lg font-black text-slate-900">Taj Textiles</h3>
+                    <p className="text-xs text-slate-500">Mohammed ansari • White & Blue Theme</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-950/60 text-blue-300 border border-blue-700/50">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400" /> Operational
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Operational
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-3 my-6">
-                <div className="p-3 rounded-xl bg-[#1A1A1A] border border-[#262626]">
-                  <div className="text-[10px] text-gray-400 font-bold uppercase">Today Sales</div>
-                  <div className="text-lg font-black text-white mt-0.5">
+                <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+                  <div className="text-[10px] text-blue-700 font-bold uppercase">Today Sales</div>
+                  <div className="text-lg font-black text-slate-900 mt-0.5">
                     ₹{Number(textileBranch?.today_sales || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#1A1A1A] border border-[#262626]">
-                  <div className="text-[10px] text-gray-400 font-bold uppercase">Bills</div>
-                  <div className="text-lg font-black text-white mt-0.5">
+                <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+                  <div className="text-[10px] text-blue-700 font-bold uppercase">Bills</div>
+                  <div className="text-lg font-black text-slate-900 mt-0.5">
                     {textileBranch?.today_bills || 0}
                   </div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#1A1A1A] border border-[#262626]">
-                  <div className="text-[10px] text-gray-400 font-bold uppercase">Low Stock</div>
-                  <div className="text-lg font-black text-amber-400 mt-0.5">
+                <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+                  <div className="text-[10px] text-blue-700 font-bold uppercase">Low Stock</div>
+                  <div className="text-lg font-black text-amber-600 mt-0.5">
                     {textileBranch?.low_stock_count || 0} items
                   </div>
                 </div>
@@ -190,15 +187,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
               <button
                 type="button"
                 onClick={() => handleEnterBranch(DEFAULT_TEXTILE_BRANCH.id, 'pos')}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <Receipt size={14} />
-                <span>Launch POS</span>
+                <span>Open Whole POS</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleEnterBranch(DEFAULT_TEXTILE_BRANCH.id, 'overview')}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#222] hover:bg-[#282828] border border-[#333] text-gray-200 text-xs font-bold transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold transition-all cursor-pointer shadow-xs"
               >
                 <span>Branch Hub</span>
                 <ArrowUpRight size={14} />
@@ -207,11 +204,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
           </div>
 
           {/* MARIYAM KIDS WORLD CARD */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-[#161616] to-[#121212] border border-[#2A2A2A] hover:border-pink-500/40 transition-all duration-300 shadow-xl relative flex flex-col justify-between">
+          <div className="p-6 rounded-3xl bg-white border-2 border-pink-200 hover:border-pink-500 transition-all duration-300 shadow-xs hover:shadow-md relative flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-pink-500/15 border border-pink-500/30 p-1 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-200 p-1 flex items-center justify-center shrink-0">
                     <img
                       src="/mariyam_kids_world_logo.png"
                       alt="Mariyam Kids World"
@@ -219,31 +216,31 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
                     />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-white">MARIYAM KIDS WORLD</h3>
-                    <p className="text-xs text-gray-400">AANISHA BANU • White & Pink Theme</p>
+                    <h3 className="text-lg font-black text-slate-900">MARIYAM KIDS WORLD</h3>
+                    <p className="text-xs text-slate-500">AANISHA BANU • White & Pink Theme</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-pink-950/60 text-pink-300 border border-pink-700/50">
-                  <span className="w-1.5 h-1.5 rounded-full bg-pink-400" /> Operational
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-pink-500" /> Operational
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-3 my-6">
-                <div className="p-3 rounded-xl bg-[#1A1A1A] border border-[#262626]">
-                  <div className="text-[10px] text-gray-400 font-bold uppercase">Today Sales</div>
-                  <div className="text-lg font-black text-white mt-0.5">
+                <div className="p-3 rounded-xl bg-pink-50/50 border border-pink-100">
+                  <div className="text-[10px] text-pink-700 font-bold uppercase">Today Sales</div>
+                  <div className="text-lg font-black text-slate-900 mt-0.5">
                     ₹{Number(groceryBranch?.today_sales || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#1A1A1A] border border-[#262626]">
-                  <div className="text-[10px] text-gray-400 font-bold uppercase">Bills</div>
-                  <div className="text-lg font-black text-white mt-0.5">
+                <div className="p-3 rounded-xl bg-pink-50/50 border border-pink-100">
+                  <div className="text-[10px] text-pink-700 font-bold uppercase">Bills</div>
+                  <div className="text-lg font-black text-slate-900 mt-0.5">
                     {groceryBranch?.today_bills || 0}
                   </div>
                 </div>
-                <div className="p-3 rounded-xl bg-[#1A1A1A] border border-[#262626]">
-                  <div className="text-[10px] text-gray-400 font-bold uppercase">Low Stock</div>
-                  <div className="text-lg font-black text-pink-400 mt-0.5">
+                <div className="p-3 rounded-xl bg-pink-50/50 border border-pink-100">
+                  <div className="text-[10px] text-pink-700 font-bold uppercase">Low Stock</div>
+                  <div className="text-lg font-black text-pink-600 mt-0.5">
                     {groceryBranch?.low_stock_count || 0} items
                   </div>
                 </div>
@@ -254,15 +251,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
               <button
                 type="button"
                 onClick={() => handleEnterBranch(DEFAULT_GROCERY_BRANCH.id, 'pos')}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-500 hover:to-pink-600 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <Receipt size={14} />
-                <span>Launch POS</span>
+                <span>Open Whole POS</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleEnterBranch(DEFAULT_GROCERY_BRANCH.id, 'overview')}
-                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#222] hover:bg-[#282828] border border-[#333] text-gray-200 text-xs font-bold transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold transition-all cursor-pointer shadow-xs"
               >
                 <span>Branch Hub</span>
                 <ArrowUpRight size={14} />
@@ -273,23 +270,23 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
       </div>
 
       {/* Attention Required Banner */}
-      <div className="p-5 rounded-2xl bg-[#141414] border border-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200/90 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs">
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 mt-0.5">
+          <div className="p-2 rounded-xl bg-amber-100 text-amber-800 mt-0.5">
             <AlertTriangle size={18} />
           </div>
           <div>
-            <h4 className="text-xs font-black uppercase tracking-wider text-amber-400">
+            <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
               Attention Required Across Branches
             </h4>
-            <ul className="text-xs text-gray-300 mt-1 space-y-0.5 list-disc list-inside">
+            <ul className="text-xs text-amber-900/90 mt-1 space-y-0.5 list-disc list-inside font-medium">
               <li>
-                <strong className="text-blue-300">Taj Textiles:</strong>{' '}
+                <strong className="text-blue-900 font-bold">Taj Textiles:</strong>{' '}
                 {textileBranch?.low_stock_count || 0} items are below minimum low stock threshold.
               </li>
               <li>
-                <strong className="text-pink-300">Mariyam Kids World:</strong>{' '}
-                {groceryBranch?.low_stock_count || 0} items require re-ordering from suppliers.
+                <strong className="text-pink-900 font-bold">Mariyam Kids World:</strong>{' '}
+                {groceryBranch?.low_stock_count || 0} items require replenishment.
               </li>
             </ul>
           </div>
@@ -298,7 +295,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
         <button
           type="button"
           onClick={() => navigate('/admin/inventory')}
-          className="px-4 py-2 rounded-xl bg-[#1F1F1F] border border-[#333333] text-xs font-bold text-white hover:bg-[#282828] transition-colors cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-white border border-amber-300 text-xs font-bold text-amber-900 hover:bg-amber-100/60 transition-colors cursor-pointer shadow-xs"
         >
           View Consolidated Inventory Alerts
         </button>
