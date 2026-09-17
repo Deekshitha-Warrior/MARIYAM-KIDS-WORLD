@@ -1,9 +1,15 @@
 import React from 'react'
-import { TrendingUp, IndianRupee, Store, ShoppingBag, ArrowUpRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { DEFAULT_TEXTILE_BRANCH, DEFAULT_GROCERY_BRANCH } from '../../store/branchContextStore'
+import { TrendingUp, IndianRupee, Store, ShoppingBag, ArrowUpRight, LayoutDashboard } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  DEFAULT_TEXTILE_BRANCH,
+  DEFAULT_GROCERY_BRANCH,
+  useBranchContextStore,
+} from '../../store/branchContextStore'
 
 export const CrossBranchSalesView: React.FC = () => {
+  const navigate = useNavigate()
+  const { enterBranch } = useBranchContextStore()
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>
@@ -53,12 +59,17 @@ export const CrossBranchSalesView: React.FC = () => {
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 flex gap-2">
-            <Link
-              to={`/admin/branches/${DEFAULT_TEXTILE_BRANCH.id}/pos`}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
+            <button
+              type="button"
+              onClick={() => {
+                enterBranch(DEFAULT_TEXTILE_BRANCH.id)
+                navigate(`/dashboard?branch=${DEFAULT_TEXTILE_BRANCH.id}`)
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
-              <span>Open POS</span>
-            </Link>
+              <LayoutDashboard size={14} />
+              <span>Store Dashboard</span>
+            </button>
             <Link
               to={`/admin/branches/${DEFAULT_TEXTILE_BRANCH.id}/overview`}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold transition-all shadow-xs"
@@ -106,12 +117,17 @@ export const CrossBranchSalesView: React.FC = () => {
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 flex gap-2">
-            <Link
-              to={`/admin/branches/${DEFAULT_GROCERY_BRANCH.id}/pos`}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold transition-all shadow-xs"
+            <button
+              type="button"
+              onClick={() => {
+                enterBranch(DEFAULT_GROCERY_BRANCH.id)
+                navigate(`/dashboard?branch=${DEFAULT_GROCERY_BRANCH.id}`)
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
-              <span>Open POS</span>
-            </Link>
+              <LayoutDashboard size={14} />
+              <span>Store Dashboard</span>
+            </button>
             <Link
               to={`/admin/branches/${DEFAULT_GROCERY_BRANCH.id}/overview`}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold transition-all shadow-xs"

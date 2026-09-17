@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { type Branch } from '../../store/branchContextStore'
 import { BranchMonitoringView } from './BranchMonitoringView'
 import Pos from '../Pos'
@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Sparkles,
   Info,
+  LayoutDashboard,
 } from 'lucide-react'
 
 export interface BranchWorkspaceProps {
@@ -55,9 +56,9 @@ export const BranchWorkspace: React.FC<BranchWorkspaceProps> = ({
     navigate(`/admin/branches/${branch.id}/${newTab}`)
   }
 
-  // 1. POS Tab: Renders as a WHOLE PAGE without iframe or bounding cards
+  // 1. POS Tab: Redirects to /dashboard with branch context so it contains the operational sidebar
   if (tab === 'pos') {
-    return <Pos accessMode="admin" branchId={branch.id} isEmbedded={false} />
+    return <Navigate to={`/dashboard?branch=${branch.id}`} replace />
   }
 
   // 2. Inventory Tab
@@ -80,12 +81,12 @@ export const BranchWorkspace: React.FC<BranchWorkspaceProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => handleSelectTab('pos')}
+            onClick={() => navigate(`/dashboard?branch=${branch.id}`)}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-white text-xs font-bold transition-all cursor-pointer shadow-xs ${
               isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >
-            <Receipt size={14} /> Open Whole-Page POS
+            <LayoutDashboard size={14} /> Open Store Dashboard & POS
           </button>
         </div>
         <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200 text-slate-900">

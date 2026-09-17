@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Store,
@@ -14,6 +15,7 @@ import {
   Layers,
   FileSpreadsheet,
   ExternalLink,
+  LayoutDashboard,
 } from 'lucide-react'
 import {
   fetchBranchDashboard,
@@ -41,7 +43,8 @@ export const BranchMonitoringView: React.FC<BranchMonitoringViewProps> = ({
   onBack,
   onSelectTab,
 }) => {
-  const { availableBranches, activeBranch } = useBranchContextStore()
+  const navigate = useNavigate()
+  const { availableBranches, activeBranch, enterBranch } = useBranchContextStore()
 
   const currentBranch: Branch =
     propBranch ||
@@ -156,13 +159,16 @@ export const BranchMonitoringView: React.FC<BranchMonitoringViewProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
               <button
                 type="button"
-                onClick={() => onSelectTab('pos')}
+                onClick={() => {
+                  enterBranch(currentBranch.id)
+                  navigate(`/dashboard?branch=${currentBranch.id}`)
+                }}
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-white transition-all text-xs font-bold shadow-xs cursor-pointer ${
                   isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                <Receipt size={15} className="shrink-0" />
-                <span className="truncate">Open Full POS</span>
+                <LayoutDashboard size={15} className="shrink-0" />
+                <span className="truncate">Open Store Dashboard & POS</span>
               </button>
               <button
                 type="button"

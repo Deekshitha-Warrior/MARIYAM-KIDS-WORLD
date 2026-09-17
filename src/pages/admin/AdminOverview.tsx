@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   RefreshCw,
   TrendingUp,
+  LayoutDashboard,
 } from 'lucide-react'
 import { fetchAdminOverview, type AdminOverviewData } from '../../services/branchService'
 import {
@@ -47,6 +48,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
 
   const handleEnterBranch = (branchId: string, tab: string = 'overview') => {
     enterBranch(branchId)
+    if (tab === 'pos' || tab === 'dashboard') {
+      navigate(`/dashboard?branch=${branchId}`)
+      return
+    }
     navigate(`/admin/branches/${branchId}/${tab}`)
   }
 
@@ -186,11 +191,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
             <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
                 type="button"
-                onClick={() => handleEnterBranch(DEFAULT_TEXTILE_BRANCH.id, 'pos')}
+                onClick={() => handleEnterBranch(DEFAULT_TEXTILE_BRANCH.id, 'dashboard')}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                <Receipt size={14} />
-                <span>Open Whole POS</span>
+                <LayoutDashboard size={14} />
+                <span>Store Dashboard & POS</span>
               </button>
               <button
                 type="button"
@@ -250,11 +255,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
             <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
                 type="button"
-                onClick={() => handleEnterBranch(DEFAULT_GROCERY_BRANCH.id, 'pos')}
+                onClick={() => handleEnterBranch(DEFAULT_GROCERY_BRANCH.id, 'dashboard')}
                 className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                <Receipt size={14} />
-                <span>Open Whole POS</span>
+                <LayoutDashboard size={14} />
+                <span>Store Dashboard & POS</span>
               </button>
               <button
                 type="button"

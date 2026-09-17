@@ -61,15 +61,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const isGrocery = currentBranch?.code.toUpperCase() === 'GROCERY'
 
-  // If viewing POS in Branch Mode, render as a WHOLE PAGE without sidebar or framed padding
-  if (isBranchMode && currentTab === 'pos') {
-    return (
-      <div className="h-screen w-full bg-white overflow-hidden flex flex-col font-sans">
-        {children}
-      </div>
-    )
-  }
-
   // Global navigation items
   const globalNavItems = [
     { id: 'overview', label: 'Business Overview', path: '/admin', icon: <LayoutDashboard size={18} /> },
@@ -89,11 +80,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           icon: <Store size={18} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} />,
         },
         {
-          id: 'pos',
-          label: 'POS Billing Counter',
-          path: `/admin/branches/${currentBranch.id}/pos`,
-          icon: <Receipt size={18} className="text-amber-500" />,
-          badge: 'Whole Page POS',
+          id: 'dashboard',
+          label: 'Store Dashboard (Sidebar)',
+          path: `/dashboard?branch=${currentBranch.id}`,
+          icon: <LayoutDashboard size={18} className="text-indigo-600" />,
+          badge: 'Sidebar & POS',
         },
         {
           id: 'inventory',
@@ -217,7 +208,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => navigate(item.path)}
+                      onClick={() => {
+                        if (item.path.startsWith('/dashboard') && currentBranch) {
+                          enterBranch(currentBranch.id)
+                        }
+                        navigate(item.path)
+                      }}
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
                         active
                           ? isGrocery

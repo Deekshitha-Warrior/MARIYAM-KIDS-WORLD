@@ -202,8 +202,17 @@ export default function Dashboard() {
   })
   const { setCurrentTab } = useNavigationStore()
   const [cartItemToInject, setCartItemToInject] = useState<string | null>(null)
-  const { activeBranch } = useBranchContextStore()
+  const { activeBranch, enterBranch } = useBranchContextStore()
   const branchTheme = useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
+
+  // Synchronize branch from URL query param if present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const branchParam = params.get('branch')
+    if (branchParam) {
+      enterBranch(branchParam)
+    }
+  }, [location.search, enterBranch])
 
   useEffect(() => {
     applyBranchThemeCssVariables(branchTheme)
@@ -1687,7 +1696,15 @@ export default function Dashboard() {
       >
         {/* Desktop brand header */}
         <div className={`hidden lg:flex items-center relative transition-all duration-300 shrink-0 ${sidebarCollapsed ? 'flex-col items-center pt-4 pb-3 px-2 gap-2' : 'px-3.5 py-3 justify-between border-b border-white/5'}`}>
-          <Link to="/pos" title="Go to Billing Panel" className={`flex items-center gap-2.5 min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'justify-center' : 'flex-1'}`}>
+          <button
+            type="button"
+            onClick={() => {
+              setTab('billing')
+              setCurrentTab('billing')
+            }}
+            title="Go to Billing Panel"
+            className={`flex items-center gap-2.5 min-w-0 transition-all duration-300 text-left cursor-pointer ${sidebarCollapsed ? 'justify-center' : 'flex-1'}`}
+          >
             <div 
               className="flex items-center justify-center shrink-0 w-9 h-9 rounded-xl border shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden"
               style={{
@@ -1726,7 +1743,7 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-          </Link>
+          </button>
           <button
             type="button"
             onClick={() => setSidebarCollapsed((state) => !state)}
@@ -1745,7 +1762,15 @@ export default function Dashboard() {
             borderColor: branchTheme.colors.sidebarBorder,
           }}
         >
-          <Link to="/pos" title="Go to Billing Panel" className="flex items-center gap-2 min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => {
+              setTab('billing')
+              setCurrentTab('billing')
+            }}
+            title="Go to Billing Panel"
+            className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
+          >
             <div 
               className="flex h-8 w-8 items-center justify-center rounded-lg border shrink-0 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden"
               style={{
@@ -1782,7 +1807,7 @@ export default function Dashboard() {
                 </span>
               </div>
             </div>
-          </Link>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -1831,8 +1856,25 @@ export default function Dashboard() {
           })}
         </nav>
 
-        {/* Desktop Logout Button anchored at bottom */}
-        <div className={`hidden lg:block shrink-0 border-t border-white/10 p-2 lg:p-2.5 ${sidebarCollapsed ? 'px-1.5' : 'px-2.5'}`}>
+        {/* Desktop Admin & Logout Buttons anchored at bottom */}
+        <div className={`hidden lg:block shrink-0 border-t border-white/10 p-2 lg:p-2.5 space-y-1.5 ${sidebarCollapsed ? 'px-1.5' : 'px-2.5'}`}>
+          <button
+            type="button"
+            onClick={() => navigate('/admin')}
+            title="Return to Global Admin Panel"
+            className={[
+              'shrink-0 flex items-center justify-center lg:justify-start',
+              'gap-2.5',
+              'w-full h-[38px] xl:h-[40px]',
+              sidebarCollapsed ? 'lg:w-[42px] lg:justify-center mx-auto' : 'lg:px-3',
+              'rounded-xl font-bold text-[12px] xl:text-[12.5px] transition-all bg-white/10 hover:bg-white/20 text-white overflow-hidden cursor-pointer shadow-xs',
+            ].join(' ')}
+          >
+            <span className="shrink-0 text-amber-400"><ShieldCheck size={17} /></span>
+            <span className={`truncate text-left transition-all duration-200 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
+              Admin Control
+            </span>
+          </button>
           <button
             onClick={() => {
               useAdminAuthStore.getState().logout()
@@ -3230,9 +3272,16 @@ export default function Dashboard() {
                 <h2 className="mt-1 text-xl font-black text-[#111111]">{l('Order Management', 'ஆர்டர் மேலாண்மை')} <span className="text-[11px] font-semibold text-[#374151]">({l('POS Bills only', 'POS பில்கள் மட்டுமே')})</span></h2>
               </div>
               <div className="flex gap-2">
-                <Link to="/pos" className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-4 py-2 text-[13px] font-bold text-white shadow-sm hover:bg-[#1f281d]">
-                  <ShoppingCart size={14} /> Open POS
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('billing')
+                    setCurrentTab('billing')
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-4 py-2 text-[13px] font-bold text-white shadow-sm hover:bg-[#1f281d] cursor-pointer"
+                >
+                  <ShoppingCart size={14} /> Open Billing
+                </button>
               </div>
             </div>
             <div className="rounded-2xl border border-[#E5E7EB]/60 bg-white p-3 sm:p-4 shadow-sm space-y-2.5">
