@@ -183,8 +183,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 {availableBranches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.code === 'TEXTILE'
-                      ? '🔵 Taj Textiles (White & Blue)'
-                      : '🌸 Mariyam Kids World (White & Pink)'}
+                      ? '🔵 Taj Textiles'
+                      : '🌸 MARIYAM KIDS WORLD'}
                   </option>
                 ))}
               </select>

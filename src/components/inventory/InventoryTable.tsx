@@ -28,11 +28,16 @@ import { alarmSound } from '../../lib/alarmAudio'
 import { CategoryManagerView } from './CategoryManagerView'
 import { InventoryAnalyticsView } from './InventoryAnalyticsView'
 import { AddEditProductView } from './AddEditProductView'
+import { useBranchContextStore } from '../../store/branchContextStore'
+import { getBranchTheme } from '../../lib/branchTheme'
 
 type InventoryTab = 'stock' | 'products' | 'categories' | 'analytics'
 
 export const InventoryTable: React.FC = () => {
   const role = useAdminAuthStore((state) => state.role)
+  const { activeBranch } = useBranchContextStore()
+  const isGrocery = activeBranch?.code === 'GROCERY' || activeBranch?.code === 'BRANCH_2'
+  const branchTheme = React.useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
   const [activeTab, setActiveTab] = useState<InventoryTab>('stock')
   const { products: storeProducts, fetchProducts } = useProductStore()
   const [items, setItems] = useState<InventoryStockItem[]>([])
@@ -187,14 +192,18 @@ export const InventoryTable: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* NAVIGATION / HEADER */}
-      <div className="bg-white border border-[#E8D399] rounded-2xl p-2 sm:p-2.5 shadow-sm flex items-center justify-between gap-3 overflow-x-auto hide-scrollbar">
+      <div className={`bg-white border rounded-2xl p-2 sm:p-2.5 shadow-sm flex items-center justify-between gap-3 overflow-x-auto hide-scrollbar ${
+        isGrocery ? 'border-pink-200' : 'border-blue-200'
+      }`}>
         <div className="flex items-center gap-1.5 p-1 bg-[#FBFAF6] border border-gray-200 rounded-xl shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('stock')}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'stock'
-                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                ? isGrocery
+                  ? 'bg-pink-600 text-white shadow-sm'
+                  : 'bg-blue-600 text-white shadow-sm'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
@@ -206,7 +215,9 @@ export const InventoryTable: React.FC = () => {
             onClick={() => setActiveTab('products')}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'products'
-                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                ? isGrocery
+                  ? 'bg-pink-600 text-white shadow-sm'
+                  : 'bg-blue-600 text-white shadow-sm'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
@@ -218,7 +229,9 @@ export const InventoryTable: React.FC = () => {
             onClick={() => setActiveTab('categories')}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'categories'
-                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                ? isGrocery
+                  ? 'bg-pink-600 text-white shadow-sm'
+                  : 'bg-blue-600 text-white shadow-sm'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
@@ -230,7 +243,9 @@ export const InventoryTable: React.FC = () => {
             onClick={() => setActiveTab('analytics')}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'analytics'
-                ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+                ? isGrocery
+                  ? 'bg-pink-600 text-white shadow-sm'
+                  : 'bg-blue-600 text-white shadow-sm'
                 : 'text-gray-600 hover:text-black hover:bg-gray-100'
             }`}
           >
@@ -246,7 +261,11 @@ export const InventoryTable: React.FC = () => {
               setSelectedForReceive(null)
               setShowReceiveModal(true)
             }}
-            className="px-4 py-2.5 rounded-xl bg-[#0A0A0A] border border-[#D4AF37] text-[#D4AF37] text-xs font-black hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap"
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all shadow-sm flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap text-white ${
+              isGrocery
+                ? 'bg-pink-600 hover:bg-pink-700 border border-pink-600'
+                : 'bg-blue-600 hover:bg-blue-700 border border-blue-600'
+            }`}
             title="Generate & print barcodes for items"
           >
             <Printer size={15} /> Add Barcode
@@ -259,8 +278,12 @@ export const InventoryTable: React.FC = () => {
         <div className="space-y-6 animate-in fade-in duration-150">
           {/* Top KPI Metrics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-[#0A0A0A] text-[#D4AF37] flex items-center justify-center font-black">
+            <div className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3 ${
+              isGrocery ? 'border-pink-200' : 'border-blue-200'
+            }`}>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black border ${
+                isGrocery ? 'bg-pink-50 text-pink-600 border-pink-200' : 'bg-blue-50 text-blue-600 border-blue-200'
+              }`}>
                 <Layers size={20} />
               </div>
               <div>
@@ -269,7 +292,9 @@ export const InventoryTable: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex items-center gap-3">
+            <div className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3 ${
+              isGrocery ? 'border-pink-200' : 'border-blue-200'
+            }`}>
               <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-black">
                 <Package size={20} />
               </div>
@@ -279,7 +304,9 @@ export const InventoryTable: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex items-center gap-3">
+            <div className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3 ${
+              isGrocery ? 'border-pink-200' : 'border-blue-200'
+            }`}>
               <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-black">
                 <AlertTriangle size={20} />
               </div>
@@ -289,8 +316,12 @@ export const InventoryTable: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-[#FBFAF6] text-[#0A0A0A] border border-[#E8D399] flex items-center justify-center font-black text-sm">
+            <div className={`bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3 ${
+              isGrocery ? 'border-pink-200' : 'border-blue-200'
+            }`}>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm border ${
+                isGrocery ? 'bg-pink-50 text-pink-700 border-pink-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+              }`}>
                 ₹
               </div>
               <div>
@@ -301,7 +332,9 @@ export const InventoryTable: React.FC = () => {
           </div>
 
           {/* Toolbar & Filter Chips */}
-          <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 ${
+            isGrocery ? 'border-pink-200' : 'border-blue-200'
+          }`}>
             {/* Search */}
             <div className="relative flex-1 max-w-md">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -310,7 +343,9 @@ export const InventoryTable: React.FC = () => {
                 placeholder="Search SKU name, variant, barcode, category..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 bg-[#FBFAF6] text-xs font-bold text-gray-900 outline-none focus:border-[#0A0A0A] focus:bg-white"
+                className={`w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 bg-[#FBFAF6] text-xs font-bold text-gray-900 outline-none focus:bg-white ${
+                  isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+                }`}
               />
             </div>
 
@@ -321,7 +356,9 @@ export const InventoryTable: React.FC = () => {
                 onClick={() => setFilterStatus('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   filterStatus === 'all'
-                    ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-xs'
+                    ? isGrocery
+                      ? 'bg-pink-600 text-white shadow-xs'
+                      : 'bg-blue-600 text-white shadow-xs'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -375,7 +412,7 @@ export const InventoryTable: React.FC = () => {
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             {loading ? (
               <div className="p-16 text-center text-gray-400 font-bold text-xs flex flex-col items-center justify-center">
-                <RefreshCw size={24} className="animate-spin text-[#D4AF37] mb-2" />
+                <RefreshCw size={24} className={`animate-spin mb-2 ${isGrocery ? 'text-pink-600' : 'text-blue-600'}`} />
                 Loading inventory items...
               </div>
             ) : filtered.length === 0 ? (
@@ -406,7 +443,9 @@ export const InventoryTable: React.FC = () => {
                               {item.name}
                             </div>
                             {item.variant_name ? (
-                              <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#FBFAF6] border border-[#E8D399] text-[#0A0A0A] font-bold text-[10px]">
+                              <span className={`inline-block mt-1 px-2 py-0.5 rounded-md border font-bold text-[10px] ${
+                                isGrocery ? 'bg-pink-50 text-pink-700 border-pink-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
                                 Size: {item.variant_name}
                               </span>
                             ) : (
@@ -456,7 +495,9 @@ export const InventoryTable: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setPriceModalItem(item)}
-                                className="p-1 rounded-md text-gray-400 hover:text-amber-800 hover:bg-amber-100/70 transition-all cursor-pointer"
+                                className={`p-1 rounded-md text-gray-400 transition-all cursor-pointer ${
+                                  isGrocery ? 'hover:text-pink-600 hover:bg-pink-50' : 'hover:text-blue-600 hover:bg-blue-50'
+                                }`}
                                 title="Quick Edit Price"
                               >
                                 <Edit2 size={12} />
@@ -488,14 +529,16 @@ export const InventoryTable: React.FC = () => {
                                 <History size={14} />
                               </button>
 
-                              {/* Print Barcode (reserves identical spacing when item has no barcode) */}
+                              {/* Print Barcode */}
                               <button
                                 type="button"
                                 disabled={!item.barcode}
                                 onClick={() => item.barcode && setPrintModalItem(item)}
                                 className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
                                   item.barcode
-                                    ? 'bg-[#0A0A0A] text-[#D4AF37] border-[#D4AF37] hover:bg-[#1A1A1A] cursor-pointer'
+                                    ? isGrocery
+                                      ? 'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100 cursor-pointer'
+                                      : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
                                     : 'invisible pointer-events-none border-transparent'
                                 }`}
                                 title={item.barcode ? 'Print Barcode Labels' : undefined}
@@ -511,7 +554,11 @@ export const InventoryTable: React.FC = () => {
                                   setEditProductId(item.product_id)
                                   setActiveTab('products')
                                 }}
-                                className="p-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-[#0A0A0A] hover:text-[#D4AF37] hover:border-black transition-colors cursor-pointer shrink-0"
+                                className={`p-1.5 rounded-lg border border-gray-300 text-gray-700 transition-colors cursor-pointer shrink-0 ${
+                                  isGrocery
+                                    ? 'hover:bg-pink-600 hover:text-white hover:border-pink-600'
+                                    : 'hover:bg-blue-600 hover:text-white hover:border-blue-600'
+                                }`}
                                 title={`Edit "${item.name}" in Catalog`}
                               >
                                 <Edit2 size={14} />

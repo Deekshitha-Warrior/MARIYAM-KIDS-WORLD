@@ -112,5 +112,9 @@ export function applyBranchThemeCssVariables(theme: BranchThemeConfig): void {
   root.style.setProperty('--pos-badge-bg', c.sidebarBadgeBg)
   root.style.setProperty('--pos-badge-text', c.sidebarBadgeText)
   root.style.setProperty('--pos-badge-border', c.sidebarBadgeBorder)
+  root.style.setProperty('--brand-gold', c.primary)
+  root.style.setProperty('--brand-gold-hover', c.primaryHover)
+  root.style.setProperty('--brand-gold-light', c.primaryLight)
+  root.style.setProperty('--brand-gold-border', c.cardBorder)
   root.setAttribute('data-branch-code', theme.branchCode.toLowerCase())
 }

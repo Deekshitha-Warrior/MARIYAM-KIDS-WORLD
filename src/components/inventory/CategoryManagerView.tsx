@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, Search, Check, Tag, Layers, RefreshCw, AlertCircle } from 'lucide-react'
 import { inventoryService, type CategoryRecord } from '../../services/inventoryService'
+import { useBranchContextStore } from '../../store/branchContextStore'
 
 export const CategoryManagerView: React.FC = () => {
+  const { activeBranch } = useBranchContextStore()
+  const isGrocery = activeBranch?.code === 'GROCERY' || activeBranch?.code === 'BRANCH_2'
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -101,7 +104,7 @@ export const CategoryManagerView: React.FC = () => {
         return
       }
     } else {
-      if (!confirm(`Are you sure you want to delete category "${cat.name_en}"?`)) {
+      if (!confirm(`Are you sure you want to delete "${cat.name_en}"?`)) {
         return
       }
     }
@@ -109,6 +112,7 @@ export const CategoryManagerView: React.FC = () => {
     try {
       await inventoryService.deleteCategory(cat.id)
       setSuccessMessage(`Category "${cat.name_en}" deleted.`)
+      if (editingId === cat.id) resetForm()
       await loadCategories()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete category'
@@ -125,9 +129,13 @@ export const CategoryManagerView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner & Search */}
-      <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className={`bg-white border rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 ${
+        isGrocery ? 'border-pink-200' : 'border-blue-200'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#0A0A0A] text-[#D4AF37] flex items-center justify-center font-black">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${
+            isGrocery ? 'bg-pink-50 text-pink-600 border border-pink-200' : 'bg-blue-50 text-blue-600 border border-blue-200'
+          }`}>
             <Layers size={18} />
           </div>
           <div>
@@ -148,7 +156,9 @@ export const CategoryManagerView: React.FC = () => {
               placeholder="Search categories..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 bg-[#FBFAF6] text-xs font-bold text-gray-900 outline-none focus:border-[#0A0A0A] focus:bg-white"
+              className={`w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 bg-[#FBFAF6] text-xs font-bold text-gray-900 outline-none focus:bg-white ${
+                isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+              }`}
             />
           </div>
           <button
@@ -189,7 +199,7 @@ export const CategoryManagerView: React.FC = () => {
         <div className="bg-[#FBFAF6] border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-gray-200 pb-3">
             <h4 className="text-xs font-black uppercase tracking-wider text-black flex items-center gap-1.5">
-              <Tag size={14} className="text-[#D4AF37]" />
+              <Tag size={14} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} />
               {editingId ? 'Edit Category' : 'Add New Category'}
             </h4>
             {editingId && (
@@ -214,7 +224,9 @@ export const CategoryManagerView: React.FC = () => {
                 placeholder="e.g. Linen Shirts, Sarees, Trousers"
                 value={nameEn}
                 onChange={(e) => setNameEn(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 outline-none focus:border-[#0A0A0A]"
+                className={`w-full h-10 px-3 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 outline-none ${
+                  isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+                }`}
               />
             </div>
 
@@ -227,7 +239,9 @@ export const CategoryManagerView: React.FC = () => {
                 placeholder="e.g. சட்டை வகைகள்"
                 value={nameTa}
                 onChange={(e) => setNameTa(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 outline-none focus:border-[#0A0A0A]"
+                className={`w-full h-10 px-3 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 outline-none ${
+                  isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+                }`}
               />
             </div>
 
@@ -240,7 +254,9 @@ export const CategoryManagerView: React.FC = () => {
                   type="number"
                   value={sortOrder}
                   onChange={(e) => setSortOrder(parseInt(e.target.value) || 0)}
-                  className="w-full h-10 px-3 rounded-xl border border-gray-300 bg-white text-xs font-black text-gray-900 outline-none focus:border-[#0A0A0A]"
+                  className={`w-full h-10 px-3 rounded-xl border border-gray-300 bg-white text-xs font-black text-gray-900 outline-none ${
+                    isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+                  }`}
                 />
               </div>
 
@@ -253,7 +269,7 @@ export const CategoryManagerView: React.FC = () => {
                     type="checkbox"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="accent-[#0A0A0A] w-4 h-4 rounded cursor-pointer"
+                    className={`w-4 h-4 rounded cursor-pointer ${isGrocery ? 'accent-pink-600' : 'accent-blue-600'}`}
                   />
                   <span className="text-xs font-bold text-gray-800">Active</span>
                 </label>
@@ -264,11 +280,13 @@ export const CategoryManagerView: React.FC = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full py-2.5 rounded-xl bg-[#0A0A0A] border border-[#D4AF37] text-[#D4AF37] text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className={`w-full py-2.5 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                  isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
                 {saving ? (
                   <>
-                    <span className="w-3.5 h-3.5 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin inline-block" />
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
                     Saving...
                   </>
                 ) : editingId ? (
@@ -323,7 +341,9 @@ export const CategoryManagerView: React.FC = () => {
                         {cat.name_ta || '—'}
                       </td>
                       <td className="p-3 text-center">
-                        <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-black">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
+                          isGrocery ? 'bg-pink-50 text-pink-700 border-pink-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
                           {cat.product_count ?? 0} SKUs
                         </span>
                       </td>
@@ -343,7 +363,9 @@ export const CategoryManagerView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => startEdit(cat)}
-                            className="p-1.5 rounded-lg border border-gray-200 text-gray-600 hover:text-black hover:bg-gray-100 transition-colors cursor-pointer"
+                            className={`p-1.5 rounded-lg border border-gray-200 text-gray-600 transition-colors cursor-pointer ${
+                              isGrocery ? 'hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200' : 'hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+                            }`}
                             title="Edit"
                           >
                             <Edit2 size={13} />

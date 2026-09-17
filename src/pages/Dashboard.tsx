@@ -203,6 +203,7 @@ export default function Dashboard() {
   const { setCurrentTab } = useNavigationStore()
   const [cartItemToInject, setCartItemToInject] = useState<string | null>(null)
   const { activeBranch, enterBranch } = useBranchContextStore()
+  const isGrocery = activeBranch?.code === 'GROCERY' || activeBranch?.code === 'BRANCH_2'
   const branchTheme = useMemo(() => getBranchTheme(activeBranch?.code), [activeBranch?.code])
 
   // Synchronize branch from URL query param if present
@@ -3294,7 +3295,9 @@ export default function Dashboard() {
                       <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                       <input
                         type="text"
-                        className="w-full h-11 pl-9 pr-8 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs sm:text-[13px] font-semibold text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
+                        className={`w-full h-11 pl-9 pr-8 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs sm:text-[13px] font-semibold text-[#111111] placeholder:text-gray-400 focus:outline-none transition-all ${
+                          isGrocery ? 'focus:border-pink-500 focus:ring-1 focus:ring-pink-500' : 'focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                        }`}
                         placeholder={l('Search by Invoice, Customer, Phone...', 'பில் எண், வாடிக்கையாளர், போன் எண்...')}
                         value={historyQuickSearch}
                         onChange={e => setHistoryQuickSearch(e.target.value)}
@@ -3315,7 +3318,9 @@ export default function Dashboard() {
                     <button
                       type="submit"
                       disabled={searchLoading}
-                      className="h-11 px-3.5 sm:px-4 rounded-xl bg-[#D4AF37] text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 shrink-0 hover:bg-[#b89528] disabled:opacity-50 transition-colors cursor-pointer"
+                      className={`h-11 px-3.5 sm:px-4 rounded-xl text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50 transition-colors cursor-pointer ${
+                        isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
                     >
                       {searchLoading ? (
                         <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -3333,7 +3338,9 @@ export default function Dashboard() {
                       <select
                         value={billTypeFilter}
                         onChange={e => setBillTypeFilter(e.target.value as typeof billTypeFilter)}
-                        className="w-full lg:w-32 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
+                        className={`w-full lg:w-32 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none cursor-pointer hover:bg-gray-100 transition-colors truncate ${
+                          isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+                        }`}
                       >
                         <option value="all">{l('All Bills', 'அனைத்து')}</option>
                         <option value="offline">{l('Offline', 'ஆஃப்லைன்')}</option>
@@ -4203,7 +4210,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ——— COUPON MANAGEMENT (BLACK & GOLD PREMIUM THEME) ——— */}
+        {/* ——— COUPON MANAGEMENT ——— */}
         {tab === 'coupons' && (
           <div className="space-y-6">
             {/* Header with Title & Refresh Action */}
@@ -4217,10 +4224,12 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => void loadCoupons()}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E8D399] text-[#0A0A0A] font-bold text-xs hover:bg-[#FBFAF6] shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border font-bold text-xs shadow-xs transition-all cursor-pointer hover:scale-[1.02] ${
+                  isGrocery ? 'border-pink-200 text-pink-600 hover:bg-pink-50' : 'border-blue-200 text-blue-600 hover:bg-blue-50'
+                }`}
                 title="Refresh coupons list"
               >
-                <RefreshCw size={14} className="text-[#B48811]" />
+                <RefreshCw size={14} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} />
                 <span>{l('Refresh', 'புதுப்பி')}</span>
               </button>
             </div>
@@ -4232,7 +4241,9 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <p className="text-[11px] font-bold text-[#111111] uppercase tracking-wider">Total Coupons</p>
-                    <div className="w-8 h-8 rounded-full bg-[#FBFAF6] border border-[#E8D399] flex items-center justify-center text-[#B48811] shrink-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                      isGrocery ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-blue-50 border-blue-200 text-blue-600'
+                    }`}>
                       <Tag size={15} />
                     </div>
                   </div>
@@ -4264,7 +4275,9 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <p className="text-[11px] font-bold text-[#111111] uppercase tracking-wider">Total Redemptions</p>
-                    <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center shrink-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                      isGrocery ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-blue-50 border-blue-200 text-blue-600'
+                    }`}>
                       <Percent size={15} />
                     </div>
                   </div>
@@ -4277,8 +4290,10 @@ export default function Dashboard() {
             </div>
 
             {/* Subtotal notice banner */}
-            <div className="rounded-xl border border-[#E8D399]/60 bg-[#FBFAF6] px-4 py-2.5 text-[12px] font-medium text-[#6C665C] flex items-center gap-2.5 shadow-xs">
-              <Info size={16} className="text-[#B48811] shrink-0" />
+            <div className={`rounded-xl border bg-[#FBFAF6] px-4 py-2.5 text-[12px] font-medium text-[#6C665C] flex items-center gap-2.5 shadow-xs ${
+              isGrocery ? 'border-pink-200' : 'border-blue-200'
+            }`}>
+              <Info size={16} className={`${isGrocery ? 'text-pink-600' : 'text-blue-600'} shrink-0`} />
               <span>{l('Coupon discount applies to product subtotal only — delivery charges are excluded.', 'கூப்பன் தள்ளுபடி பொருட்களின் subtotal-க்கு மட்டும் பொருந்தும்.')}</span>
             </div>
 
@@ -4289,7 +4304,9 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
                     <div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#0A0A0A] text-[#D4AF37] border border-[#D4AF37]/30 text-[10px] font-black uppercase tracking-wider">
+                      <span className={`px-2.5 py-0.5 rounded-full text-white text-[10px] font-black uppercase tracking-wider ${
+                        isGrocery ? 'bg-pink-600' : 'bg-blue-600'
+                      }`}>
                         {editingCouponId !== null ? 'EDIT MODE' : 'NEW COUPON'}
                       </span>
                       <h3 className="mt-1.5 text-[18px] font-black text-[#111111]">
@@ -4336,9 +4353,11 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={generateCouponCode}
-                            className="inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-[#0A0A0A] border border-[#D4AF37] text-[#D4AF37] px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
+                            className={`inline-flex items-center gap-1.5 shrink-0 rounded-xl text-white px-4 py-2.5 text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer hover:scale-[1.02] ${
+                              isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
                           >
-                            <Sparkles size={13} className="text-[#D4AF37]" />
+                            <Sparkles size={13} className="text-white" />
                             <span>Generate</span>
                           </button>
                         )}
@@ -4358,6 +4377,7 @@ export default function Dashboard() {
                           type="number"
                           min="1"
                           max="100"
+                          required
                           className="w-full rounded-xl border border-gray-300 bg-[#FAFAFA] px-3.5 py-2.5 text-[13px] font-bold text-[#111111] outline-none transition-all focus:border-[#0A0A0A] focus:bg-white focus:ring-1 focus:ring-[#0A0A0A]"
                           placeholder="10"
                           value={couponForm.percentage}
@@ -4412,9 +4432,11 @@ export default function Dashboard() {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full rounded-xl bg-[#0A0A0A] border border-[#D4AF37] text-[#D4AF37] py-3 text-[13px] font-black uppercase tracking-wider shadow-md hover:bg-[#1A1A1A] hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className={`w-full rounded-xl text-white py-3 text-[13px] font-black uppercase tracking-wider shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                   >
-                    <Ticket size={15} className="text-[#D4AF37]" />
+                    <Ticket size={15} className="text-white" />
                     <span>{editingCouponId !== null ? l('Update Coupon', 'கூப்பனை புதுப்பி') : l('Create Coupon', 'கூப்பனை உருவாக்கு')}</span>
                   </button>
                 </div>
@@ -4431,7 +4453,9 @@ export default function Dashboard() {
                       {coupons.length}
                     </span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#FBFAF6] border border-[#E8D399] text-[#B48811] text-[10px] font-black uppercase tracking-wider">
+                  <span className={`px-2.5 py-0.5 rounded-full bg-[#FBFAF6] border text-[10px] font-black uppercase tracking-wider ${
+                    isGrocery ? 'border-pink-200 text-pink-600' : 'border-blue-200 text-blue-600'
+                  }`}>
                     {l('Admin Only', 'அட்மின் மட்டும்')}
                   </span>
                 </div>
@@ -4446,8 +4470,12 @@ export default function Dashboard() {
                         key={coupon.id}
                         className={`rounded-xl border p-4 shadow-xs transition-all ${
                           isEditing
-                            ? 'border-[#D4AF37] bg-[#FBFAF6] ring-2 ring-[#D4AF37]/30'
-                            : 'border-gray-200 bg-white hover:border-[#D4AF37]/60 hover:shadow-md'
+                            ? isGrocery
+                              ? 'border-pink-500 bg-pink-50/40 ring-2 ring-pink-300'
+                              : 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-300'
+                            : isGrocery
+                            ? 'border-gray-200 bg-white hover:border-pink-300 hover:shadow-md'
+                            : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
                         }`}
                       >
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -4473,7 +4501,7 @@ export default function Dashboard() {
                               )}
                             </div>
 
-                            <p className="text-[13px] font-black text-[#B48811]">
+                            <p className={`text-[13px] font-black ${isGrocery ? 'text-pink-600' : 'text-blue-600'}`}>
                               {coupon.percentage}% OFF
                               {coupon.min_order_value > 0 && ` • min order ₹${coupon.min_order_value}`}
                             </p>
@@ -4489,7 +4517,9 @@ export default function Dashboard() {
                               onClick={() => void toggleCoupon(coupon)}
                               className={`rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                                 coupon.is_active
-                                  ? 'bg-[#0A0A0A] text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#1A1A1A]'
+                                  ? isGrocery
+                                    ? 'bg-pink-600 text-white hover:bg-pink-700'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
                                   : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
                               }`}
                               title={coupon.is_active ? 'Click to deactivate' : 'Click to activate'}
@@ -4498,7 +4528,9 @@ export default function Dashboard() {
                             </button>
                             <button
                               onClick={() => startEditCoupon(coupon)}
-                              className="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:border-[#D4AF37] hover:bg-[#FBFAF6] text-gray-700 hover:text-[#B48811] flex items-center justify-center transition-all cursor-pointer shadow-xs"
+                              className={`w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                                isGrocery ? 'hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600' : 'hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'
+                              }`}
                               title="Edit coupon"
                             >
                               <Edit2 size={13} />
@@ -4517,7 +4549,9 @@ export default function Dashboard() {
                   })}
 
                   {coupons.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-[#E8D399] bg-[#FBFAF6] py-12 text-center text-[13px] font-bold text-[#6B7280]">
+                    <div className={`rounded-2xl border border-dashed bg-[#FBFAF6] py-12 text-center text-[13px] font-bold text-[#6B7280] ${
+                      isGrocery ? 'border-pink-200' : 'border-blue-200'
+                    }`}>
                       {l('No coupons yet. Create your first coupon!', 'இன்னும் கூப்பன் இல்லை. முதல் கூப்பனை உருவாக்குங்கள்!')}
                     </div>
                   )}
@@ -4670,7 +4704,9 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => void openOrderInvoice(invoicePreviewOrder, 'download')}
-                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-[#0A0A0A] px-3 text-xs font-black text-white hover:bg-[#D4AF37]"
+                    className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-xl px-3 text-xs font-black text-white transition-colors ${
+                      isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                   >
                     <Download size={15} /> Download
                   </button>

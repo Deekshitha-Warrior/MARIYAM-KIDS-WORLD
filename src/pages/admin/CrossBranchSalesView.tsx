@@ -32,7 +32,7 @@ export const CrossBranchSalesView: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">Taj Textiles</h2>
-                  <p className="text-[11px] text-slate-500">Mohammed ansari • White & Blue</p>
+                  <p className="text-[11px] text-slate-500">Mohammed ansari</p>
                 </div>
               </div>
               <span className="text-xs text-blue-700 font-bold px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200">58% Share</span>
@@ -90,7 +90,7 @@ export const CrossBranchSalesView: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">MARIYAM KIDS WORLD</h2>
-                  <p className="text-[11px] text-slate-500">AANISHA BANU • White & Pink</p>
+                  <p className="text-[11px] text-slate-500">AANISHA BANU MOHAMMED ANSARI</p>
                 </div>
               </div>
               <span className="text-xs text-pink-700 font-bold px-2.5 py-0.5 rounded-full bg-pink-50 border border-pink-200">42% Share</span>

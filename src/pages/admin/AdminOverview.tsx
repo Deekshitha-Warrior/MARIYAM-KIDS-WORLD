@@ -158,7 +158,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-900">Taj Textiles</h3>
-                    <p className="text-xs text-slate-500">Mohammed ansari • White & Blue Theme</p>
+                    <p className="text-xs text-slate-500">Mohammed ansari</p>
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
@@ -222,7 +222,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-900">MARIYAM KIDS WORLD</h3>
-                    <p className="text-xs text-slate-500">AANISHA BANU • White & Pink Theme</p>
+                    <p className="text-xs text-slate-500">AANISHA BANU MOHAMMED ANSARI</p>
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-pink-50 text-pink-700 border border-pink-200">

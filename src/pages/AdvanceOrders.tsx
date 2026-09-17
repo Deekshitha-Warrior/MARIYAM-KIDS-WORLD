@@ -9,6 +9,7 @@ import { buildAdvanceDepositWhatsAppMessage, buildProfessionalWhatsAppMessage, p
 import { toWhatsAppUrl } from '../lib/phone'
 import { advanceReceiptPdf, downloadFile, printAdvanceReceipt } from '../lib/advanceReceipt'
 import { useAdminAuthStore, useProductStore } from '../store/store'
+import { useBranchContextStore } from '../store/branchContextStore'
 import {
   addAdvanceEvent, completeAdvanceOrder, createAdvanceOrder, getAdvanceOrderHistory, listAdvanceOrders, updateAdvanceStatus,
   type AdvanceOrder, type AdvancePayment, type AdvancePaymentMethod, type AdvanceStatus, type AdvanceTimeline,
@@ -43,6 +44,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputClass = 'w-full rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-sm text-[#273126] outline-none transition focus:border-[#7e22ce] focus:ring-2 focus:ring-violet-100'
 
 export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps = {}) {
+  const { activeBranch } = useBranchContextStore()
+  const isGrocery = activeBranch?.code === 'GROCERY' || activeBranch?.code === 'BRANCH_2'
   const role = useAdminAuthStore(state => state.role)
   const products = useProductStore(state => state.products)
   const [orders, setOrders] = useState<AdvanceOrder[]>([])
@@ -371,7 +374,9 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
 
     {createOpen && createPortal(
       <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-        <form onSubmit={create} className="max-h-[92vh] w-full max-w-4xl overflow-hidden overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border border-[#E8D399]">
+        <form onSubmit={create} className={`max-h-[92vh] w-full max-w-4xl overflow-hidden overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border ${
+          isGrocery ? 'border-pink-200' : 'border-blue-200'
+        }`}>
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h3 className="text-xl font-black text-[#0A0A0A]">Create Advance Order</h3>
@@ -408,7 +413,9 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
 
     {paymentOrder && createPortal(
       <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-        <form onSubmit={receivePayment} className="w-full max-w-md max-h-[92vh] overflow-hidden overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border border-[#E8D399]">
+        <form onSubmit={receivePayment} className={`w-full max-w-md max-h-[92vh] overflow-hidden overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border ${
+          isGrocery ? 'border-pink-200' : 'border-blue-200'
+        }`}>
           <div className="mb-5 flex items-start justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-emerald-600 font-mono">{paymentOrder.deposit_id}</p>
@@ -494,16 +501,22 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
         <div className="absolute inset-0" onClick={() => setSelected(null)} />
 
         {/* Drawer Panel covering full view height */}
-        <div className="relative z-10 h-screen h-[100dvh] w-full max-w-xl bg-white shadow-2xl flex flex-col border-l border-[#E8D399] animate-in slide-in-from-right duration-200">
+        <div className={`relative z-10 h-screen h-[100dvh] w-full max-w-xl bg-white shadow-2xl flex flex-col border-l animate-in slide-in-from-right duration-200 ${
+          isGrocery ? 'border-pink-200' : 'border-blue-200'
+        }`}>
           {/* Sticky Drawer Header */}
           <div className="shrink-0 px-6 py-4 border-b border-gray-200 bg-[#0A0A0A] text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#1A1A1A] border border-[#D4AF37] flex items-center justify-center text-[#D4AF37] shrink-0">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                isGrocery ? 'bg-pink-900/50 border-pink-500 text-pink-400' : 'bg-blue-900/50 border-blue-500 text-blue-400'
+              }`}>
                 <FileText size={18} />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-[#D4AF37] tracking-wider font-mono">{selected.deposit_id}</span>
+                  <span className={`text-xs font-black tracking-wider font-mono ${
+                    isGrocery ? 'text-pink-400' : 'text-blue-400'
+                  }`}>{selected.deposit_id}</span>
                   <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${STATUS_STYLES[selected.status]}`}>
                     {STATUS_LABELS[selected.status]}
                   </span>

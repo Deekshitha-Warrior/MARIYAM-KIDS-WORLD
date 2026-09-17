@@ -37,6 +37,8 @@ export const AddEditProductView: React.FC<{
   onStockUpdated?: () => void
   initialProductId?: number | string | null
 }> = ({ onStockUpdated, initialProductId }) => {
+  const { activeBranch } = useBranchContextStore()
+  const isGrocery = activeBranch?.code === 'GROCERY' || activeBranch?.code === 'BRANCH_2'
   const { products, fetchProducts } = useProductStore()
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [search, setSearch] = useState('')
@@ -706,13 +708,17 @@ export const AddEditProductView: React.FC<{
   return (
     <div className="flex flex-col gap-3">
       {/* Mobile Switch: Product List vs Add/Edit Form */}
-      <div className="lg:hidden flex items-center p-1 bg-white border border-[#E8D399] rounded-2xl shadow-xs shrink-0">
+      <div className={`lg:hidden flex items-center p-1 bg-white border rounded-2xl shadow-xs shrink-0 ${
+        isGrocery ? 'border-pink-200' : 'border-blue-200'
+      }`}>
         <button
           type="button"
           onClick={() => setMobileView('list')}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
             mobileView === 'list'
-              ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+              ? isGrocery
+                ? 'bg-pink-600 text-white shadow-sm'
+                : 'bg-blue-600 text-white shadow-sm'
               : 'text-gray-600 hover:text-black'
           }`}
         >
@@ -728,7 +734,9 @@ export const AddEditProductView: React.FC<{
           }}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
             mobileView === 'form'
-              ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-sm'
+              ? isGrocery
+                ? 'bg-pink-600 text-white shadow-sm'
+                : 'bg-blue-600 text-white shadow-sm'
               : 'text-gray-600 hover:text-black'
           }`}
         >
@@ -743,7 +751,7 @@ export const AddEditProductView: React.FC<{
         }`}>
           <div className="p-3.5 border-b border-gray-200 bg-[#FAFAFA] shrink-0">
             <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <Package size={14} className="text-[#D4AF37]" />
+              <Package size={14} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} />
               Product Catalog ({activeProducts.length})
             </h4>
             <p className="text-[10px] text-gray-500 font-medium mt-0.5">
@@ -759,7 +767,9 @@ export const AddEditProductView: React.FC<{
                 placeholder="Search products, SKUs, barcode..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-900 outline-none focus:border-[#0A0A0A]"
+                className={`w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-bold text-gray-900 outline-none ${
+                  isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+                }`}
               />
             </div>
           </div>
@@ -778,7 +788,9 @@ export const AddEditProductView: React.FC<{
                     onClick={() => void startEditProduct(p)}
                     className={`group p-3 sm:p-3.5 cursor-pointer flex items-center justify-between gap-2.5 transition-all ${
                       isSelected
-                        ? 'bg-[#FFF9E6] border-l-4 border-[#D4AF37] ring-1 ring-[#D4AF37]/40 shadow-xs'
+                        ? isGrocery
+                          ? 'bg-pink-50 border-l-4 border-pink-600 ring-1 ring-pink-300 shadow-xs'
+                          : 'bg-blue-50 border-l-4 border-blue-600 ring-1 ring-blue-300 shadow-xs'
                         : 'hover:bg-[#FBFAF6] border-l-4 border-transparent hover:border-l-gray-300'
                     }`}
                   >
@@ -788,7 +800,9 @@ export const AddEditProductView: React.FC<{
                           {p.name}
                         </span>
                         {isSelected && (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#0A0A0A] text-[#D4AF37] shrink-0">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider text-white shrink-0 ${
+                            isGrocery ? 'bg-pink-600' : 'bg-blue-600'
+                          }`}>
                             Editing
                           </span>
                         )}
@@ -815,13 +829,17 @@ export const AddEditProductView: React.FC<{
                           }}
                           className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                             isSelected
-                              ? 'bg-[#0A0A0A] text-[#D4AF37] border-[#D4AF37] shadow-xs'
-                              : 'border-gray-200 bg-white text-gray-600 hover:bg-[#0A0A0A] hover:text-[#D4AF37] hover:border-black'
+                              ? isGrocery
+                                ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                                : 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : isGrocery
+                              ? 'border-gray-200 bg-white text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200'
+                              : 'border-gray-200 bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
                           }`}
                           title={`Edit "${p.name}"`}
                           aria-label={`Edit ${p.name}`}
                         >
-                          <Edit2 size={13} className={isSelected ? 'text-[#D4AF37]' : ''} />
+                          <Edit2 size={13} />
                         </button>
 
                         <button
@@ -861,7 +879,7 @@ export const AddEditProductView: React.FC<{
               </button>
               <div className="min-w-0">
                 <h3 className="text-sm font-bold text-black flex items-center gap-2 truncate">
-                  <Package size={16} className="text-[#D4AF37] shrink-0" />
+                  <Package size={16} className={`${isGrocery ? 'text-pink-600' : 'text-blue-600'} shrink-0`} />
                   <span className="truncate">{selectedProductId ? 'Edit Product & Stock Details' : 'Add New Product to Catalog'}</span>
                   {selectedProductId && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
@@ -1075,7 +1093,7 @@ export const AddEditProductView: React.FC<{
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-xs font-black text-black flex items-center gap-1.5">
-                    <Tag size={14} className="text-[#D4AF37]" /> Multi-Variant Product (Sizes, Colors, SKUs)
+                    <Tag size={14} className={isGrocery ? 'text-pink-600' : 'text-blue-600'} /> Multi-Variant Product (Sizes, Colors, SKUs)
                   </span>
                   <p className="text-[11px] text-gray-500 font-medium">
                     Enable if this product comes in multiple sizes (e.g. S, M, L, XL) or colors
@@ -1090,14 +1108,18 @@ export const AddEditProductView: React.FC<{
                     }}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0A0A0A]" />
+                  <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${
+                    isGrocery ? 'peer-checked:bg-pink-600' : 'peer-checked:bg-blue-600'
+                  }`} />
                 </label>
               </div>
 
               {hasVariants && (
                 <div className="space-y-4 pt-3 border-t border-gray-100">
                   {/* Standardized Partitioned Size Selector & Custom Variant Bar */}
-                  <div className="bg-[#FBFAF6] border border-[#E8D399] rounded-xl p-3 space-y-3">
+                  <div className={`bg-[#FBFAF6] border rounded-xl p-3 space-y-3 ${
+                    isGrocery ? 'border-pink-200' : 'border-blue-200'
+                  }`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-1 p-0.5 bg-white border border-gray-200 rounded-lg">
                         <button
@@ -1105,7 +1127,9 @@ export const AddEditProductView: React.FC<{
                           onClick={() => setSizePartition('alpha')}
                           className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                             sizePartition === 'alpha'
-                              ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-xs'
+                              ? isGrocery
+                                ? 'bg-pink-600 text-white shadow-xs'
+                                : 'bg-blue-600 text-white shadow-xs'
                               : 'text-gray-600 hover:text-black'
                           }`}
                         >
@@ -1116,7 +1140,9 @@ export const AddEditProductView: React.FC<{
                           onClick={() => setSizePartition('numeric')}
                           className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                             sizePartition === 'numeric'
-                              ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-xs'
+                              ? isGrocery
+                                ? 'bg-pink-600 text-white shadow-xs'
+                                : 'bg-blue-600 text-white shadow-xs'
                               : 'text-gray-600 hover:text-black'
                           }`}
                         >
@@ -1127,7 +1153,9 @@ export const AddEditProductView: React.FC<{
                           onClick={() => setSizePartition('custom')}
                           className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                             sizePartition === 'custom'
-                              ? 'bg-[#0A0A0A] text-[#D4AF37] shadow-xs'
+                              ? isGrocery
+                                ? 'bg-pink-600 text-white shadow-xs'
+                                : 'bg-blue-600 text-white shadow-xs'
                               : 'text-gray-600 hover:text-black'
                           }`}
                         >
@@ -1138,7 +1166,11 @@ export const AddEditProductView: React.FC<{
                       <button
                         type="button"
                         onClick={() => handleAddFullPack(sizePartition)}
-                        className="px-2.5 py-1 rounded-lg bg-white border border-[#D4AF37] text-[#0A0A0A] text-[11px] font-bold hover:bg-[#FFF9E6] transition-colors cursor-pointer"
+                        className={`px-2.5 py-1 rounded-lg bg-white border text-[11px] font-bold transition-colors cursor-pointer ${
+                          isGrocery
+                            ? 'border-pink-300 text-pink-700 hover:bg-pink-50'
+                            : 'border-blue-300 text-blue-700 hover:bg-blue-50'
+                        }`}
                       >
                         + Add Full Size Set ({sizePartition === 'alpha' ? 'S to 2XL' : sizePartition === 'numeric' ? '28 to 38' : 'Standard Specials'})
                       </button>
@@ -1167,7 +1199,9 @@ export const AddEditProductView: React.FC<{
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
                               isSelected
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 opacity-60 cursor-default'
-                                : 'bg-white text-gray-800 border-gray-300 hover:border-[#D4AF37] hover:bg-[#FFF9E6] cursor-pointer'
+                                : isGrocery
+                                ? 'bg-white text-gray-800 border-gray-300 hover:border-pink-400 hover:bg-pink-50 cursor-pointer'
+                                : 'bg-white text-gray-800 border-gray-300 hover:border-blue-400 hover:bg-blue-50 cursor-pointer'
                             }`}
                           >
                             {isSelected ? `✓ ${sz}` : `+ ${sz}`}
@@ -1177,7 +1211,9 @@ export const AddEditProductView: React.FC<{
                     </div>
 
                     {/* Flexible Custom Variant Input Bar */}
-                    <div className="pt-2 border-t border-[#E8D399]/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className={`pt-2 border-t flex flex-col sm:flex-row items-stretch sm:items-center gap-2 ${
+                      isGrocery ? 'border-pink-200/60' : 'border-blue-200/60'
+                    }`}>
                       <div className="flex-1 relative">
                         <input
                           type="text"
@@ -1190,14 +1226,18 @@ export const AddEditProductView: React.FC<{
                               handleAddCustomNamedVariant(customVariantInput)
                             }
                           }}
-                          className="w-full h-8 px-3 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-900 placeholder:text-gray-400 focus:border-[#0A0A0A] outline-none"
+                          className={`w-full h-8 px-3 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-900 placeholder:text-gray-400 outline-none ${
+                            isGrocery ? 'focus:border-pink-500' : 'focus:border-blue-500'
+                          }`}
                         />
                       </div>
                       <button
                         type="button"
                         onClick={() => handleAddCustomNamedVariant(customVariantInput)}
                         disabled={!customVariantInput.trim()}
-                        className="h-8 px-3.5 rounded-lg bg-[#0A0A0A] text-[#D4AF37] text-xs font-bold hover:bg-[#1A1A1A] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0"
+                        className={`h-8 px-3.5 rounded-lg text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+                          isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
                       >
                         <Plus size={13} /> Add Custom
                       </button>
@@ -1230,7 +1270,9 @@ export const AddEditProductView: React.FC<{
                     <button
                       type="button"
                       onClick={handleAddVariantRow}
-                      className="px-3 py-1 rounded-lg bg-[#0A0A0A] text-[#D4AF37] text-xs font-black flex items-center gap-1 hover:bg-[#1A1A1A] cursor-pointer"
+                      className={`px-3 py-1 rounded-lg text-white text-xs font-black flex items-center gap-1 cursor-pointer ${
+                        isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
                     >
                       <Plus size={12} /> Add Blank Variant Row
                     </button>
@@ -1355,11 +1397,13 @@ export const AddEditProductView: React.FC<{
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-[#0A0A0A] border border-[#D4AF37] text-[#D4AF37] text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className={`px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 ${
+                isGrocery ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
               {loading ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin inline-block" />
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
                   Saving Product...
                 </>
               ) : (
