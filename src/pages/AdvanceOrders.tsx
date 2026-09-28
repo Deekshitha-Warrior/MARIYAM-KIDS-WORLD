@@ -201,22 +201,21 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
   const receivePayment = async (event: FormEvent) => {
     event.preventDefault(); if (!paymentOrder) return; setSaving(true); setError('')
     try {
-      const couponDiscount = appliedCoupon ? Math.round(paymentOrder.remaining_balance * (appliedCoupon.percentage / 100) * 100) / 100 : 0
+      // Advance orders use fixed payment amounts - no coupon application allowed
       const manualDiscountNum = Math.max(0, Number(manualDiscount) || 0)
       const manualDisc = manualDiscountType === '%'
         ? Math.round(paymentOrder.remaining_balance * (manualDiscountNum / 100) * 100) / 100
         : manualDiscountNum
-      const finalAmount = Math.max(0, paymentOrder.remaining_balance - couponDiscount - manualDisc)
+      const finalAmount = Math.max(0, paymentOrder.remaining_balance - manualDisc)
       const parts = [paymentForm.remarks]
-      if (appliedCoupon) parts.push(`Coupon: ${appliedCoupon.code} (-${appliedCoupon.percentage}%) = -INR ${couponDiscount.toFixed(2)}`)
-      if (manualDisc > 0) parts.push(`Manual Discount: ${manualDiscountType === '%' ? manualDiscountNum + '%' : '₹' + manualDiscountNum.toFixed(2)} = -INR ${manualDisc.toFixed(2)}`)
+      if (manualDisc > 0) parts.push(`Manual Adjustment: ${manualDiscountType === '%' ? manualDiscountNum + '%' : '₹' + manualDiscountNum.toFixed(2)} = -INR ${manualDisc.toFixed(2)}`)
       const remarksWithCoupon = parts.filter(Boolean).join(' | ')
       const result = await completeAdvanceOrder(
-        paymentOrder.id, 
-        paymentForm.method, 
+        paymentOrder.id,
+        paymentForm.method,
         finalAmount,
-        appliedCoupon?.code || null,
-        appliedCoupon?.percentage || 0,
+        null, // No coupon codes for advance orders
+        0, // No coupon percentage
         manualDisc,
         remarksWithCoupon
       )
@@ -480,24 +479,7 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
             })()}
           </div>
           <div className="space-y-4">
-            <Field label="Coupon Code (Optional)">
-              <div className="flex gap-2">
-                {appliedCoupon ? (
-                  <div className="flex flex-1 items-center justify-between rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-black text-violet-700">
-                    <span>{appliedCoupon.code} — {appliedCoupon.percentage}% OFF</span>
-                    <button type="button" onClick={removeCoupon} className="ml-2 text-red-500 hover:text-red-700 cursor-pointer"><X size={14}/></button>
-                  </div>
-                ) : (
-                  <>
-                    <input list="adv-coupon-list" className={`${inputClass} flex-1`} value={couponInput} onChange={e=>{setCouponInput(e.target.value.toUpperCase());setCouponError('')}} placeholder="Enter code" />
-                    <datalist id="adv-coupon-list">{availableCoupons.map(c=><option key={c.code} value={c.code}/>)}</datalist>
-                    <button type="button" onClick={applyCoupon} className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white hover:bg-violet-700 cursor-pointer transition">Apply</button>
-                  </>
-                )}
-              </div>
-              {couponError && <p className="mt-1 text-xs font-semibold text-red-600">{couponError}</p>}
-            </Field>
-            <Field label="Manual Discount">
+            <Field label="Manual Adjustment (Admin Only)">
               <div className="flex gap-2 items-center">
                 <select value={manualDiscountType} onChange={e=>setManualDiscountType(e.target.value as 'rm'|'%')} className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm font-black text-[#273126] outline-none focus:border-[#7e22ce] focus:ring-2 focus:ring-violet-100 cursor-pointer">
                   <option value="rm">₹</option>
