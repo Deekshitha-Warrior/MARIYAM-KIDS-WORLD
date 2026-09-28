@@ -401,9 +401,9 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
         </div>
 
         {/* Body - Scrollable */}
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-4 overflow-y-auto flex-1 min-h-0">
+        <div className="p-2.5 sm:p-3 space-y-2.5 sm:space-y-3 overflow-y-auto flex-1 min-h-0">
           {/* Barcode Info Card */}
-          <div className="bg-[#FBFAF6] border border-[#E8D399] rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-[#FBFAF6] border border-[#E8D399] rounded-xl p-2 sm:p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-[#B48811]">
                 Product / SKU
@@ -431,7 +431,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
           </div>
 
           {/* Configuration Form Card */}
-          <div className="bg-[#FBFAF6] border border-[#E8D399]/70 rounded-2xl p-4 space-y-4">
+          <div className="bg-[#FBFAF6] border border-[#E8D399]/70 rounded-xl p-2 sm:p-2.5 space-y-2.5">
             {/* Row 1: Target Printer & Preset */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Target Printer Type */}
@@ -562,7 +562,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
                 {quantity || 1} {quantity === '1' ? 'Label' : 'Labels'} • {selectedPreset.widthMm} × {selectedPreset.heightMm} mm ({printerType === 'label' ? 'Roll' : 'A4 Sheet'})
               </span>
             </div>
-            <div className="bg-[#FBFAF6] border-2 border-dashed border-[#E8D399] rounded-2xl py-6 px-4 flex items-center justify-center min-h-[140px]">
+            <div className="bg-[#FBFAF6] border-2 border-dashed border-[#E8D399] rounded-xl py-3 px-3 flex items-center justify-center min-h-[100px]">
               <BarcodeLabel
                 productName={productName}
                 variantName={variantName}

@@ -180,7 +180,7 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
-          <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-3.5">
+          <div className="overflow-y-auto flex-1 p-2.5 sm:p-3 space-y-2.5">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-2 rounded-xl text-xs flex items-center gap-2">
                 <AlertCircle size={15} className="shrink-0" />

@@ -91,7 +91,7 @@ export const BarcodeSettingsDrawer: React.FC<BarcodeSettingsDrawerProps> = ({
           </div>
 
           {/* Drawer Body */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {/* Section 1: Printer */}
             <div>
               <div className="flex items-center justify-between mb-2">
