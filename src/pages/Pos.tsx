@@ -1755,63 +1755,76 @@ export default function Pos(props: PosProps = {}) {
 
               {/* Split Payment Sub-UI */}
               {paymentType === 'split' && ordermode !== 'online' && (
-                <div className="border-2 border-[#D4AF37]/60 rounded-xl p-3 bg-[#FFFDF4] space-y-3">
-                  <p className="text-[10px] font-black text-[#7A1220] uppercase tracking-wider">
-                    Split Payment — {splitP1Type === 'cash' ? 'Cash' : splitP1Type === 'qr' ? 'QR' : 'Card'} + {splitP2Type === 'cash' ? 'Cash' : splitP2Type === 'qr' ? 'QR' : 'Card'} (₹)
-                  </p>
+                <div className="border-2 border-[#D4AF37]/60 rounded-xl p-2.5 bg-[#FFFDF4] space-y-2.5 w-full min-w-0 overflow-hidden box-border">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] font-black text-[#7A1220] uppercase tracking-wider truncate">
+                      Split Payment
+                    </p>
+                    <span className="text-[9px] font-black text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded uppercase shrink-0">
+                      {splitP1Type} + {splitP2Type}
+                    </span>
+                  </div>
+
                   {/* Payment 1 */}
-                  <div>
-                    <span className="block text-[9px] font-black text-[#6B7280] uppercase tracking-wider mb-1">Payment 1</span>
-                    <div className="flex gap-1.5 items-center">
-                      <div className="grid grid-cols-3 gap-1 shrink-0">
-                        {(['cash', 'qr', 'card'] as const).map(t => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => { setSplitP1Type(t); if (t === splitP2Type) setSplitP2Type(t === 'cash' ? 'qr' : 'cash') }}
-                            className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 transition-colors ${
-                              splitP1Type === t
-                                ? 'bg-[#111111] text-white border-[#111111]'
-                                : 'bg-white text-[#374151] border-gray-200 hover:border-gray-400'
-                            }`}
-                          >
-                            {t === 'qr' ? 'QR' : t === 'card' ? 'Card' : 'Cash'}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="space-y-1 bg-white/80 p-2 rounded-lg border border-[#E8D399]/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider">Payment 1</span>
+                      <span className="text-[9px] font-semibold text-gray-400">Amount</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 w-full">
+                      {(['cash', 'qr', 'card'] as const).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => { setSplitP1Type(t); if (t === splitP2Type) setSplitP2Type(t === 'cash' ? 'qr' : 'cash') }}
+                          className={`py-1 rounded-md text-[10px] font-black uppercase border transition-colors ${
+                            splitP1Type === t
+                              ? 'bg-[#111111] text-white border-[#111111]'
+                              : 'bg-white text-[#374151] border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          {t === 'qr' ? 'QR' : t === 'card' ? 'Card' : 'Cash'}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="relative w-full min-w-0 mt-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
                       <input
                         type="number"
                         onWheel={e => (e.target as HTMLInputElement).blur()}
                         value={splitP1Amount}
                         onChange={e => setSplitP1Amount(e.target.value)}
                         placeholder="0.00"
-                        className="flex-1 h-9 px-3 bg-white border border-gray-200 rounded-xl text-[13px] font-black text-[#111111] text-right focus:outline-none focus:border-[#D4AF37]"
+                        className="w-full min-w-0 h-8 pl-6 pr-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-black text-[#111111] text-right focus:outline-none focus:border-[#D4AF37]"
                       />
                     </div>
                   </div>
+
                   {/* Payment 2 */}
-                  <div>
-                    <span className="block text-[9px] font-black text-[#6B7280] uppercase tracking-wider mb-1">Payment 2</span>
-                    <div className="flex gap-1.5 items-center">
-                      <div className="grid grid-cols-3 gap-1 shrink-0">
-                        {(['cash', 'qr', 'card'] as const).map(t => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => { setSplitP2Type(t); if (t === splitP1Type) setSplitP1Type(t === 'cash' ? 'qr' : 'cash') }}
-                            className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 transition-colors ${
-                              splitP2Type === t
-                                ? 'bg-[#111111] text-white border-[#111111]'
-                                : 'bg-white text-[#374151] border-gray-200 hover:border-gray-400'
-                            }`}
-                          >
-                            {t === 'qr' ? 'QR' : t === 'card' ? 'Card' : 'Cash'}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex-1 h-9 px-3 bg-[#F3F4F6] border border-gray-200 rounded-xl text-[13px] font-black text-[#374151] text-right flex items-center justify-end">
-                        {formatCurrency(Math.max(0, total - (Number(splitP1Amount) || 0)))}
-                      </div>
+                  <div className="space-y-1 bg-white/80 p-2 rounded-lg border border-[#E8D399]/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider">Payment 2</span>
+                      <span className="text-[9px] font-semibold text-gray-400">Auto Remaining</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 w-full">
+                      {(['cash', 'qr', 'card'] as const).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => { setSplitP2Type(t); if (t === splitP1Type) setSplitP1Type(t === 'cash' ? 'qr' : 'cash') }}
+                          className={`py-1 rounded-md text-[10px] font-black uppercase border transition-colors ${
+                            splitP2Type === t
+                              ? 'bg-[#111111] text-white border-[#111111]'
+                              : 'bg-white text-[#374151] border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          {t === 'qr' ? 'QR' : t === 'card' ? 'Card' : 'Cash'}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="w-full min-w-0 h-8 px-2.5 bg-gray-50 border border-gray-200 rounded-lg text-[12px] font-black text-[#374151] flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-gray-400 font-semibold uppercase">Remaining</span>
+                      <span>{formatCurrency(Math.max(0, total - (Number(splitP1Amount) || 0)))}</span>
                     </div>
                   </div>
                 </div>
