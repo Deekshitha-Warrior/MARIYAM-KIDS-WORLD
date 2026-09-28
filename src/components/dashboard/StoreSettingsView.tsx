@@ -5,14 +5,14 @@ import { useAdminAuthStore, useSettingsStore, resolveBranch, type PosBranch } fr
 import { posAccent, branchShortLabel, branchLogo, getAdminThemeColor, setAdminThemeColor, applyActiveTheme } from '../../lib/branchTheme'
 import { normalizeHex } from '../../lib/color'
 
-// 20 curated preset colors matching the appearance palette in reference image
+// 20 curated elegant, deep, eye-friendly theme colors (rich wines, deep forest greens, executive navies, dark teals, royal plums, warm espresso & obsidian)
 const PRESET_COLORS = [
-  // Row 1: Greens, Reds, Violets, Indigo
-  '#2E7D32', '#14532D', '#166534', '#DC2626', '#EA580C', '#B91C1C', '#7C3AED', '#4338CA',
-  // Row 2: Blues, Purples, Pinks, Teals
-  '#2563EB', '#0EA5E9', '#7E22CE', '#6B21A8', '#4C1D95', '#DB2777', '#BE185D', '#0D9488',
-  // Row 3: Cyans, Golds, Blacks, Slates
-  '#0284C7', '#CA8A04', '#171717', '#334155',
+  // Row 1: Deep Burgundies, Wines & Forest Greens
+  '#7A1220', '#5A0E17', '#8B1A1A', '#6B1724', '#143D2B', '#1B4332', '#0F3F2E', '#1F382B',
+  // Row 2: Executive Navies, Midnight Blues & Dark Teals
+  '#0F172A', '#162A45', '#1E293B', '#132E4F', '#0D3B3B', '#134E4A', '#0F3D4A', '#1A3644',
+  // Row 3: Royal Plums, Deep Violets, Warm Bronze & Charcoal
+  '#3B183B', '#2E1065', '#4A2E12', '#18181B',
 ]
 
 type SettingsTarget = 'pos1' | 'pos2' | 'admin'
@@ -299,7 +299,7 @@ export default function StoreSettingsView() {
                 type="text"
                 value={form.themeColor}
                 onChange={(e) => setForm((f) => ({ ...f, themeColor: e.target.value }))}
-                placeholder="#B91C1C"
+                placeholder="#7A1220"
                 className="flex-1 h-11 px-4 rounded-xl border border-gray-200 bg-[#FAFAFA] text-sm font-black text-[#111111] uppercase tracking-wider outline-none focus:border-gray-400"
               />
             </div>
