@@ -1,5 +1,5 @@
 import React from 'react'
-import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, BRAND_INSTAGRAM, BRAND_PRIMARY_PHONE_DISPLAY, BRAND_ICON } from '../lib/brand'
+import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, getInstagramUrls, BRAND_PRIMARY_PHONE_DISPLAY, BRAND_ICON } from '../lib/brand'
 import { branchLogo } from '../lib/branchTheme'
 import { formatCurrency, formatQuantityDisplay, normalizeStructuredOrderItem, formatInvoiceNo } from '../lib/retail'
 import type { PosBranch } from '../store/store'
@@ -70,6 +70,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
 
   const statusColor = status === 'completed' ? '#D4AF37' : status === 'cancelled' ? '#dc2626' : '#d97706'
   const effectiveDelivery = deliveryCharge || shipping
+  const instagramUrls = getInstagramUrls(branch)
 
   return (
     <div
@@ -93,7 +94,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
         <div style={{ fontSize: 11, color: '#4b5563', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span>📞 {BRAND_PRIMARY_PHONE_DISPLAY}</span>
           <span>✉️ {BRAND_EMAIL}</span>
-          <span>📷 @{BRAND_INSTAGRAM}</span>
+          {instagramUrls && <span>📷 Instagram</span>}
         </div>
       </div>
 
@@ -246,9 +247,11 @@ export const Invoice: React.FC<InvoiceProps> = ({
         <div style={{ fontSize: 12, fontWeight: 800, color: '#7A1220', letterSpacing: 0.5 }}>
           Thank you for shopping at YG ENTERPRISES!
         </div>
-        <div style={{ fontSize: 10, color: '#666', marginTop: 3, fontWeight: 500 }}>
-          Follow us on Instagram: @{BRAND_INSTAGRAM}
-        </div>
+        {instagramUrls && (
+          <div style={{ fontSize: 10, color: '#666', marginTop: 3, fontWeight: 500, whiteSpace: 'pre-line' }}>
+            Follow us on Instagram:{'\n'}{instagramUrls}
+          </div>
+        )}
       </div>
     </div>
   )

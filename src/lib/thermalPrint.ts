@@ -1,4 +1,4 @@
-import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, BRAND_INSTAGRAM, BRAND_PRIMARY_PHONE_DISPLAY } from './brand'
+import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, getInstagramUrls, BRAND_PRIMARY_PHONE_DISPLAY } from './brand'
 import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import { formatCurrency, formatInvoiceNo } from './retail'
 import type { PosBranch } from '../store/store'
@@ -31,6 +31,7 @@ export interface ThermalReceiptData {
 export function printThermalReceipt(data: ThermalReceiptData) {
   try {
     const logoSrc = data.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1
+    const instagramUrls = getInstagramUrls(data.branch)
     // Create an isolated print iframe protected from third-party extension observers
     const iframe = document.createElement('iframe')
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;'
@@ -109,7 +110,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
           <div class="font-bold" style="font-size: 16px; letter-spacing: 2px;">${data.storeName || BRAND_EN}</div>
           <div style="font-size: 10px; margin-top: 2px;">${data.storeAddress || BRAND_ADDRESS}</div>
           <div class="mt-1" style="font-size: 10px;">Ph: ${data.storePhone || BRAND_PRIMARY_PHONE_DISPLAY}</div>
-          <div style="font-size: 9px; color: #333;">${data.storeEmail || BRAND_EMAIL} | Insta: @${BRAND_INSTAGRAM}</div>
+          <div style="font-size: 9px; color: #333;">${data.storeEmail || BRAND_EMAIL}${instagramUrls ? ' | Insta' : ''}</div>
         </div>
 
         <div class="border-bottom border-top" style="font-size: 11px;">
@@ -191,7 +192,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
 
         <div class="text-center mt-2" style="font-size: 11px;">
           <div class="font-bold">Thank you for shopping at YG ENTERPRISES!</div>
-          <div>Follow us on Instagram: @${BRAND_INSTAGRAM}</div>
+          ${instagramUrls ? `<div style="font-size: 10px; margin-top: 2px; white-space: pre-line;">Follow us on Instagram:\n${instagramUrls}</div>` : ''}
         </div>
       </body>
     </html>
