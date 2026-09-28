@@ -224,7 +224,7 @@ export default function DigitalInvoice() {
   const subtotal = invoiceItems.reduce((sum: number, item: ReturnType<typeof normalizeStructuredOrderItem>) => sum + item.line_total, 0)
 
   const downloadPdf = async () => {
-    if (!invoiceElementRef.current || downloadingPdf) return
+    if (downloadingPdf) return
 
     // iOS detection: Safari on iOS requires window.open to be called synchronously inside user gesture
     const isIOS =
@@ -253,7 +253,27 @@ export default function DigitalInvoice() {
 
     setDownloadingPdf(true)
     try {
-      const file = await invoicePdfFileFromElement(invoiceElementRef.current, invoice.invoice_no)
+      // Use jsPDF-based generation which is more reliable and matches tax invoice format
+      const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
+        .map((item: Record<string, unknown>) => normalizeStructuredOrderItem(item))
+
+      const file = invoicePdfFile({
+        invoiceNo: invoice.invoice_no,
+        date: invoice.created_at,
+        customerName: invoice.customer_name || 'Walk-in Customer',
+        phone: invoice.phone || '',
+        address: invoice.address || '',
+        branch: invoice.branch as any,
+        items: invoice.items || [],
+        subtotal: invoiceItems.reduce((sum: number, item: any) => sum + (item.line_total || 0), 0),
+        shipping: invoice.shipping || 0,
+        total: invoice.total || 0,
+        discountAmount: invoice.discount_amount,
+        manualDiscountAmount: invoice.manual_discount_amount,
+        gstAmount: invoice.gst_amount,
+        couponCode: invoice.coupon_code,
+        paymentMode: invoice.payment_mode,
+      })
 
       if (!file || file.size === 0) {
         console.error('Generated PDF file is empty')
@@ -348,10 +368,29 @@ export default function DigitalInvoice() {
     }
 
     // Proactively upload invoice PDF in background if needed
-    if (!pdfUrl && invoiceElementRef.current) {
+    if (!pdfUrl) {
       void (async () => {
         try {
-          const file = await invoicePdfFileFromElement(invoiceElementRef.current!, invoice.invoice_no)
+          const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
+            .map((item: Record<string, unknown>) => normalizeStructuredOrderItem(item))
+
+          const file = invoicePdfFile({
+            invoiceNo: invoice.invoice_no,
+            date: invoice.created_at,
+            customerName: invoice.customer_name || 'Walk-in Customer',
+            phone: invoice.phone || '',
+            address: invoice.address || '',
+            branch: invoice.branch as any,
+            items: invoice.items || [],
+            subtotal: invoiceItems.reduce((sum: number, item: any) => sum + (item.line_total || 0), 0),
+            shipping: invoice.shipping || 0,
+            total: invoice.total || 0,
+            discountAmount: invoice.discount_amount,
+            manualDiscountAmount: invoice.manual_discount_amount,
+            gstAmount: invoice.gst_amount,
+            couponCode: invoice.coupon_code,
+            paymentMode: invoice.payment_mode,
+          })
           await uploadInvoicePdf(file, invoice.invoice_no)
         } catch { /* best-effort background upload */ }
       })()
