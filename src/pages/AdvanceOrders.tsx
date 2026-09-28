@@ -179,6 +179,7 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
         remainingBalance: created.remaining_balance,
         expectedDeliveryDate: created.expected_delivery_date,
         paymentMethod: form.paymentMethod,
+        branch: created.branch,
       })
       window.open(toWhatsAppUrl(created.phone, advanceMsg), '_blank', 'noopener,noreferrer')
     } catch (err) { setError(err instanceof Error ? err.message : 'Unable to create advance order') } finally { setSaving(false) }
@@ -240,6 +241,7 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
       depositAmount: order.deposit_amount,
       remainingBalance: order.remaining_balance,
       expectedDeliveryDate: order.expected_delivery_date,
+      branch: order.branch,
     })
     window.open(toWhatsAppUrl(order.phone, message), '_blank', 'noopener,noreferrer')
   }

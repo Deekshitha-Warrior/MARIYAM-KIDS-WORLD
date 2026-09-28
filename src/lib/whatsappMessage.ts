@@ -36,6 +36,7 @@ export type AdvanceDepositWhatsAppInput = {
   remainingBalance: number
   expectedDeliveryDate: string
   paymentMethod?: string
+  branch?: string // POS1 or POS2
 }
 
 export const publicInvoiceUrl = (invoiceNumber: string) => {
@@ -98,6 +99,10 @@ export const buildAdvanceDepositWhatsAppMessage = (input: AdvanceDepositWhatsApp
       })()
     : '-'
 
+  // Get branch-specific Instagram URLs (POS1 only, POS2 has none)
+  const instagramUrls = getInstagramUrls(input.branch)
+  const instagramSection = instagramUrls ? `\n📷 *Follow us on Instagram:*\n${instagramUrls}` : ''
+
   return `✨ *Thank You for Your Advance Order with ${BRAND_EN}!* ✨
 
 Dear ${customerName},
@@ -114,6 +119,5 @@ We have successfully received your initial advance payment!
 
 Your garments are being prepared with utmost care. We will have everything ready on or before ${deliveryDateFormatted}!
 
-📞 *Shop Contact:* ${BRAND_PRIMARY_PHONE_DISPLAY}
-📷 *Instagram:* @${BRAND_INSTAGRAM}`
+📞 *Shop Contact:* ${BRAND_PRIMARY_PHONE_DISPLAY}${instagramSection}`
 }

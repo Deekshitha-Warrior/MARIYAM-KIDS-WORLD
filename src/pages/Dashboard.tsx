@@ -2740,9 +2740,9 @@ export default function Dashboard() {
                       <div className="space-y-3">
                         {analytics.topProducts.slice(0, 3).map((p, i) => (
                           <div key={i} className="flex items-center justify-between text-[13px]">
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold text-[#6B7280] w-4">{i + 1}</span>
-                              <span className="font-bold text-[#111111] truncate max-w-[120px]">{p.name}</span>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="font-bold text-[#6B7280] w-4 shrink-0">{i + 1}</span>
+                              <span className="font-bold text-[#111111] break-words">{p.name}</span>
                             </div>
                             <div className="flex items-center gap-4">
                               <span className="font-bold text-[#7A1220]">{formatCurrency(p.revenue)}</span>
