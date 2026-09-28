@@ -110,7 +110,8 @@ export function printThermalReceipt(data: ThermalReceiptData) {
           <div class="font-bold" style="font-size: 16px; letter-spacing: 2px;">${data.storeName || BRAND_EN}</div>
           <div style="font-size: 10px; margin-top: 2px;">${data.storeAddress || BRAND_ADDRESS}</div>
           <div class="mt-1" style="font-size: 10px;">Ph: ${data.storePhone || BRAND_PRIMARY_PHONE_DISPLAY}</div>
-          <div style="font-size: 9px; color: #333;">${data.storeEmail || BRAND_EMAIL}${instagramUrls ? ' | Insta' : ''}</div>
+          <div style="font-size: 9px; color: #333;">${data.storeEmail || BRAND_EMAIL}</div>
+          ${instagramUrls ? `<div style="font-size: 9px; color: #333; margin-top: 2px;">Insta: ${instagramUrls.split('\\n').join(' | ')}</div>` : ''}
         </div>
 
         <div class="border-bottom border-top" style="font-size: 11px;">
@@ -192,7 +193,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
 
         <div class="text-center mt-2" style="font-size: 11px;">
           <div class="font-bold">Thank you for shopping at YG ENTERPRISES!</div>
-          ${instagramUrls ? `<div style="font-size: 10px; margin-top: 2px; white-space: pre-line;">Follow us on Instagram:\n${instagramUrls}</div>` : ''}
+          ${instagramUrls ? `<div style="font-size: 10px; margin-top: 2px;">Follow us on Instagram:<br/>${instagramUrls.split('\n').join('<br/>')}</div>` : ''}
         </div>
       </body>
     </html>
