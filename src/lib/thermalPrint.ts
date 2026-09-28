@@ -24,6 +24,7 @@ export interface ThermalReceiptData {
   manualDiscount?: number
   totalGst?: number
   total: number
+  paymentMode?: string
   storeName?: string
   storePhone?: string
   storeAddress?: string
@@ -122,6 +123,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
         <div class="border-bottom border-top" style="font-size: 11px;">
           <div>Inv: #${formatInvoiceNo(data.invoiceNo)}</div>
           <div>Date: ${dateStr}</div>
+          ${data.paymentMode ? `<div>Payment: ${data.paymentMode}</div>` : ''}
           ${data.customerName ? `<div>Name: ${data.customerName}</div>` : ''}
           ${data.phone ? `<div>Tel: ${formatCustomerPhone(data.phone)}</div>` : ''}
         </div>

@@ -60,7 +60,10 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
   const [timeline, setTimeline] = useState<AdvanceTimeline[]>([])
   const [payments, setPayments] = useState<AdvancePayment[]>([])
   const [paymentOrder, setPaymentOrder] = useState<AdvanceOrder | null>(null)
-  const [paymentForm, setPaymentForm] = useState({ method: 'cash' as AdvancePaymentMethod, remarks: '' })
+  const [paymentForm, setPaymentForm] = useState({ method: 'cash' as AdvancePaymentMethod | 'split', remarks: '' })
+  const [splitP1Type, setSplitP1Type] = useState<'cash' | 'upi' | 'card'>('cash')
+  const [splitP1Amount, setSplitP1Amount] = useState('')
+  const [splitP2Type, setSplitP2Type] = useState<'cash' | 'upi' | 'card'>('upi')
   const [couponInput, setCouponInput] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; percentage: number } | null>(null)
   const [couponError, setCouponError] = useState('')
@@ -209,17 +212,38 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
       const parts = [paymentForm.remarks]
       if (manualDisc > 0) parts.push(`Manual Adjustment: ${manualDiscountType === '%' ? manualDiscountNum + '%' : '₹' + manualDiscountNum.toFixed(2)} = -INR ${manualDisc.toFixed(2)}`)
       const remarksWithCoupon = parts.filter(Boolean).join(' | ')
+
+      const labelFor = (t: 'cash' | 'upi' | 'card') => t === 'upi' ? 'QR' : t === 'card' ? 'Card' : 'Cash'
+      let finalMethodStr: string = paymentForm.method
+      if (paymentForm.method === 'split') {
+        const p1Amt = Number(splitP1Amount) || 0
+        if (!splitP1Amount.trim() || p1Amt <= 0) { setError('Enter Payment 1 amount for split payment'); setSaving(false); return }
+        if (p1Amt >= finalAmount) { setError('Payment 1 amount must be less than the remaining balance — select a single payment method instead'); setSaving(false); return }
+        if (splitP1Type === splitP2Type) { setError('Payment 1 and Payment 2 must use different methods'); setSaving(false); return }
+        const p2Amt = Math.max(0, finalAmount - p1Amt)
+        finalMethodStr = `Split (${labelFor(splitP1Type)} ₹${p1Amt} + ${labelFor(splitP2Type)} ₹${p2Amt})`
+      }
+
+      const rpcMethod: AdvancePaymentMethod = paymentForm.method === 'split' ? splitP1Type : paymentForm.method
       const result = await completeAdvanceOrder(
         paymentOrder.id,
-        paymentForm.method,
+        rpcMethod,
         finalAmount,
         null, // No coupon codes for advance orders
         0, // No coupon percentage
         manualDisc,
         remarksWithCoupon
       )
-      const completed: AdvanceOrder = { ...paymentOrder, status: 'completed', remaining_balance: finalAmount, completed_at: result.completed_at, completed_order_id: result.order_id, invoice_number: result.invoice_no, final_payment_method: paymentForm.method }
-      setOrders(rows => rows.map(row => row.id === completed.id ? completed : row)); onOrderCompleted?.(completed); setPaymentOrder(null); setPaymentForm({ method: 'cash', remarks: '' }); setAppliedCoupon(null); setCouponInput(''); setCouponError(''); setManualDiscount(''); setManualDiscountType('rm'); setNotice(`${result.invoice_no} generated once. The full ${formatCurrency(completed.total_amount)} is now recognized as revenue.`)
+
+      if (paymentForm.method === 'split') {
+        try {
+          await supabase.from('orders').update({ payment_mode: finalMethodStr, payment_method: finalMethodStr }).eq('id', result.order_id)
+          await supabase.from('advance_orders').update({ final_payment_method: finalMethodStr }).eq('id', paymentOrder.id)
+        } catch { /* best effort db update */ }
+      }
+
+      const completed: AdvanceOrder = { ...paymentOrder, status: 'completed', remaining_balance: finalAmount, completed_at: result.completed_at, completed_order_id: result.order_id, invoice_number: result.invoice_no, final_payment_method: finalMethodStr }
+      setOrders(rows => rows.map(row => row.id === completed.id ? completed : row)); onOrderCompleted?.(completed); setPaymentOrder(null); setPaymentForm({ method: 'cash', remarks: '' }); setSplitP1Amount(''); setAppliedCoupon(null); setCouponInput(''); setCouponError(''); setManualDiscount(''); setManualDiscountType('rm'); setNotice(`${result.invoice_no} generated once. The full ${formatCurrency(completed.total_amount)} is now recognized as revenue.`)
 
       // Redirect to WhatsApp with final invoice URL + Instagram + Feedback form
       whatsappInvoice(completed)
@@ -228,7 +252,7 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
 
   const productRows = (order: AdvanceOrder) => order.products.length ? order.products : [{ name: order.product_name, quantity: 1, base_price: order.total_amount, line_total: order.total_amount, unit: 'piece', unit_type: 'unit' }]
   const invoiceFile = (order: AdvanceOrder) => invoicePdfFile({ invoiceNo: order.invoice_number || order.deposit_id, date: order.completed_at || new Date().toISOString(), customerName: order.customer_name, phone: order.phone, address: order.address, branch: order.branch, items: productRows(order), subtotal: order.total_amount, shipping: 0, total: order.total_amount, paymentMode: order.final_payment_method || 'Paid' })
-  const printFinal = (order: AdvanceOrder) => printThermalReceipt({ invoiceNo: order.invoice_number || order.deposit_id, date: order.completed_at || new Date().toISOString(), customerName: order.customer_name, phone: order.phone, branch: order.branch, items: productRows(order).map(item => ({ name: String(item.name || 'Product'), qty: Number(item.quantity || 1), unit: String(item.unit || 'piece'), price: Number(item.base_price || 0), line_total: Number(item.line_total || 0) })), subtotal: order.total_amount, shipping: 0, total: order.total_amount })
+  const printFinal = (order: AdvanceOrder) => printThermalReceipt({ invoiceNo: order.invoice_number || order.deposit_id, date: order.completed_at || new Date().toISOString(), customerName: order.customer_name, phone: order.phone, branch: order.branch, items: productRows(order).map(item => ({ name: String(item.name || 'Product'), qty: Number(item.quantity || 1), unit: String(item.unit || 'piece'), price: Number(item.base_price || 0), line_total: Number(item.line_total || 0) })), subtotal: order.total_amount, shipping: 0, total: order.total_amount, paymentMode: order.final_payment_method || 'Paid' })
   
   const whatsappDepositReceipt = (order: AdvanceOrder) => {
     const message = buildAdvanceDepositWhatsAppMessage({
@@ -488,12 +512,67 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
               </div>
             </Field>
             <Field label="Payment Method">
-              <select className={inputClass} value={paymentForm.method} onChange={e=>setPaymentForm({...paymentForm,method:e.target.value as AdvancePaymentMethod})}>
+              <select className={inputClass} value={paymentForm.method} onChange={e=>setPaymentForm({...paymentForm,method:e.target.value as AdvancePaymentMethod | 'split'})}>
                 <option value="cash">Cash</option>
                 <option value="upi">QR</option>
                 <option value="card">Card</option>
+                <option value="split">Split (Multiple Methods)</option>
               </select>
             </Field>
+            {paymentForm.method === 'split' && (
+              <div className="border border-violet-200 rounded-xl p-3 bg-violet-50/50 space-y-3">
+                <p className="text-[10px] font-black text-violet-800 uppercase tracking-wider">
+                  Split Payment — {splitP1Type === 'cash' ? 'Cash' : splitP1Type === 'upi' ? 'QR' : 'Card'} + {splitP2Type === 'cash' ? 'Cash' : splitP2Type === 'upi' ? 'QR' : 'Card'} (₹)
+                </p>
+                <div>
+                  <span className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Payment 1</span>
+                  <div className="flex gap-1.5 items-center">
+                    <select
+                      value={splitP1Type}
+                      onChange={e => {
+                        const val = e.target.value as 'cash' | 'upi' | 'card'
+                        setSplitP1Type(val)
+                        if (val === splitP2Type) setSplitP2Type(val === 'cash' ? 'upi' : 'cash')
+                      }}
+                      className="h-9 px-2 bg-white border border-gray-200 rounded-lg text-xs font-black uppercase outline-none"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">QR</option>
+                      <option value="card">Card</option>
+                    </select>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={splitP1Amount}
+                      onChange={e => setSplitP1Amount(e.target.value)}
+                      placeholder="0.00"
+                      className="flex-1 h-9 px-3 bg-white border border-gray-200 rounded-xl text-xs font-black text-right outline-none focus:border-violet-600"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Payment 2</span>
+                  <div className="flex gap-1.5 items-center">
+                    <select
+                      value={splitP2Type}
+                      onChange={e => {
+                        const val = e.target.value as 'cash' | 'upi' | 'card'
+                        setSplitP2Type(val)
+                        if (val === splitP1Type) setSplitP1Type(val === 'cash' ? 'upi' : 'cash')
+                      }}
+                      className="h-9 px-2 bg-white border border-gray-200 rounded-lg text-xs font-black uppercase outline-none"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">QR</option>
+                      <option value="card">Card</option>
+                    </select>
+                    <div className="flex-1 h-9 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-black text-gray-700 text-right flex items-center justify-end">
+                      {formatCurrency(Math.max(0, (paymentOrder?.remaining_balance || 0) - (Number(splitP1Amount) || 0)))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <Field label="Payment Notes">
               <textarea className={inputClass} value={paymentForm.remarks} onChange={e=>setPaymentForm({...paymentForm,remarks:e.target.value})} placeholder="Notes about this payment (optional)"/>
             </Field>

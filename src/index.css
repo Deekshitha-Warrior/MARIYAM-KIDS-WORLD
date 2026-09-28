@@ -4,8 +4,14 @@
 
 @layer base {
   :root {
-    --brand-black: #7A1220;
-    --brand-black-surface: #5C0D18;
+    /* Active dynamic theme variables — driven by current active branch / role */
+    --theme-primary: #7A1220;
+    --theme-primary-dark: #5C0D18;
+    --theme-primary-light: #FBF6E9;
+    --theme-primary-border: #E8D399;
+
+    --brand-black: var(--theme-primary, #7A1220);
+    --brand-black-surface: var(--theme-primary-dark, #5C0D18);
     --brand-gold: #D4AF37;
     --brand-gold-hover: #C5A059;
     --brand-gold-light: #FBF6E9;
@@ -22,6 +28,41 @@
     --pos-two: #B8860B;
     --pos-two-dark: #8A6508;
     --pos-two-light: #FBF3DE;
+  }
+
+  /* Dynamic whole-theme color bindings so changing branch appearance colors
+     seamlessly shifts the whole theme color across POS 1, POS 2, and Admin */
+  .bg-\[\#7A1220\],
+  .bg-\[\#8B1A1A\],
+  .bg-brand-black {
+    background-color: var(--theme-primary) !important;
+  }
+  .text-\[\#7A1220\],
+  .text-\[\#8B1A1A\],
+  .text-brand-black {
+    color: var(--theme-primary) !important;
+  }
+  .border-\[\#7A1220\],
+  .border-\[\#8B1A1A\],
+  .border-brand-black {
+    border-color: var(--theme-primary) !important;
+  }
+  .hover\:bg-\[\#7A1220\]:hover,
+  .hover\:bg-\[\#8B1A1A\]:hover,
+  .hover\:bg-brand-black:hover {
+    background-color: var(--theme-primary-dark) !important;
+  }
+  .hover\:text-\[\#7A1220\]:hover,
+  .hover\:text-\[\#8B1A1A\]:hover {
+    color: var(--theme-primary-dark) !important;
+  }
+  .hover\:border-\[\#7A1220\]:hover,
+  .hover\:border-\[\#8B1A1A\]:hover {
+    border-color: var(--theme-primary-dark) !important;
+  }
+  .focus\:border-\[\#7A1220\]:focus,
+  .focus\:border-\[\#8B1A1A\]:focus {
+    border-color: var(--theme-primary) !important;
   }
 
   *, *::before, *::after {

@@ -7,7 +7,7 @@ import { clearLocalOrders } from './lib/ordersFallback'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { LowStockAlarmModal } from './components/dashboard/LowStockAlarmModal'
 import { useLowStockMonitor } from './hooks/useLowStockMonitor'
-import { applyBranchThemeVars } from './lib/branchTheme'
+import { applyActiveTheme } from './lib/branchTheme'
 
 function lazyWithRetry<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>
@@ -92,7 +92,7 @@ function AppShell() {
   const initialize = useAuthStore((state) => state.initialize)
   const fetchProducts = useProductStore((state) => state.fetchProducts)
   const fetchVariants = useVariantStore((state) => state.fetchVariants)
-  const { isLoggedIn, role, activeBranch } = useAdminAuthStore()
+  const { isLoggedIn, role, activeBranch, branch: staffBranch } = useAdminAuthStore()
   const fetchSettings = useSettingsStore((state) => state.fetchSettings)
   const settingsByBranch = useSettingsStore((state) => state.settingsByBranch)
 
@@ -113,8 +113,8 @@ function AppShell() {
   }, [fetchSettings])
 
   useEffect(() => {
-    applyBranchThemeVars(settingsByBranch)
-  }, [settingsByBranch])
+    applyActiveTheme(activeBranch, role, settingsByBranch, staffBranch)
+  }, [activeBranch, role, settingsByBranch, staffBranch])
 
   useEffect(() => {
     if (!isSupabaseConfigured) {

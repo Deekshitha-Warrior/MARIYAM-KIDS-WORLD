@@ -1,5 +1,5 @@
-import { useSettingsStore, type PosBranch, type StoreSettings } from '../store/store'
-import { normalizeHex, shadeHex, tintHex } from './color'
+import { useSettingsStore, type PosBranch, type ActiveBranch, type AdminRole, type StoreSettings } from '../store/store'
+import { normalizeHex, shadeHex, tintHex, mixHex } from './color'
 import { BRAND_LOGO_POS1, BRAND_LOGO_POS2 } from './brand'
 
 /** User-facing branch name, themed to what that branch actually sells
@@ -28,7 +28,25 @@ export const posAccent = (branch: PosBranch) => branch === 'pos2'
   ? { bg: 'bg-posTwo', bgLight: 'bg-posTwo-light', text: 'text-posTwo-dark', border: 'border-posTwo', hex: '#B8860B' }
   : { bg: 'bg-posOne', bgLight: 'bg-posOne-light', text: 'text-posOne-dark', border: 'border-posOne', hex: '#8B1A1A' }
 
-const DEFAULT_BRANCH_COLOR: Record<PosBranch, string> = { pos1: '#8B1A1A', pos2: '#B8860B' }
+export const DEFAULT_BRANCH_COLOR: Record<PosBranch, string> = { pos1: '#8B1A1A', pos2: '#B8860B' }
+export const DEFAULT_ADMIN_COLOR = '#7A1220'
+
+const ADMIN_THEME_STORAGE_KEY = 'yg_admin_theme_color'
+
+export function getAdminThemeColor(): string {
+  try {
+    const saved = localStorage.getItem(ADMIN_THEME_STORAGE_KEY)
+    if (saved) return normalizeHex(saved)
+  } catch { /* ignore */ }
+  return DEFAULT_ADMIN_COLOR
+}
+
+export function setAdminThemeColor(hex: string): void {
+  try {
+    const normalized = normalizeHex(hex)
+    localStorage.setItem(ADMIN_THEME_STORAGE_KEY, normalized)
+  } catch { /* ignore */ }
+}
 
 /** Pushes each branch's saved Appearance color (Store Settings) onto the
  * `--pos-one*` / `--pos-two*` CSS custom properties that `bg-posOne`,
@@ -43,4 +61,44 @@ export function applyBranchThemeVars(settingsByBranch: Partial<Record<PosBranch,
     root.style.setProperty(`${varPrefix}-dark`, shadeHex(color))
     root.style.setProperty(`${varPrefix}-light`, tintHex(color))
   })
+}
+
+/** Determines active theme color based on current role, activeBranch, and saved preferences,
+ * and sets root CSS variables so the ENTIRE theme changes dynamically. */
+export function applyActiveTheme(
+  activeBranch: ActiveBranch,
+  role: AdminRole,
+  settingsByBranch: Partial<Record<PosBranch, StoreSettings>>,
+  staffBranch?: PosBranch | null
+) {
+  const root = document.documentElement
+
+  // Update branch vars first
+  applyBranchThemeVars(settingsByBranch)
+
+  let activeColor = DEFAULT_ADMIN_COLOR
+
+  if (role === 'staff' && staffBranch) {
+    activeColor = normalizeHex(settingsByBranch[staffBranch]?.themeColor || DEFAULT_BRANCH_COLOR[staffBranch])
+  } else if (activeBranch === 'pos1') {
+    activeColor = normalizeHex(settingsByBranch['pos1']?.themeColor || DEFAULT_BRANCH_COLOR['pos1'])
+  } else if (activeBranch === 'pos2') {
+    activeColor = normalizeHex(settingsByBranch['pos2']?.themeColor || DEFAULT_BRANCH_COLOR['pos2'])
+  } else {
+    // Admin global / all branches view
+    activeColor = getAdminThemeColor()
+  }
+
+  const primaryDark = shadeHex(activeColor, 0.28)
+  const primaryLight = tintHex(activeColor, 0.90)
+  const primaryBorder = mixHex(activeColor, '#D4AF37', 0.35)
+
+  root.style.setProperty('--theme-primary', activeColor)
+  root.style.setProperty('--theme-primary-dark', primaryDark)
+  root.style.setProperty('--theme-primary-light', primaryLight)
+  root.style.setProperty('--theme-primary-border', primaryBorder)
+
+  // Map brand-black variables to the active theme color
+  root.style.setProperty('--brand-black', activeColor)
+  root.style.setProperty('--brand-black-surface', primaryDark)
 }

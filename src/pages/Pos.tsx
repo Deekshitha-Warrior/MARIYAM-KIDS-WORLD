@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { useProductStore, useVariantStore, useAdminAuthStore, resolveBranch, type Product } from '../store/store'
+import { branchShortLabel } from '../lib/branchTheme'
 import { useNavigationStore } from '../store/navigationStore'
 import { barcodeService } from '../services/barcodeService'
 import { normalizeBarcode } from '../lib/barcode'
@@ -136,7 +137,7 @@ export default function Pos(props: PosProps = {}) {
   const { lang } = useLangStore()
   const l = (en: string, ta: string) => lang === 'ta' ? ta : en
   const navigate = useNavigate()
-  const { logout, role, activeBranch } = useAdminAuthStore()
+  const { logout, role, activeBranch, setActiveBranch } = useAdminAuthStore()
   const branch = resolveBranch(activeBranch)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [billingAdjOpen, setBillingAdjOpen] = useState(false)
@@ -150,7 +151,10 @@ export default function Pos(props: PosProps = {}) {
   const [remarks, setRemarks] = useState('')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [billingDate, setBillingDate] = useState('') // '' = use current date/time
-  const [paymentType, setPaymentType] = useState<'cash' | 'qr' | 'card'>('cash')
+  const [paymentType, setPaymentType] = useState<'cash' | 'qr' | 'card' | 'split'>('cash')
+  const [splitP1Type, setSplitP1Type] = useState<'cash' | 'qr' | 'card'>('cash')
+  const [splitP1Amount, setSplitP1Amount] = useState<string>('')
+  const [splitP2Type, setSplitP2Type] = useState<'cash' | 'qr' | 'card'>('qr')
   const [saving, setSaving] = useState(false)
   const [shipping, setShipping] = useState<string>('0')
   const [couponInput, setCouponInput] = useState('')
@@ -665,6 +669,10 @@ export default function Pos(props: PosProps = {}) {
     setGstType('percent')
     setOrdermode('offline')
     setMobilePanelView('catalogue')
+    setPaymentType('cash')
+    setSplitP1Type('cash')
+    setSplitP1Amount('')
+    setSplitP2Type('qr')
     searchRef.current?.focus()
   }
 
@@ -788,11 +796,22 @@ export default function Pos(props: PosProps = {}) {
     // Validate payment amount (only required for cash)
     if (paymentType === 'cash' && !cashReceived.trim()) { setError('Enter the amount received from customer'); return }
     if (paymentType === 'cash' && cashReceivedNum < total) { setError(`Insufficient payment. Customer still owes ${formatCurrency(total - cashReceivedNum)}`); return }
+    // Validate split payment
+    if (paymentType === 'split') {
+      const p1Amt = Number(splitP1Amount) || 0
+      if (!splitP1Amount.trim() || p1Amt <= 0) { setError('Enter Payment 1 amount for split payment'); return }
+      if (p1Amt >= total) { setError('Payment 1 amount must be less than the total — use a single payment method instead'); return }
+      if (splitP1Type === splitP2Type) { setError('Payment 1 and Payment 2 must use different methods for split payment'); return }
+    }
     // Validate online mode availability
     if (ordermode === 'online' && !isSupabaseConfigured) { setError('Cannot place online orders while offline'); return }
     setSaving(true); setError('')
     try {
-      const paymentMode = ordermode === 'online' ? 'online' : paymentType
+      const labelFor = (t: 'cash' | 'qr' | 'card') => t === 'qr' ? 'QR' : t === 'card' ? 'Card' : 'Cash'
+      const splitP1Amt = Number(splitP1Amount) || 0
+      const splitP2Amt = Math.max(0, total - splitP1Amt)
+      const splitModeLabel = `Split (${labelFor(splitP1Type)} ${formatCurrency(splitP1Amt)} + ${labelFor(splitP2Type)} ${formatCurrency(splitP2Amt)})`
+      const paymentMode = ordermode === 'online' ? 'online' : paymentType === 'split' ? splitModeLabel : paymentType
       const created = await createOrderWithStock({
         customerName: customer.name.trim() || 'Walk-in Customer',
         phone: normalizedPhone,
@@ -888,7 +907,7 @@ export default function Pos(props: PosProps = {}) {
         address: customer.address.trim() || 'POS Counter',
         amountReceived: cashReceivedNum,
         balanceReturned: balanceToReturn,
-        paymentMode: ordermode === 'online' ? 'Online' : paymentType === 'qr' ? 'QR' : paymentType === 'card' ? 'Card' : 'Cash',
+        paymentMode: ordermode === 'online' ? 'Online' : paymentType === 'split' ? splitModeLabel : paymentType === 'qr' ? 'QR' : paymentType === 'card' ? 'Card' : 'Cash',
         paymentMethod: paymentMode,
       }
       setInvoice(createdInvoice)
@@ -981,6 +1000,7 @@ export default function Pos(props: PosProps = {}) {
       manualDiscount: inv.manualDiscountAmount,
       totalGst: inv.gstAmount,
       total: inv.total,
+      paymentMode: inv.paymentMode,
     })
   }
 
@@ -1133,11 +1153,44 @@ export default function Pos(props: PosProps = {}) {
       {/* Header */}
       <div className="px-3 pt-3 pb-2.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 md:pb-4 shrink-0 flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
         <div className="min-w-0">
-          <h2 className="text-[18px] sm:text-[22px] md:text-[24px] font-black text-[#7A1220] flex items-center gap-2 leading-tight">
-            <div className="w-1.5 h-5 sm:h-6 bg-[#D4AF37] rounded-full shrink-0"></div>
-            POS Billing Panel
-          </h2>
-          <p className="text-[11px] sm:text-[12px] text-gray-500 font-medium ml-3.5 mt-0.5 pr-2">Quick Invoice generator & database synced checkout</p>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-[18px] sm:text-[22px] md:text-[24px] font-black text-[#7A1220] flex items-center gap-2 leading-tight">
+              <div className="w-1.5 h-5 sm:h-6 bg-[#D4AF37] rounded-full shrink-0"></div>
+              POS Billing Panel
+            </h2>
+            {role === 'admin' ? (
+              <div className="flex items-center bg-white border border-gray-200 rounded-xl p-0.5 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveBranch('pos1')}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    branch === 'pos1'
+                      ? 'bg-[#111111] text-white shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  POS 1 (Jute)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveBranch('pos2')}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    branch === 'pos2'
+                      ? 'bg-[#111111] text-white shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  POS 2 (Crackers)
+                </button>
+              </div>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wider text-[#111111] shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {branchShortLabel(branch)}
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] sm:text-[12px] text-gray-500 font-medium ml-3.5 mt-0.5 pr-2">Quick Invoice generator &amp; database synced checkout</p>
         </div>
 
         {/* Online/Offline Toggle & Logout */}
@@ -1682,8 +1735,8 @@ export default function Pos(props: PosProps = {}) {
               {/* Payment Mode Selector */}
               <div>
                 <label className="block text-[10px] font-black text-[#374151] tracking-wider uppercase mb-1">Payment Mode</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(['cash', 'qr', 'card'] as const).map(mode => (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(['cash', 'qr', 'card', 'split'] as const).map(mode => (
                     <button
                       key={mode}
                       type="button"
@@ -1694,14 +1747,78 @@ export default function Pos(props: PosProps = {}) {
                           : 'bg-white text-[#374151] border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      {mode === 'qr' ? 'QR' : mode === 'card' ? 'Card' : 'Cash'}
+                      {mode === 'qr' ? 'QR' : mode === 'card' ? 'Card' : mode === 'split' ? 'Split' : 'Cash'}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Amount Received (shown for all payment modes) */}
-              {ordermode !== 'online' && (
+              {/* Split Payment Sub-UI */}
+              {paymentType === 'split' && ordermode !== 'online' && (
+                <div className="border-2 border-[#D4AF37]/60 rounded-xl p-3 bg-[#FFFDF4] space-y-3">
+                  <p className="text-[10px] font-black text-[#7A1220] uppercase tracking-wider">
+                    Split Payment — {splitP1Type === 'cash' ? 'Cash' : splitP1Type === 'qr' ? 'QR' : 'Card'} + {splitP2Type === 'cash' ? 'Cash' : splitP2Type === 'qr' ? 'QR' : 'Card'} (₹)
+                  </p>
+                  {/* Payment 1 */}
+                  <div>
+                    <span className="block text-[9px] font-black text-[#6B7280] uppercase tracking-wider mb-1">Payment 1</span>
+                    <div className="flex gap-1.5 items-center">
+                      <div className="grid grid-cols-3 gap-1 shrink-0">
+                        {(['cash', 'qr', 'card'] as const).map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => { setSplitP1Type(t); if (t === splitP2Type) setSplitP2Type(t === 'cash' ? 'qr' : 'cash') }}
+                            className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 transition-colors ${
+                              splitP1Type === t
+                                ? 'bg-[#111111] text-white border-[#111111]'
+                                : 'bg-white text-[#374151] border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            {t === 'qr' ? 'QR' : t === 'card' ? 'Card' : 'Cash'}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        onWheel={e => (e.target as HTMLInputElement).blur()}
+                        value={splitP1Amount}
+                        onChange={e => setSplitP1Amount(e.target.value)}
+                        placeholder="0.00"
+                        className="flex-1 h-9 px-3 bg-white border border-gray-200 rounded-xl text-[13px] font-black text-[#111111] text-right focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                  </div>
+                  {/* Payment 2 */}
+                  <div>
+                    <span className="block text-[9px] font-black text-[#6B7280] uppercase tracking-wider mb-1">Payment 2</span>
+                    <div className="flex gap-1.5 items-center">
+                      <div className="grid grid-cols-3 gap-1 shrink-0">
+                        {(['cash', 'qr', 'card'] as const).map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => { setSplitP2Type(t); if (t === splitP1Type) setSplitP1Type(t === 'cash' ? 'qr' : 'cash') }}
+                            className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 transition-colors ${
+                              splitP2Type === t
+                                ? 'bg-[#111111] text-white border-[#111111]'
+                                : 'bg-white text-[#374151] border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            {t === 'qr' ? 'QR' : t === 'card' ? 'Card' : 'Cash'}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex-1 h-9 px-3 bg-[#F3F4F6] border border-gray-200 rounded-xl text-[13px] font-black text-[#374151] text-right flex items-center justify-end">
+                        {formatCurrency(Math.max(0, total - (Number(splitP1Amount) || 0)))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Amount Received (shown for cash/qr/card only) */}
+              {ordermode !== 'online' && paymentType !== 'split' && (
               <div>
                 <div className="border border-gray-200 rounded-xl p-2.5 bg-white">
                   <label className="block text-[10px] font-black text-[#374151] tracking-wider uppercase mb-0.5">

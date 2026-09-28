@@ -311,6 +311,7 @@ export default function Dashboard() {
 
   // Order Management bill type filter
   const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual'>('all')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'cash' | 'qr' | 'card' | 'split'>('all')
 
   // Users tab
   const [allUsers, setAllUsers] = useState<ProfileUser[]>([])
@@ -834,18 +835,30 @@ export default function Dashboard() {
     }
   }, [orders, orderItems, products, coupons, expenses, analyticsDateFrom, analyticsDateTo])
 
-  // Bill-type filtered results for Order Management table (client-side, instant)
+  // Bill-type & Payment-method filtered results for Order Management table (client-side, instant)
   const filteredSearchResults = useMemo(() => {
-    if (billTypeFilter === 'all') return searchResults
     return searchResults.filter(o => {
       const type = normalizeOrderType(o.order_type)
       const mode = normalizeOrderMode(o.order_mode)
-      if (billTypeFilter === 'manual')  return type === 'manual_sale'
-      if (billTypeFilter === 'offline') return type === 'pos_sale' && mode !== 'online'
-      if (billTypeFilter === 'online')  return type === 'pos_sale' && mode === 'online'
+      if (billTypeFilter === 'manual' && type !== 'manual_sale') return false
+      if (billTypeFilter === 'offline' && !(type === 'pos_sale' && mode !== 'online')) return false
+      if (billTypeFilter === 'online' && !(type === 'pos_sale' && mode === 'online')) return false
+
+      if (paymentMethodFilter !== 'all') {
+        const pm = String(o.payment_mode || o.payment_method || '').toLowerCase()
+        if (paymentMethodFilter === 'split') {
+          if (!pm.includes('split')) return false
+        } else if (paymentMethodFilter === 'cash') {
+          if (!pm.includes('cash') || pm.includes('split')) return false
+        } else if (paymentMethodFilter === 'qr') {
+          if ((!pm.includes('qr') && !pm.includes('upi')) || pm.includes('split')) return false
+        } else if (paymentMethodFilter === 'card') {
+          if (!pm.includes('card') || pm.includes('split')) return false
+        }
+      }
       return true
     })
-  }, [searchResults, billTypeFilter])
+  }, [searchResults, billTypeFilter, paymentMethodFilter])
 
   // Load dashboard data
   const loadData = useCallback(async () => {
@@ -1211,6 +1224,7 @@ export default function Dashboard() {
     setSearch({ invoiceNo: '', phone: '', customerName: '', dateFrom: '', dateTo: '' })
     setDatePreset('')
     setBillTypeFilter('all')
+    setPaymentMethodFilter('all')
     setShowAdvancedFilters(false)
     void loadData()
   }
@@ -3312,19 +3326,35 @@ export default function Dashboard() {
                     </button>
                   </div>
 
-                  {/* Dropdown controls & Filters toggle in a 3-column grid on mobile with generous width */}
-                  <div className="grid grid-cols-3 gap-2 shrink-0 w-full lg:w-auto">
+                  {/* Dropdown controls & Filters toggle in a responsive grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0 w-full lg:w-auto">
                     {/* Bill Type Dropdown */}
                     <div className="relative min-w-0">
                       <select
                         value={billTypeFilter}
                         onChange={e => setBillTypeFilter(e.target.value as typeof billTypeFilter)}
-                        className="w-full lg:w-32 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
+                        className="w-full lg:w-28 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
                       >
                         <option value="all">{l('All Bills', 'அனைத்து')}</option>
                         <option value="offline">{l('Offline', 'ஆஃப்லைன்')}</option>
                         <option value="online">{l('Online', 'ஆன்லைன்')}</option>
                         <option value="manual">{l('Manual', 'கைமுறை')}</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    </div>
+
+                    {/* Payment Method Dropdown */}
+                    <div className="relative min-w-0">
+                      <select
+                        value={paymentMethodFilter}
+                        onChange={e => setPaymentMethodFilter(e.target.value as typeof paymentMethodFilter)}
+                        className="w-full lg:w-32 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
+                      >
+                        <option value="all">{l('All Payments', 'அனைத்து முறை')}</option>
+                        <option value="cash">{l('Cash Only', 'ரொக்கம்')}</option>
+                        <option value="qr">{l('QR / UPI', 'QR / UPI')}</option>
+                        <option value="card">{l('Card', 'கார்டு')}</option>
+                        <option value="split">{l('Split Payment', 'பிரிவு கட்டணம்')}</option>
                       </select>
                       <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
@@ -3681,6 +3711,24 @@ export default function Dashboard() {
                                 <div>
                                   <p className="text-[10px] font-black uppercase text-[#9BAB9A] tracking-wider mb-1">Address</p>
                                   <p className="font-semibold text-[#374151] break-words">{o.address || '—'}</p>
+                                </div>
+                                <div className="col-span-2 sm:col-span-4">
+                                  <p className="text-[10px] font-black uppercase text-[#9BAB9A] tracking-wider mb-1">Payment Mode</p>
+                                  {o.payment_mode ? (
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                      o.payment_mode.toLowerCase().includes('split')
+                                        ? 'bg-purple-100 text-purple-700'
+                                        : o.payment_mode.toLowerCase() === 'cash'
+                                          ? 'bg-green-100 text-green-700'
+                                          : o.payment_mode.toLowerCase() === 'card'
+                                            ? 'bg-blue-100 text-blue-700'
+                                            : 'bg-amber-100 text-amber-700'
+                                    }`}>
+                                      {o.payment_mode}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[#374151] font-semibold">—</span>
+                                  )}
                                 </div>
                               </div>
                             </td>
