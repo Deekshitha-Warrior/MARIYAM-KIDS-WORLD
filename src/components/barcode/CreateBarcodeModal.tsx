@@ -414,7 +414,11 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
     const allStickers: string[] = []
     selectedItems.forEach((item) => {
       const count = Math.max(1, item.noOfLabels)
-      const fullTitle = `${item.productName}${item.variantName ? ` (${item.variantName})` : ''}`
+      const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const fullTitle = esc(item.line1 || `${item.productName}${item.variantName ? ` (${item.variantName})` : ''}`)
+      // Line 3 defaults to "Price: ₹…"; skip it when the price is already printed in the footer
+      const line3 = item.line3 && !(settings.showSalePrice && /^price\s*:/i.test(item.line3)) ? esc(item.line3) : ''
+      const line4 = item.line4 ? esc(item.line4) : ''
       const svgMarkup = generateBarcodeSvgString(item.barcodeValue, {
         width: barcodeBarWidth,
         height: barcodeHeightPx,
@@ -432,8 +436,10 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
             <div class="barcode-box">
               ${svgMarkup}
             </div>
+            ${line3 ? `<div class="extra-line">${line3}</div>` : ''}
+            ${line4 ? `<div class="extra-line">${line4}</div>` : ''}
             <div class="footer">
-              <span>${item.line2 ? `<span class="tag">${item.line2}</span>` : `<span class="tag">${BRAND_EN} RETAIL</span>`}</span>
+              <span>${item.line2 ? `<span class="tag">${esc(item.line2)}</span>` : `<span class="tag">${BRAND_EN} RETAIL</span>`}</span>
               ${settings.showSalePrice ? `<span class="price">₹${item.price}</span>` : ''}
             </div>
           </div>
@@ -567,6 +573,17 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
               max-height: 100%;
               width: auto;
               height: auto;
+            }
+            .extra-line {
+              font-size: ${tagFontSize};
+              font-weight: 700;
+              color: #222;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              max-width: 98%;
+              line-height: 1.1;
+              flex-shrink: 0;
             }
             .footer {
               width: 100%;

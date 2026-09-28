@@ -4,7 +4,7 @@ import { useCartStore, useAuthStore } from '../store/store'
 import { useLangStore } from '../store/langStore'
 import { ArrowLeft, MessageCircle, CheckCircle, ShoppingBag, Tag, X } from 'lucide-react'
 import { createOrderWithStock } from '../services/orderService'
-import { validateCoupon } from '../services/couponService'
+import { validateCoupon, type AppliedCoupon } from '../services/couponService'
 import { BRAND_WHATSAPP, BRAND_WHATSAPP_LINK } from '../lib/brand'
 import { normalizePhone, isValidPhone, getSubscriberDigits } from '../lib/phone'
 import { PLACEHOLDER as PRODUCT_PLACEHOLDER } from '../lib/productImages'
@@ -49,11 +49,13 @@ export default function Checkout() {
 
   // Coupon state
   const [couponInput, setCouponInput]   = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; percentage: number; discount: number } | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
   const [couponError, setCouponError]   = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
 
-  const discountAmount = appliedCoupon?.discount || 0
+  // Recompute from the live subtotal so the discount (and min-order condition) always match the cart
+  const couponValid = !!appliedCoupon && subtotal >= appliedCoupon.minOrderValue
+  const discountAmount = couponValid ? Math.round((subtotal * appliedCoupon.percentage / 100) * 100) / 100 : 0
   const finalTotal     = Math.max(0, subtotal - discountAmount)
 
   useEffect(() => {
@@ -170,8 +172,8 @@ export default function Checkout() {
         orderType:        'online_request',
         deliveryCharge:   0,
         discountAmount,
-        couponCode:       appliedCoupon?.code,
-        couponPercentage: appliedCoupon?.percentage,
+        couponCode:       couponValid ? appliedCoupon?.code : undefined,
+        couponPercentage: couponValid ? appliedCoupon?.percentage : 0,
       })
 
       const snapshot: BookedOrderSnapshot = {
@@ -184,7 +186,7 @@ export default function Checkout() {
         subtotal,
         discountAmount,
         total:         finalTotal,
-        couponCode:    appliedCoupon?.code,
+        couponCode:    couponValid ? appliedCoupon?.code : undefined,
       }
 
       const waText = buildWhatsAppMessage(snapshot, itemsSnapshot)
@@ -366,7 +368,11 @@ export default function Checkout() {
                     <Tag size={14} className="text-green-600 shrink-0" />
                     <div className="flex-1">
                       <p className="text-green-800 font-bold text-sm">{appliedCoupon.code} — {appliedCoupon.percentage}% off</p>
-                      <p className="text-green-700 text-xs">You save {formatCurrency(appliedCoupon.discount)}</p>
+                      <p className="text-green-700 text-xs">
+                        {couponValid
+                          ? `You save ${formatCurrency(discountAmount)}`
+                          : `Minimum order of ${formatCurrency(appliedCoupon.minOrderValue)} required`}
+                      </p>
                     </div>
                     <button onClick={removeCoupon} className="text-green-600 hover:text-red-500 transition-colors">
                       <X size={16} />
@@ -447,10 +453,10 @@ export default function Checkout() {
               <div className="flex justify-between text-textMuted">
                 <span>Subtotal</span><span className="font-medium">{formatCurrency(subtotal)}</span>
               </div>
-              {appliedCoupon && (
+              {appliedCoupon && couponValid && (
                 <div className="flex justify-between text-green-700">
                   <span>Discount ({appliedCoupon.code})</span>
-                  <span className="font-bold">−{formatCurrency(appliedCoupon.discount)}</span>
+                  <span className="font-bold">−{formatCurrency(discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-textMain text-base border-t border-sand pt-3 mt-2">

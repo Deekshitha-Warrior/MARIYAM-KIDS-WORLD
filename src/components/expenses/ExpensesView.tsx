@@ -25,6 +25,7 @@ import {
 import { RecordExpenseModal } from './RecordExpenseModal'
 import { ExpenseCategoriesView } from './ExpenseCategoriesView'
 import { useAdminAuthStore, resolveBranch } from '../../store/store'
+import { getPeriodRange } from '../../lib/dateRanges'
 
 export const ExpensesView: React.FC = () => {
   const branch = useAdminAuthStore((s) => resolveBranch(s.activeBranch))
@@ -51,7 +52,6 @@ export const ExpensesView: React.FC = () => {
   const [toDate, setToDate] = useState('')
   const [activePreset, setActivePreset] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all')
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all')
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
@@ -102,16 +102,12 @@ export const ExpensesView: React.FC = () => {
     let count = 0
     if (selectedCategoryId !== 'all') count++
     if (activePreset !== 'all') count++
-    if (selectedPaymentMode !== 'all') count++
     return count
-  }, [selectedCategoryId, activePreset, selectedPaymentMode])
+  }, [selectedCategoryId, activePreset])
 
-  // Filter expenses list by search query and payment mode
+  // Filter expenses list by search query
   const filteredExpenses = useMemo(() => {
-    let list = expenses
-    if (selectedPaymentMode !== 'all') {
-      list = list.filter((e) => e.payment_mode?.toLowerCase() === selectedPaymentMode.toLowerCase())
-    }
+    const list = expenses
     if (!searchQuery.trim()) return list
     const q = searchQuery.toLowerCase().trim()
     return list.filter(
@@ -122,32 +118,20 @@ export const ExpensesView: React.FC = () => {
         e.recorded_by_name?.toLowerCase().includes(q) ||
         String(e.amount).includes(q)
     )
-  }, [expenses, searchQuery, selectedPaymentMode])
+  }, [expenses, searchQuery])
 
   // Handle Preset Clicks (Synchronizes FROM and TO dates)
   const applyDatePreset = (preset: 'all' | 'today' | 'week' | 'month' | 'custom') => {
     setActivePreset(preset)
-    const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
-
     if (preset === 'all') {
       setFromDate('')
       setToDate('')
-    } else if (preset === 'today') {
-      setFromDate(todayStr)
-      setToDate(todayStr)
-    } else if (preset === 'week') {
-      const dayOfWeek = (today.getDay() + 6) % 7
-      const monday = new Date(today)
-      monday.setDate(today.getDate() - dayOfWeek)
-      setFromDate(monday.toISOString().slice(0, 10))
-      setToDate(todayStr)
-    } else if (preset === 'month') {
-      const monthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
-      setFromDate(monthStart)
-      setToDate(todayStr)
     } else if (preset === 'custom') {
       setShowAdvancedFilters(true)
+    } else {
+      const { from, to } = getPeriodRange(preset)
+      setFromDate(from)
+      setToDate(to)
     }
   }
 
@@ -156,7 +140,6 @@ export const ExpensesView: React.FC = () => {
     setToDate('')
     setActivePreset('all')
     setSelectedCategoryId('all')
-    setSelectedPaymentMode('all')
     setSearchQuery('')
     setShowAdvancedFilters(false)
   }
@@ -416,7 +399,7 @@ export const ExpensesView: React.FC = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* From Date */}
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">
@@ -452,27 +435,6 @@ export const ExpensesView: React.FC = () => {
                         className="w-full h-10 pl-9 pr-3 rounded-xl border border-gray-200 bg-[#F9FAFB] text-xs font-semibold text-gray-800 outline-none focus:border-[#D4AF37] focus:bg-white"
                       />
                       <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Payment Mode */}
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">
-                      Payment Mode
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={selectedPaymentMode}
-                        onChange={(e) => setSelectedPaymentMode(e.target.value)}
-                        className="w-full h-10 appearance-none pl-3 pr-7 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors"
-                      >
-                        <option value="all">All Payment Modes</option>
-                        <option value="cash">Cash</option>
-                        <option value="upi">UPI / QR</option>
-                        <option value="card">Credit / Debit Card</option>
-                        <option value="bank_transfer">Bank Transfer / NetBanking</option>
-                      </select>
-                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
                   </div>
                 </div>

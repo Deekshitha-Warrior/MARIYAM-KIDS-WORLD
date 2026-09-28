@@ -92,12 +92,13 @@ function AppShell() {
   const initialize = useAuthStore((state) => state.initialize)
   const fetchProducts = useProductStore((state) => state.fetchProducts)
   const fetchVariants = useVariantStore((state) => state.fetchVariants)
-  const { isLoggedIn, role } = useAdminAuthStore()
+  const { isLoggedIn, role, activeBranch } = useAdminAuthStore()
   const fetchSettings = useSettingsStore((state) => state.fetchSettings)
   const settingsByBranch = useSettingsStore((state) => state.settingsByBranch)
 
   const hasStaffOrAdminAccess = Boolean(isLoggedIn && (role === 'admin' || role === 'staff'))
-  useLowStockMonitor(hasStaffOrAdminAccess, role)
+  // Alarm only for the branch being worked in (all branches in the admin's global view)
+  useLowStockMonitor(hasStaffOrAdminAccess, role, activeBranch === 'pos1' || activeBranch === 'pos2' ? activeBranch : null)
 
   useEffect(() => {
     document.title = BRAND_EN

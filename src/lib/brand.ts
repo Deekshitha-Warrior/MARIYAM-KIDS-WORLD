@@ -79,14 +79,8 @@ export const BRAND_ADDRESS = '#189, N.S.C. Bose Road, (Opp. Bus Depot, Hotel San
 export const BRAND_WEBSITE = 'https://ygenterprises.co.in'
 export const BRAND_LOCATION_LINK = '#'
 
-// Branch-specific Instagram URLs
-// POS1 (Wedding Cards/Bags/Jute Manufacturing) - Has Instagram presence
-// POS2 (Fireworks/Crackers) - No Instagram in communications
-export function getInstagramUrls(branch?: string): string {
-  if (branch === 'pos2') {
-    return '' // POS2: No Instagram
-  }
-  // POS1: Both Instagram handles
+// Instagram URLs shown on invoices, receipts and WhatsApp messages — same handles for both branches
+export function getInstagramUrls(_branch?: string): string {
   return `🎀 https://www.instagram.com/yg_enterprises001/
 🎀 https://www.instagram.com/ygenterprises7755/`
 }

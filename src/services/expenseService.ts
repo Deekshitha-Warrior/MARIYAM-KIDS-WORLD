@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { PosBranch } from '../store/store'
+import { getPeriodRange } from '../lib/dateRanges'
 
 export interface ExpenseRecord {
   id: string
@@ -98,14 +99,10 @@ const saveLocalCategories = (cats: ExpenseCategory[]) => {
 }
 
 function calculateMetricsFromList(expenses: ExpenseRecord[]): ExpenseSummaryMetrics {
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const now = new Date()
-  const dayOfWeek = (now.getDay() + 6) % 7 // Monday = 0
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - dayOfWeek)
-  const weekStartStr = monday.toISOString().slice(0, 10)
-  const monthStartStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const yearStartStr = `${now.getFullYear()}-01-01`
+  const todayStr = getPeriodRange('today').from
+  const week = getPeriodRange('week')
+  const month = getPeriodRange('month')
+  const year = getPeriodRange('year')
 
   let today = 0
   let this_week = 0
@@ -117,9 +114,9 @@ function calculateMetricsFromList(expenses: ExpenseRecord[]): ExpenseSummaryMetr
     const amt = Number(exp.amount) || 0
     total_all_time += amt
     if (exp.expense_date === todayStr) today += amt
-    if (exp.expense_date >= weekStartStr && exp.expense_date <= todayStr) this_week += amt
-    if (exp.expense_date >= monthStartStr && exp.expense_date <= todayStr) this_month += amt
-    if (exp.expense_date >= yearStartStr && exp.expense_date <= todayStr) this_year += amt
+    if (exp.expense_date >= week.from && exp.expense_date <= week.to) this_week += amt
+    if (exp.expense_date >= month.from && exp.expense_date <= month.to) this_month += amt
+    if (exp.expense_date >= year.from && exp.expense_date <= year.to) this_year += amt
   }
 
   return { today, this_week, this_month, this_year, total_all_time }

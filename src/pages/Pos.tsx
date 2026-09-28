@@ -20,6 +20,7 @@ import CatalogModal from '../components/CatalogModal'
 import { invoicePdfFile } from '../lib/invoicePdf'
 import { uploadInvoicePdf } from '../lib/storage'
 import { createOrderWithStock } from '../services/orderService'
+import { isCouponExpired } from '../services/couponService'
 import { createAdvanceOrder, type AdvanceOrder, type AdvancePaymentMethod } from '../services/advanceOrderService'
 import { printAdvanceReceipt } from '../lib/advanceReceipt'
 import { printThermalReceipt } from '../lib/thermalPrint'
@@ -241,7 +242,9 @@ export default function Pos(props: PosProps = {}) {
   }, [products, search, activeCategory])
 
   const subtotal = items.reduce((s, i) => s + i.lineTotal, 0)
-  const isValidCoupon = appliedCoupon && subtotal >= (appliedCoupon.minOrderValue || 0)
+  const isValidCoupon = !!appliedCoupon && subtotal >= (appliedCoupon.minOrderValue || 0)
+  // Coupon code is only recorded on the bill (and counted as a use) while its conditions are met
+  const effectiveCouponCode = isValidCoupon ? appliedCoupon?.code : undefined
   const couponDiscount = isValidCoupon
     ? ((appliedCoupon.percentage || 0) > 0
         ? Math.round((subtotal * (appliedCoupon.percentage || 0) / 100) * 100) / 100
@@ -691,12 +694,12 @@ export default function Pos(props: PosProps = {}) {
         return
       }
 
-      if (data.expiry_date && new Date(data.expiry_date) < new Date()) {
+      if (isCouponExpired(data.expiry_date)) {
         setCouponError('This coupon has expired')
         return
       }
 
-      if (data.usage_limit && data.usage_count >= data.usage_limit) {
+      if (Number(data.usage_limit) > 0 && Number(data.usage_count || 0) >= Number(data.usage_limit)) {
         setCouponError('Coupon usage limit has been reached')
         return
       }
@@ -820,8 +823,8 @@ export default function Pos(props: PosProps = {}) {
         manualDiscountAmount,
         manualDiscountType,
         manualDiscountValue: manualDiscountNumeric,
-        couponCode: appliedCoupon?.code,
-        couponPercentage: appliedCoupon?.percentage,
+        couponCode: effectiveCouponCode,
+        couponPercentage: isValidCoupon ? appliedCoupon?.percentage : 0,
         totalGst,
         gstEnabled: billGstEnabled,
         paymentMethod: paymentMode,
@@ -873,7 +876,7 @@ export default function Pos(props: PosProps = {}) {
         items: [...items],
         subtotal,
         shipping: Number(shipping || 0),
-        couponCode: appliedCoupon?.code,
+        couponCode: effectiveCouponCode,
         couponDiscount,
         manualDiscountAmount,
         manualDiscountType,
@@ -930,7 +933,7 @@ export default function Pos(props: PosProps = {}) {
       shipping: inv.shipping,
       gstAmount: inv.gstAmount,
       total: inv.total,
-      branch: branch, // Add branch for Instagram URLs (POS1 only)
+      branch: branch, // Branch passed through for branch-specific receipt details
     })
     window.open(toWhatsAppUrl(inv.phone || customer.phone || '', message), '_blank', 'noopener,noreferrer')
   }
@@ -1574,9 +1577,13 @@ export default function Pos(props: PosProps = {}) {
                   )}
                 </div>
                 {couponError && <p className="text-[10px] font-bold text-red-500 mt-0.5">{couponError}</p>}
-                {appliedCoupon && (
+                {appliedCoupon && (isValidCoupon ? (
                   <p className="text-[10px] font-bold text-green-600 mt-0.5">Applied: -{formatCurrency(couponDiscount)}</p>
-                )}
+                ) : (
+                  <p className="text-[10px] font-bold text-amber-600 mt-0.5">
+                    Not applied — add {formatCurrency((appliedCoupon.minOrderValue || 0) - subtotal)} more (min order {formatCurrency(appliedCoupon.minOrderValue || 0)})
+                  </p>
+                ))}
               </div>
 
               {/* Discount */}

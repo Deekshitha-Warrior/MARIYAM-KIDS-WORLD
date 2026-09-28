@@ -75,9 +75,7 @@ export default function StoreSettingsView() {
       const phone = form.shopContactNumber && form.shopContactNumber !== form.phoneNumber
         ? `${form.phoneNumber}, ${form.shopContactNumber}`
         : form.phoneNumber
-      const { error } = await supabase
-        .from('store_settings')
-        .update({
+      const payload = {
           name: form.name.trim(),
           owner_name: form.ownerName.trim(),
           business_type: form.businessType.trim(),
@@ -88,9 +86,20 @@ export default function StoreSettingsView() {
           theme_color: form.themeColor,
           logo_url: form.logoUrl || null,
           updated_at: new Date().toISOString(),
-        })
+      }
+      const { data: updated, error } = await supabase
+        .from('store_settings')
+        .update(payload)
         .eq('branch', branch)
+        .select('id')
       if (error) throw error
+      // No row for this branch yet: create it (rows are id 1 = pos1, id 2 = pos2)
+      if (!updated || updated.length === 0) {
+        const { error: insErr } = await supabase
+          .from('store_settings')
+          .insert({ id: branch === 'pos2' ? 2 : 1, branch, ...payload })
+        if (insErr) throw insErr
+      }
       await fetchSettings(branch)
       setMessage({ type: 'success', text: 'Store settings saved.' })
     } catch (err) {

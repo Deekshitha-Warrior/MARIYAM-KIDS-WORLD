@@ -188,8 +188,8 @@ export const InventoryTable: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* NAVIGATION / HEADER */}
-      <div className="bg-white border border-[#E8D399] rounded-2xl p-2 sm:p-2.5 shadow-sm flex items-center justify-between gap-3 overflow-x-auto hide-scrollbar">
-        <div className="flex items-center gap-1.5 p-1 bg-[#FBFAF6] border border-gray-200 rounded-xl shrink-0">
+      <div className="bg-white border border-[#E8D399] rounded-2xl p-2 sm:p-2.5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 p-1 bg-[#FBFAF6] border border-gray-200 rounded-xl min-w-0 max-w-full overflow-x-auto hide-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('stock')}
@@ -239,20 +239,18 @@ export const InventoryTable: React.FC = () => {
           </button>
         </div>
 
-        {/* Global Add Barcode CTA (Admin Only) */}
-        {role === 'admin' && (
-          <button
+        {/* Global Add Barcode CTA (admin & staff) */}
+        <button
             type="button"
             onClick={() => {
               setSelectedForReceive(null)
               setShowReceiveModal(true)
             }}
-            className="px-4 py-2.5 rounded-xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] text-xs font-black hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap"
+            className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] text-xs font-black hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap"
             title="Generate & print barcodes for items"
           >
             <Printer size={15} /> Add Barcode
           </button>
-        )}
       </div>
 
       {/* TAB 1: STOCK MANAGEMENT VIEW */}

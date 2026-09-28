@@ -1,5 +1,6 @@
 import { formatInvoiceNo } from './retail'
-import { BRAND_EN, BRAND_PRIMARY_PHONE_DISPLAY, BRAND_PRODUCTION_DOMAIN, BRAND_WEBSITE, getInstagramUrls } from './brand'
+import { BRAND_EN, BRAND_PRODUCTION_DOMAIN, BRAND_WEBSITE } from './brand'
+import { getBranchProfile } from './branchProfile'
 
 export type WhatsAppLineItem = {
   name: string
@@ -58,8 +59,9 @@ export const buildProfessionalWhatsAppMessage = (input: BuildWhatsAppMessageInpu
     ? input.items.map(item => `• ${item.name} (x${item.qty}) - ₹ ${Number(item.lineTotal || 0).toFixed(2)}`).join('\n')
     : ''
 
-  // Get branch-specific Instagram URLs (POS1 only, POS2 has none)
-  const instagramSection = getInstagramUrls(input.branch)
+  // Instagram URLs (same handles for both branches)
+  const profile = getBranchProfile(input.branch)
+  const instagramSection = profile.instagramUrls
   const instagramText = instagramSection ? `\n📷 *Follow us on Instagram:*\n${instagramSection}` : ''
 
   return `✨ *${BRAND_EN}* ✨
@@ -78,7 +80,7 @@ ${itemsText ? `📦 *ITEMS ORDERED:*\n${itemsText}\n\n` : ''}📄 *View & Downlo
 🌐 *Visit Our Official Website:*
 👉 ${BRAND_WEBSITE}
 
-📞 *Shop Contact:* ${BRAND_PRIMARY_PHONE_DISPLAY}${instagramText}
+📞 *Shop Contact:* ${profile.phone}${instagramText}
 
 Thank you, and visit us again! ✨`
 }
@@ -99,8 +101,9 @@ export const buildAdvanceDepositWhatsAppMessage = (input: AdvanceDepositWhatsApp
       })()
     : '-'
 
-  // Get branch-specific Instagram URLs (POS1 only, POS2 has none)
-  const instagramUrls = getInstagramUrls(input.branch)
+  // Instagram URLs (same handles for both branches)
+  const profile = getBranchProfile(input.branch)
+  const instagramUrls = profile.instagramUrls
   const instagramSection = instagramUrls ? `\n📷 *Follow us on Instagram:*\n${instagramUrls}` : ''
 
   return `✨ *Thank You for Your Advance Order with ${BRAND_EN}!* ✨
@@ -117,7 +120,7 @@ We have successfully received your initial advance payment!
 🔴 Balance to Pay on Delivery: ₹${input.remainingBalance}
 📅 Expected Delivery Date: ${deliveryDateFormatted}
 
-Your garments are being prepared with utmost care. We will have everything ready on or before ${deliveryDateFormatted}!
+Your order is being prepared with utmost care. We will have everything ready on or before ${deliveryDateFormatted}!
 
-📞 *Shop Contact:* ${BRAND_PRIMARY_PHONE_DISPLAY}${instagramSection}`
+📞 *Shop Contact:* ${profile.phone}${instagramSection}`
 }

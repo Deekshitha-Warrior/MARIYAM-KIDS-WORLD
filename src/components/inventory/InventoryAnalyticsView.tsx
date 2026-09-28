@@ -16,6 +16,7 @@ import {
   type InventoryStockItem,
 } from '../../services/inventoryService'
 import { useAdminAuthStore, resolveBranch } from '../../store/store'
+import { getPeriodBounds } from '../../lib/dateRanges'
 
 export const InventoryAnalyticsView: React.FC = () => {
   const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
@@ -34,20 +35,9 @@ export const InventoryAnalyticsView: React.FC = () => {
   const [search, setSearch] = useState('')
 
   const computeDateRange = () => {
-    const now = new Date()
-    if (range === 'today') {
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-      return { start, end: undefined }
-    }
-    if (range === 'week') {
-      const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-      return { start, end: undefined }
-    }
-    if (range === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-      return { start, end: undefined }
-    }
-    return { start: undefined, end: undefined }
+    if (range === 'all') return { start: undefined, end: undefined }
+    const { start, end } = getPeriodBounds(range)
+    return { start: start.toISOString(), end: end.toISOString() }
   }
 
   const loadAnalytics = useCallback(async () => {

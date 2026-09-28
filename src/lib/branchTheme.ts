@@ -1,4 +1,4 @@
-import type { PosBranch, StoreSettings } from '../store/store'
+import { useSettingsStore, type PosBranch, type StoreSettings } from '../store/store'
 import { normalizeHex, shadeHex, tintHex } from './color'
 import { BRAND_LOGO_POS1, BRAND_LOGO_POS2 } from './brand'
 
@@ -21,7 +21,8 @@ export const branchSubtitle = (branch: PosBranch) =>
  * business line there would be misleading since admin manages both. */
 export const combinedBranchSubtitle = () => `${branchSubtitle('pos1')} + ${branchSubtitle('pos2')}`
 
-export const branchLogo = (branch: PosBranch) => (branch === 'pos2' ? BRAND_LOGO_POS2 : BRAND_LOGO_POS1)
+export const branchLogo = (branch: PosBranch) =>
+  useSettingsStore.getState().settingsByBranch[branch]?.logoUrl || (branch === 'pos2' ? BRAND_LOGO_POS2 : BRAND_LOGO_POS1)
 
 export const posAccent = (branch: PosBranch) => branch === 'pos2'
   ? { bg: 'bg-posTwo', bgLight: 'bg-posTwo-light', text: 'text-posTwo-dark', border: 'border-posTwo', hex: '#B8860B' }

@@ -36,11 +36,16 @@ export default function BusinessOverview({ onNavigate }: BusinessOverviewProps) 
 
       const results = await Promise.all(BRANCHES.map(async (branch) => {
         const [{ data: orders }, { data: products }] = await Promise.all([
-          supabase.from('orders').select('total, created_at, status').eq('branch', branch).gte('created_at', todayStart.toISOString()).limit(2000),
+          supabase.from('orders').select('total, created_at, status, order_type').eq('branch', branch).gte('created_at', todayStart.toISOString()).limit(2000),
           supabase.from('products').select('name, price, stock_quantity, low_stock_alert, is_active').eq('branch', branch).eq('is_active', true),
         ])
 
-        const validOrders = (orders || []).filter((o) => String(o.status || '').toLowerCase() !== 'cancelled')
+        // Same definition as POS Analytics: completed/paid bills, excluding website (online) requests
+        const validOrders = (orders || []).filter((o) => {
+          const status = String(o.status || '').trim().toLowerCase()
+          const type = String(o.order_type || '').trim().toLowerCase()
+          return (status === 'completed' || status === 'paid') && type !== 'online_request' && type !== 'whatsapp_request'
+        })
         const todaySales = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
         const stockValue = (products || []).reduce((sum, p) => sum + (Number(p.price) || 0) * (Number(p.stock_quantity) || 0), 0)
         const low = (products || []).filter((p) => (Number(p.stock_quantity) || 0) <= (Number(p.low_stock_alert) > 0 ? Number(p.low_stock_alert) : 5))
@@ -156,12 +161,6 @@ export default function BusinessOverview({ onNavigate }: BusinessOverviewProps) 
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black text-white ${accent.bg} hover:opacity-90 cursor-pointer`}
                   >
                     <Store size={13} /> Store Dashboard &amp; POS
-                  </button>
-                  <button
-                    onClick={() => onNavigate('branch_hub', b)}
-                    className="flex-1 py-2 rounded-xl text-xs font-bold text-gray-700 border border-gray-200 hover:bg-gray-50 cursor-pointer"
-                  >
-                    Branch Hub
                   </button>
                 </div>
               </div>

@@ -52,7 +52,11 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
   const branchDefaults = getDefaultBarcodeSettings(branch)
   const storedSettings = getStoredBarcodeSettings()
   const [selectedPreset, setSelectedPreset] = useState<LabelSizePreset>(
-    presets.find(p => p.widthMm === branchDefaults.selectedSizeId.split('x')[0]) || presets[0] ||
+    (() => {
+      // Branch default size id (e.g. '1_100x50') → matching preset by physical dimensions
+      const def = getAllLabelSizes().find(sz => sz.id === branchDefaults.selectedSizeId)
+      return def && presets.find(p => p.widthMm === def.widthMm && p.heightMm === def.heightMm && p.labelsPerRow === (def.labelsPerRow || 1))
+    })() || presets[0] ||
     { name: 'Thermal Standard', widthMm: 50, heightMm: 25, labelsPerRow: 1, horizontalGapMm: 0 }
   )
   const [copied, setCopied] = useState(false)

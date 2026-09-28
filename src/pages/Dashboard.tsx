@@ -7,7 +7,7 @@ import {
   Package, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
   MessageCircle, ChevronDown, Eye, FileText, Printer, MoreVertical, X, Layers, Receipt,
   SlidersHorizontal, Tag, Ticket, Percent, CheckCircle2, Info, Sparkles,
-  Globe, Users, Store, Boxes, ArrowLeft, Barcode,
+  Globe, Users, Store, ArrowLeft,
 } from 'lucide-react'
 
 // Custom Malaysian Ringgit icon — replaces the generic dollar-sign icon
@@ -56,18 +56,12 @@ import { createVariant, updateVariant, deleteVariant, setDefaultVariant, type Pr
 import { useVariantStore } from '../store/store'
 import Pos from './Pos'
 import BranchHub from '../components/dashboard/BranchHub'
-import BarcodeHub from '../components/dashboard/BarcodeHub'
 import BusinessOverview from '../components/dashboard/BusinessOverview'
-import CrossBranchSales from '../components/dashboard/CrossBranchSales'
-import ConsolidatedStock from '../components/dashboard/ConsolidatedStock'
 import StaffMemberships from '../components/dashboard/StaffMemberships'
-import BusinessReports from '../components/dashboard/BusinessReports'
-import AttendanceView from '../components/dashboard/AttendanceView'
 import StoreSettingsView from '../components/dashboard/StoreSettingsView'
 import AdvanceOrders from './AdvanceOrders'
 import type { AdvanceOrder } from '../services/advanceOrderService'
 import { InventoryTable } from '../components/inventory/InventoryTable'
-import { CategoryManagerView } from '../components/inventory/CategoryManagerView'
 import { ExpensesView } from '../components/expenses/ExpensesView'
 import { expenseService, type ExpenseRecord } from '../services/expenseService'
 import { useNavigationStore } from '../store/navigationStore'
@@ -76,6 +70,7 @@ import { BarcodeRedirectDialog } from '../components/pos/BarcodeRedirectDialog'
 import { exportAnalyticsToCSV, exportAnalyticsToPDF } from '../services/analyticsExport'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
 import { branchShortLabel } from '../lib/branchTheme'
+import { getPeriodRange } from '../lib/dateRanges'
 import {
   ResponsiveContainer,
   XAxis,
@@ -109,7 +104,9 @@ type DashboardCoupon = {
 export type TabKey = 'overview' | 'whatsapp' | 'pos_analytics' | 'billing' | 'advance_orders' | 'inventory' | 'expenses' | 'products' | 'categories' | 'coupons' | 'users' | 'history'
   | 'branch_hub' | 'business_overview' | 'cross_branch_sales' | 'consolidated_stock' | 'staff_memberships' | 'business_reports' | 'barcode_hub'
   | 'attendance' | 'store_settings'
-const GLOBAL_TABS: TabKey[] = ['business_overview', 'cross_branch_sales', 'consolidated_stock', 'staff_memberships', 'business_reports']
+const GLOBAL_TABS: TabKey[] = ['business_overview', 'staff_memberships']
+// Pages removed from the admin panel — old links / bookmarks fall back to a live page
+const ADMIN_REMOVED_TABS: TabKey[] = ['branch_hub', 'categories', 'attendance', 'barcode_hub', 'cross_branch_sales', 'consolidated_stock', 'business_reports']
 type PosAnalyticsTab = 'revenue' | 'today' | 'products' | 'categories' | 'coupons'
 type ProfileUser = { id: string; email: string; name: string; mobile: string; role: string; created_at: string }
 
@@ -331,17 +328,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (role === 'staff') {
-      const staffAllowedTabs: TabKey[] = ['branch_hub', 'billing', 'inventory', 'advance_orders', 'history', 'attendance']
+      const staffAllowedTabs: TabKey[] = ['branch_hub', 'billing', 'inventory', 'advance_orders', 'history']
       if (!staffAllowedTabs.includes(tab)) {
         setTab('billing')
         navigate('/dashboard', { replace: true })
       }
+    } else if (role === 'admin' && ADMIN_REMOVED_TABS.includes(tab)) {
+      setTab(activeBranch === 'all' ? 'business_overview' : 'billing')
+      navigate('/dashboard', { replace: true })
     }
-  }, [role, tab, navigate])
+  }, [role, tab, navigate, activeBranch])
 
   const handleTabClick = (tabKey: TabKey, targetBranch?: PosBranch) => {
     if (role === 'staff') {
-      const staffAllowedTabs: TabKey[] = ['branch_hub', 'billing', 'inventory', 'advance_orders', 'history', 'attendance']
+      const staffAllowedTabs: TabKey[] = ['branch_hub', 'billing', 'inventory', 'advance_orders', 'history']
       if (!staffAllowedTabs.includes(tabKey)) return
     }
     if (role === 'admin') {
@@ -463,10 +463,21 @@ export default function Dashboard() {
 
   // Analytics (date-aware)
   const analytics = useMemo(() => {
-    // Apply global date filter
+    const toLocalDateKey = (value: string | Date) => {
+      const date = value instanceof Date ? value : new Date(value)
+      if (Number.isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    const toLocalMonthKey = (value: string | Date) => toLocalDateKey(value).slice(0, 7)
+
+    // Apply global date filter on the LOCAL calendar day (created_at is stored in UTC,
+    // so comparing raw strings would push 00:00–05:30 IST bills onto the previous day)
     let dated = orders
-    if (analyticsDateFrom) dated = dated.filter(o => o.created_at >= `${analyticsDateFrom}T00:00:00`)
-    if (analyticsDateTo)   dated = dated.filter(o => o.created_at <= `${analyticsDateTo}T23:59:59`)
+    if (analyticsDateFrom) dated = dated.filter(o => toLocalDateKey(o.created_at) >= analyticsDateFrom)
+    if (analyticsDateTo)   dated = dated.filter(o => toLocalDateKey(o.created_at) <= analyticsDateTo)
 
     // Classify
     const nonCancelled = dated.filter(o => normalizeStatus(o.status) !== 'cancelled')
@@ -506,22 +517,11 @@ export default function Dashboard() {
     const netProfit = completedRevenue - totalExpenses
     const isProfitable = netProfit >= 0
 
-    const toLocalDateKey = (value: string | Date) => {
-      const date = value instanceof Date ? value : new Date(value)
-      if (Number.isNaN(date.getTime())) return ''
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
-    }
-    const toLocalMonthKey = (value: string | Date) => toLocalDateKey(value).slice(0, 7)
-
     const todayKey  = toLocalDateKey(new Date())
     const monthKey  = todayKey.slice(0, 7)
-    const todaySales   = orders.filter(o => isCompletedStatus(o.status) && o.order_type !== 'whatsapp_request' && toLocalDateKey(o.created_at) === todayKey).reduce((s, o) => s + getOrderTotal(o), 0)
-
-    // Today-specific analytics (for TODAY'S SALES tab)
-    const todayOrders = billableCompleted.filter(o => toLocalDateKey(o.created_at) === todayKey)
+    // Today-specific analytics (for TODAY'S SALES tab) — always today's bills, whatever period is selected
+    const todayOrders = allBillableCompleted.filter(o => toLocalDateKey(o.created_at) === todayKey)
+    const todaySales = todayOrders.reduce((s, o) => s + getOrderTotal(o), 0)
     const todayCompletedOrdersCount = todayOrders.length
     const todayItemsSold = todayOrders.reduce((s, o) => {
       const items = parseOrderItems(o.items)
@@ -559,8 +559,8 @@ export default function Dashboard() {
     const todayBills = todayOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
 
     // Today's channel breakdown
-    const todayOffline = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) !== 'online')
-    const todayOnline = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) === 'online')
+    const todayOffline = todayOrders.filter(o => normalizeOrderMode(o.order_mode) === 'offline' && normalizeOrderType(o.order_type) !== 'manual_sale')
+    const todayOnline = todayOrders.filter(o => normalizeOrderMode(o.order_mode) === 'online')
     const todayManual = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'manual_sale')
     const todayOfflineRevenue = todayOffline.reduce((s, o) => s + getOrderTotal(o), 0)
     const todayOnlineRevenue = todayOnline.reduce((s, o) => s + getOrderTotal(o), 0)
@@ -586,7 +586,7 @@ export default function Dashboard() {
     const completedIds = new Set(billableCompleted.map(o => o.id))
     const completedItems = orderItems.length > 0
       ? orderItems.filter(item => completedIds.has(item.order_id))
-      : completedOrders.flatMap(order => parseOrderItems(order.items).map(row => ({
+      : billableCompleted.flatMap(order => parseOrderItems(order.items).map(row => ({
           order_id: order.id,
           product_name: String((row as Record<string,unknown>).product_name || (row as Record<string,unknown>).name || 'Product'),
           category: String((row as Record<string,unknown>).category || ''),
@@ -992,7 +992,7 @@ export default function Dashboard() {
       couponDiscount: order.discount_amount,
       shipping: order.delivery_charge,
       total: order.total,
-      branch: branch, // Add branch for Instagram URLs (POS1 only)
+      branch: branch, // Branch passed through for branch-specific receipt details
     })
     return { items, subtotal, message, fileName: `Invoice-${order.invoice_no || order.id}.pdf` }
   }
@@ -1195,34 +1195,15 @@ export default function Dashboard() {
     setAnalyticsDatePreset(preset)
     if (preset === 'all')    { setAnalyticsDateFrom(''); setAnalyticsDateTo(''); return }
     if (preset === 'custom') return
-    const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
-    if (preset === 'today') {
-      setAnalyticsDateFrom(todayStr); setAnalyticsDateTo(todayStr)
-    } else if (preset === 'week') {
-      const d = new Date(today); d.setDate(today.getDate() - 6)
-      setAnalyticsDateFrom(d.toISOString().slice(0, 10)); setAnalyticsDateTo(todayStr)
-    } else if (preset === 'month') {
-      setAnalyticsDateFrom(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`)
-      setAnalyticsDateTo(todayStr)
-    } else if (preset === 'year') {
-      setAnalyticsDateFrom(`${today.getFullYear()}-01-01`); setAnalyticsDateTo(todayStr)
-    }
+    const { from, to } = getPeriodRange(preset)
+    setAnalyticsDateFrom(from); setAnalyticsDateTo(to)
   }
 
   const applyDatePreset = (preset: 'today' | 'week' | 'month' | 'custom') => {
     setDatePreset(preset)
     if (preset === 'custom') { setSearch(s => ({ ...s, dateFrom: '', dateTo: '' })); return }
-    const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
-    if (preset === 'today') {
-      setSearch(s => ({ ...s, dateFrom: todayStr, dateTo: todayStr }))
-    } else if (preset === 'week') {
-      const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6)
-      setSearch(s => ({ ...s, dateFrom: weekAgo.toISOString().slice(0, 10), dateTo: todayStr }))
-    } else if (preset === 'month') {
-      setSearch(s => ({ ...s, dateFrom: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`, dateTo: todayStr }))
-    }
+    const { from, to } = getPeriodRange(preset)
+    setSearch(s => ({ ...s, dateFrom: from, dateTo: to }))
   }
 
   const handleClearHistoryFilters = () => {
@@ -1303,8 +1284,9 @@ export default function Dashboard() {
 
       // Apply date filters only if no specific text query is active or if custom date range was selected
       if (!hasQuery || datePreset === 'custom') {
-        if (search.dateFrom) q = q.gte('created_at', `${search.dateFrom}T00:00:00`)
-        if (search.dateTo)   q = q.lte('created_at', `${search.dateTo}T23:59:59`)
+        // Local-day bounds converted to UTC instants (created_at is timestamptz)
+        if (search.dateFrom) q = q.gte('created_at', new Date(`${search.dateFrom}T00:00:00`).toISOString())
+        if (search.dateTo)   q = q.lte('created_at', new Date(`${search.dateTo}T23:59:59.999`).toISOString())
       }
 
       if (billTypeFilter === 'manual')       q = q.eq('order_type', 'manual_sale')
@@ -1678,10 +1660,7 @@ export default function Dashboard() {
 
   const globalNavItems: Array<{ id: TabKey; icon: React.ReactNode; label: string }> = [
     { id: 'business_overview',  icon: <Globe size={18} />, label: 'Business Overview' },
-    { id: 'cross_branch_sales', icon: <TrendingUp size={18} />, label: 'Cross-Branch Sales' },
-    { id: 'consolidated_stock', icon: <Boxes size={18} />, label: 'Consolidated Stock' },
     { id: 'staff_memberships',  icon: <Users size={18} />, label: 'Staff & Memberships' },
-    { id: 'business_reports',   icon: <FileText size={18} />, label: 'Business Reports' },
   ]
 
   const branchNavItems: Array<{ id: TabKey; icon: React.ReactNode; label: string }> = role === 'staff'
@@ -1690,18 +1669,13 @@ export default function Dashboard() {
         { id: 'billing',        icon: <ShoppingCart size={18} />, label: 'Store Dashboard & POS' },
         { id: 'inventory',      icon: <Layers size={18} />,       label: 'Stock & Inventory' },
         { id: 'advance_orders', icon: <FileText size={18} />,     label: 'Advance Orders' },
-        { id: 'attendance',     icon: <Users size={18} />,        label: 'Attendance' },
         { id: 'history',        icon: <List size={18} />,         label: 'Order History' },
       ]
     : [
-        { id: 'branch_hub',     icon: <Store size={18} />,        label: 'Branch Hub' },
         { id: 'billing',        icon: <ShoppingCart size={18} />, label: 'Store Dashboard & POS' },
         { id: 'inventory',      icon: <Layers size={18} />,       label: 'Stock & Inventory' },
-        { id: 'categories',     icon: <Tag size={18} />,          label: 'Categories & Catalog' },
-        { id: 'barcode_hub',    icon: <Barcode size={18} />,      label: 'Barcode Generator' },
         { id: 'expenses',       icon: <Receipt size={18} />,      label: 'Expenses Ledger' },
         { id: 'advance_orders', icon: <FileText size={18} />,     label: 'Advance & Custom Orders' },
-        { id: 'attendance',     icon: <Users size={18} />,        label: 'Attendance & Staff' },
         { id: 'history',        icon: <List size={18} />,         label: 'Order History' },
         { id: 'pos_analytics',  icon: <BarChart2 size={18} />,    label: 'Analytics Dashboard' },
         { id: 'coupons',        icon: <Box size={18} />,          label: 'Coupons' },
@@ -1709,6 +1683,24 @@ export default function Dashboard() {
       ]
 
   const navItems = isGlobalView ? globalNavItems : branchNavItems
+
+  // Global view: quick-jump into a branch workspace (shown directly under Business Overview)
+  const renderBranchShortcuts = () => (isGlobalView && !sidebarCollapsed) ? (
+            <div className="my-1 py-1 border-y border-white/10 shrink-0 lg:shrink-0 flex lg:flex-col gap-1">
+              <p className="hidden lg:block text-[9px] font-black uppercase tracking-widest text-white/50 px-1 mb-0.5">Enter Branch Workspace</p>
+              {(['pos1', 'pos2'] as const).map(b => (
+                <button
+                  key={b}
+                  onClick={() => { setActiveBranch(b); setTab('billing'); navigate('/dashboard', { replace: true }) }}
+                  className="shrink-0 flex items-center gap-2 lg:w-full px-3 h-[38px] rounded-xl text-[12.5px] font-bold text-white/80 hover:bg-white/10 hover:text-[#D4AF37] transition-colors cursor-pointer"
+                >
+                  <span className={`h-2 w-2 rounded-full ${b === 'pos1' ? 'bg-posOne' : 'bg-posTwo'}`} />
+                  {branchShortLabel(b)}
+                </button>
+              ))}
+            </div>
+  ) : null
+
 
   return (
     <div className="admin-shell h-screen max-h-screen min-h-screen bg-bgMain flex flex-col lg:flex-row overflow-hidden">
@@ -1795,7 +1787,7 @@ export default function Dashboard() {
               onChange={(e) => {
                 const val = e.target.value as 'all' | 'pos1' | 'pos2'
                 setActiveBranch(val)
-                setTab(val === 'all' ? 'business_overview' : 'branch_hub')
+                setTab(val === 'all' ? 'business_overview' : 'billing')
                 navigate('/dashboard', { replace: true })
               }}
               className="w-full rounded-xl bg-white/10 border border-white/15 text-white text-[11px] font-bold px-2.5 py-2 outline-none focus:border-[#D4AF37] cursor-pointer"
@@ -1815,8 +1807,8 @@ export default function Dashboard() {
           className={`flex overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto lg:flex-col gap-1 lg:gap-1 px-2 py-2 lg:px-2.5 lg:py-2.5 flex-1 min-h-0 transition-all duration-300 hide-scrollbar ${sidebarCollapsed ? 'lg:px-1.5' : 'lg:px-2.5'}`}
         >
           {navItems.map(item => (
+            <React.Fragment key={item.id}>
             <button
-              key={item.id}
               onClick={() => handleTabClick(item.id)}
               title={item.label}
               className={[
@@ -1843,24 +1835,9 @@ export default function Dashboard() {
                 )}
               </span>
             </button>
+            {item.id === 'business_overview' && renderBranchShortcuts()}
+            </React.Fragment>
           ))}
-
-          {/* Global view: quick-jump into a branch workspace */}
-          {isGlobalView && !sidebarCollapsed && (
-            <div className="mt-2 pt-2 border-t border-white/10 shrink-0 lg:shrink-0 flex lg:flex-col gap-1">
-              <p className="hidden lg:block text-[9px] font-black uppercase tracking-widest text-white/50 px-1 mb-0.5">Enter Branch Workspace</p>
-              {(['pos1', 'pos2'] as const).map(b => (
-                <button
-                  key={b}
-                  onClick={() => { setActiveBranch(b); setTab('branch_hub'); navigate('/dashboard', { replace: true }) }}
-                  className="shrink-0 flex items-center gap-2 lg:w-full px-3 h-[38px] rounded-xl text-[12.5px] font-bold text-white/80 hover:bg-white/10 hover:text-[#D4AF37] transition-colors cursor-pointer"
-                >
-                  <span className={`h-2 w-2 rounded-full ${b === 'pos1' ? 'bg-posOne' : 'bg-posTwo'}`} />
-                  {branchShortLabel(b)}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Branch view (admin only): plain text link back to the Global Control Plane */}
           {!isGlobalView && role === 'admin' && (
@@ -1910,13 +1887,8 @@ export default function Dashboard() {
         <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto">
 
         {tab === 'branch_hub' && <BranchHub onNavigate={handleTabClick} />}
-        {tab === 'barcode_hub' && <BarcodeHub />}
         {tab === 'business_overview' && <BusinessOverview onNavigate={handleTabClick} />}
-        {tab === 'cross_branch_sales' && <CrossBranchSales onNavigate={handleTabClick} />}
-        {tab === 'consolidated_stock' && <ConsolidatedStock onNavigate={handleTabClick} />}
         {tab === 'staff_memberships' && <StaffMemberships />}
-        {tab === 'business_reports' && <BusinessReports />}
-        {tab === 'attendance' && <AttendanceView />}
         {tab === 'store_settings' && <StoreSettingsView />}
 
         {/* ΓöÇΓöÇ ANALYTICS TAB ΓöÇΓöÇ */}
@@ -2253,7 +2225,7 @@ export default function Dashboard() {
                           subtotal: normalizedItems.reduce((sum, item) => sum + item.line_total, 0),
                           total: getOrderTotal(order),
                           paymentMode: order.payment_mode || order.payment_method,
-                          branch: branch, // Add branch for Instagram URLs (POS1 only)
+                          branch: branch, // Branch passed through for branch-specific receipt details
                         })
 
                         return (
@@ -2924,7 +2896,7 @@ export default function Dashboard() {
                   {[
                     { label: 'Total Product Revenue', value: formatCurrency(analytics.totalCompletedRevenue), icon: <RMIcon size={18} />, from: 'from-emerald-500 to-teal-600' },
                     { label: 'Total Products Sold', value: String(Math.round(analytics.totalProductsSold)), icon: <Package size={18} />, from: 'from-blue-500 to-indigo-600' },
-                    { label: 'Average Product Revenue', value: `${formatCurrency(analytics.averageProductRevenue)} / Product`, icon: <RMIcon size={18} />, from: 'from-violet-500 to-purple-600' },
+                    { label: 'Average Product Revenue', value: formatCurrency(analytics.averageProductRevenue), icon: <RMIcon size={18} />, from: 'from-violet-500 to-purple-600' },
                     { label: 'Top Product', value: analytics.bestProduct || 'No sales yet', icon: <Trophy size={18} />, from: 'from-amber-500 to-orange-600' },
                   ].map((card, i) => (
                     <div key={i} className={`relative overflow-hidden rounded-2xl p-5 shadow-lg border border-white/20 bg-gradient-to-br ${card.from} flex flex-col justify-between min-h-[120px]`}>
@@ -4210,12 +4182,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── CATEGORIES TAB (Unified Taxonomy Manager) ── */}
-        {tab === 'categories' && (
-          <div className="w-full space-y-6">
-            <CategoryManagerView />
-          </div>
-        )}
 
         {/* ——— COUPON MANAGEMENT (BLACK & GOLD PREMIUM THEME) ——— */}
         {tab === 'coupons' && (

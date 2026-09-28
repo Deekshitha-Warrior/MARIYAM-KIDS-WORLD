@@ -43,6 +43,7 @@ import { useAuthStore, useProductStore, useAdminAuthStore, resolveBranch, type P
 import { formatCurrency, normalizeOrderMode, toNumber } from '../lib/retail'
 import { formatPhoneForCSV } from '../lib/phone'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
+import { getPeriodRange } from '../lib/dateRanges'
 
 type BillingOrder = {
   id: string
@@ -255,23 +256,9 @@ export default function BillingAnalytics() {
     }
     if (preset === 'custom') return
 
-    const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
-    if (preset === 'today') {
-      setAnalyticsDateFrom(todayStr)
-      setAnalyticsDateTo(todayStr)
-    } else if (preset === 'week') {
-      const weekAgo = new Date(today)
-      weekAgo.setDate(today.getDate() - 6)
-      setAnalyticsDateFrom(weekAgo.toISOString().slice(0, 10))
-      setAnalyticsDateTo(todayStr)
-    } else if (preset === 'month') {
-      setAnalyticsDateFrom(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`)
-      setAnalyticsDateTo(todayStr)
-    } else if (preset === 'year') {
-      setAnalyticsDateFrom(`${today.getFullYear()}-01-01`)
-      setAnalyticsDateTo(todayStr)
-    }
+    const { from, to } = getPeriodRange(preset)
+    setAnalyticsDateFrom(from)
+    setAnalyticsDateTo(to)
   }
 
   const loadData = useCallback(async () => {

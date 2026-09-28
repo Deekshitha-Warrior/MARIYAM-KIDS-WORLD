@@ -1,8 +1,9 @@
 import { jsPDF } from 'jspdf'
-import { BRAND_ADDRESS, BRAND_EN, BRAND_PHONE_DISPLAY, BRAND_PRIMARY_PHONE_DISPLAY } from './brand'
+import { BRAND_EN } from './brand'
 import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import { formatCurrency } from './retail'
 import type { AdvanceOrder } from '../services/advanceOrderService'
+import { getBranchProfile } from './branchProfile'
 
 const esc = (value: string) => value.replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char] || char))
 
@@ -22,7 +23,7 @@ export function advanceReceiptPdf(order: AdvanceOrder) {
   doc.setTextColor('#111111'); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text(BRAND_EN.toUpperCase(), 38, 20)
   doc.setTextColor('#6b7280'); doc.setFontSize(8); doc.text('ADVANCE RECEIPT - NOT A TAX INVOICE', 38, 26)
 
-  doc.setFont('helvetica', 'normal'); doc.text(BRAND_ADDRESS, 194, 20, { align: 'right', maxWidth: 76 }); doc.text(BRAND_PRIMARY_PHONE_DISPLAY, 194, 30, { align: 'right' })
+  doc.setFont('helvetica', 'normal'); doc.text(getBranchProfile(order.branch).address, 194, 20, { align: 'right', maxWidth: 76 }); doc.text(getBranchProfile(order.branch).phone, 194, 30, { align: 'right' })
   doc.setDrawColor('#D4AF37'); doc.line(16, 38, 194, 38)
   doc.setTextColor('#111827'); doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.text(order.deposit_id, 16, 51)
   doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor('#6b7280'); doc.text(`Created: ${new Date(order.created_at).toLocaleString('en-IN')}`, 194, 51, { align: 'right' })
@@ -97,8 +98,8 @@ export function printAdvanceReceipt(order: AdvanceOrder) {
   <img src="${order.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1}" style="width: 50px; height: 50px; object-fit: contain; margin: 0 auto; display: block;" alt="YG Logo" />
 </div>
 <div class="c big">${esc(BRAND_EN)}</div>
-<div class="c" style="font-size:10px;color:#555;">${esc(BRAND_ADDRESS)}</div>
-<div class="c" style="font-size:10px;color:#555;">${esc(BRAND_PHONE_DISPLAY)}</div>
+<div class="c" style="font-size:10px;color:#555;">${esc(getBranchProfile(order.branch).address)}</div>
+<div class="c" style="font-size:10px;color:#555;">${esc(getBranchProfile(order.branch).phone)}</div>
 <div class="line"></div>
 <div class="c big">ADVANCE RECEIPT</div>
 <div class="c" style="font-size:10px;">Not a final tax invoice</div>

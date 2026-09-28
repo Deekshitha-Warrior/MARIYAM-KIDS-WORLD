@@ -1,8 +1,8 @@
 import React from 'react'
-import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, getInstagramUrls, BRAND_PRIMARY_PHONE_DISPLAY, BRAND_ICON } from '../lib/brand'
-import { branchLogo } from '../lib/branchTheme'
+import { BRAND_ICON } from '../lib/brand'
 import { formatCurrency, formatQuantityDisplay, normalizeStructuredOrderItem, formatInvoiceNo } from '../lib/retail'
 import type { PosBranch } from '../store/store'
+import { getBranchProfile } from '../lib/branchProfile'
 
 export interface InvoiceItem {
   id: string | number
@@ -70,7 +70,8 @@ export const Invoice: React.FC<InvoiceProps> = ({
 
   const statusColor = status === 'completed' ? '#D4AF37' : status === 'cancelled' ? '#dc2626' : '#d97706'
   const effectiveDelivery = deliveryCharge || shipping
-  const instagramUrls = getInstagramUrls(branch)
+  const profile = getBranchProfile(branch)
+  const instagramUrls = profile.instagramUrls
 
   return (
     <div
@@ -83,17 +84,17 @@ export const Invoice: React.FC<InvoiceProps> = ({
       {/* ── HEADER ────────────────────────────────────────────────── */}
       <div className="invoice-header" style={{ textAlign: 'center', borderBottom: '1px solid #E8D399', paddingBottom: 20, marginBottom: 20 }}>
         <div style={{ width: 100, height: 100, margin: '0 auto 16px auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img src={branch ? branchLogo(branch) : BRAND_ICON} alt={BRAND_EN} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src={branch ? profile.logo : BRAND_ICON} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div style={{ fontSize: 24, fontWeight: 900, color: '#7A1220', letterSpacing: 2, textTransform: 'uppercase' }}>
-          {BRAND_EN}
+          {profile.name}
         </div>
         <div style={{ fontSize: 11, color: '#4b5563', marginTop: 4, fontWeight: 500, paddingLeft: 8, paddingRight: 8 }}>
-          {BRAND_ADDRESS}
+          {profile.address}
         </div>
         <div style={{ fontSize: 11, color: '#4b5563', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span>📞 {BRAND_PRIMARY_PHONE_DISPLAY}</span>
-          <span>✉️ {BRAND_EMAIL}</span>
+          <span>📞 {profile.phone}</span>
+          <span>✉️ {profile.email}</span>
           {instagramUrls && <span>📷 Instagram</span>}
         </div>
       </div>

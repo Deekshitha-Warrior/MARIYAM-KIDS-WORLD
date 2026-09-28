@@ -1,10 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { useAlarmStore, type LowStockItem } from '../store/alarmStore'
+import { alarmSound } from '../lib/alarmAudio'
 
-export function useLowStockMonitor(enabled: boolean = true, role?: string | null) {
+/**
+ * @param branch  Only products/variants of this branch raise the alarm ('pos1' | 'pos2').
+ *                 Pass null for the admin's all-branches view.
+ */
+export function useLowStockMonitor(enabled: boolean = true, role?: string | null, branch?: 'pos1' | 'pos2' | null) {
   const setLowStockItems = useAlarmStore((state) => state.setLowStockItems)
   const isCheckingRef = useRef(false)
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
+  const branchRef = useRef(branch)
+  branchRef.current = branch
 
   const checkStockLevels = async (force: boolean = false) => {
     if (!enabled || (isCheckingRef.current && !force)) return
@@ -12,21 +21,26 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
 
     try {
       // 1. Fetch non-variant active products (exclude Unregistered)
-      const { data: prods, error: prodErr } = await supabase
+      const checkedBranch = branchRef.current
+      let prodQuery = supabase
         .from('products')
         .select('id, name, stock_quantity, low_stock_alert, barcode, has_variants, category, category_id')
         .eq('is_active', true)
         .eq('has_variants', false)
+      if (checkedBranch) prodQuery = prodQuery.eq('branch', checkedBranch)
+      const { data: prods, error: prodErr } = await prodQuery
 
       if (prodErr) {
         console.warn('Low stock product check warning:', prodErr)
       }
 
       // 2. Fetch active variants
-      const { data: variants, error: varErr } = await supabase
+      let variantQuery = supabase
         .from('product_variants')
         .select('id, variant_name, stock, barcode, product_id, is_active, products(name, category, category_id, is_active)')
         .eq('is_active', true)
+      if (checkedBranch) variantQuery = variantQuery.eq('branch', checkedBranch)
+      const { data: variants, error: varErr } = await variantQuery
 
       if (varErr) {
         console.warn('Low stock variant check warning:', varErr)
@@ -88,6 +102,8 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
         }
       }
 
+      // A check that was in flight during logout must not restart the alarm
+      if (!enabledRef.current || branchRef.current !== checkedBranch) return
       setLowStockItems(flagged)
     } catch (err) {
       console.warn('Stock monitor error:', err)
@@ -97,7 +113,12 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
   }
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) {
+      // Logged out (or lost staff/admin access): silence any ringing alarm and clear state
+      alarmSound.stopAlert()
+      useAlarmStore.setState({ lowStockItems: [], isAlarmActive: false, silencedItemIds: new Set() })
+      return
+    }
 
     // Immediately unblock and run fresh stock check on login or role switch
     isCheckingRef.current = false
@@ -127,7 +148,7 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
       clearInterval(interval)
       void supabase.removeChannel(realtimeChannel)
     }
-  }, [enabled, role])
+  }, [enabled, role, branch])
 
   // Re-check stock levels when enabled changes from false to true (e.g., on login)
   useEffect(() => {

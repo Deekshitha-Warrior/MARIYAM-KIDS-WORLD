@@ -1,9 +1,10 @@
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
-import { BRAND_ADDRESS, BRAND_EN, BRAND_PHONE_DISPLAY } from './brand'
+import { BRAND_EN } from './brand'
 import { formatCurrency, formatQuantityDisplay, normalizeStructuredOrderItem, formatInvoiceNo } from './retail'
 import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import type { PosBranch } from '../store/store'
+import { getBranchProfile } from './branchProfile'
 
 export type InvoicePdfData = {
   invoiceNo: string
@@ -68,8 +69,9 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   doc.setFontSize(8)
   doc.setTextColor('#555')
   doc.setFont('helvetica', 'normal')
-  doc.text(BRAND_ADDRESS, left + 35, y + 17, { maxWidth: 80 })
-  doc.text(`Phone: ${BRAND_PHONE_DISPLAY}`, left + 35, y + 25)
+  const profile = getBranchProfile(data.branch)
+  doc.text(profile.address, left + 35, y + 17, { maxWidth: 80 })
+  doc.text(`Phone: ${profile.phone}`, left + 35, y + 25)
   doc.setTextColor('#7A1220')
   doc.setFont('helvetica', 'bold')
   doc.text(`Date: ${new Date(data.date).toLocaleDateString('en-IN')}`, right - 2, y + 2, { align: 'right' })
