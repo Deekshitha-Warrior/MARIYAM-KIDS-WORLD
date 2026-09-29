@@ -6,6 +6,7 @@ import { BRAND_EN, BRAND_TA, BRAND_LOGO } from '../lib/brand'
 import { branchLogo, branchShortLabel, branchSubtitle, combinedBranchSubtitle } from '../lib/branchTheme'
 import { useLangStore } from '../store/langStore'
 import { alarmSound } from '../lib/alarmAudio'
+import CenexaFooter from '../components/common/CenexaFooter'
 
 const BRANCHES: { key: PosBranch; label: string }[] = [
   { key: 'pos1', label: branchShortLabel('pos1') },
@@ -70,8 +71,9 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="relative h-screen max-h-screen min-h-screen overflow-y-auto lg:overflow-hidden bg-white p-3 sm:p-5 lg:p-6 font-sans flex items-center justify-center">
-      <div className="relative grid w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-3xl border border-gray-200/90 bg-[#5C0D18] shadow-[0_25px_60px_-12px_rgba(0,0,0,0.25),0_12px_28px_-6px_rgba(0,0,0,0.15)] lg:grid-cols-[0.85fr_1.15fr]">
+    <div className="relative h-[100dvh] max-h-[100dvh] min-h-[100dvh] bg-white font-sans flex flex-col justify-between overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-6 flex items-center justify-center">
+        <div className="relative grid w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-3xl border border-gray-200/90 bg-[#5C0D18] shadow-[0_25px_60px_-12px_rgba(0,0,0,0.25),0_12px_28px_-6px_rgba(0,0,0,0.15)] lg:grid-cols-[0.85fr_1.15fr]">
         <div className="hidden flex-col justify-between items-center bg-[#7A1220] border-r border-[#D4AF37]/20 p-8 lg:p-10 text-white lg:flex overflow-y-auto hide-scrollbar">
           <div className="w-full flex items-center justify-between">
             <p className="text-[11px] font-black uppercase tracking-[0.26em] text-[#D4AF37]">{loginTab === 'staff' ? branchSubtitle(branch) : combinedBranchSubtitle()}</p>
@@ -310,6 +312,8 @@ export default function AdminLogin() {
           )}
         </div>
       </div>
+      </div>
+      <CenexaFooter />
     </div>
   )
 }

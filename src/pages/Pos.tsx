@@ -18,6 +18,7 @@ import { barcodeService } from '../services/barcodeService'
 import { normalizeBarcode } from '../lib/barcode'
 import { Invoice } from '../components/Invoice'
 import CatalogModal from '../components/CatalogModal'
+import CenexaFooter from '../components/common/CenexaFooter'
 import { invoicePdfFile } from '../lib/invoicePdf'
 import { uploadInvoicePdf } from '../lib/storage'
 import { createOrderWithStock } from '../services/orderService'
@@ -1022,9 +1023,9 @@ export default function Pos(props: PosProps = {}) {
     }))
 
     return (
-      <div className="mobile-page-shell print:bg-white print:min-h-0">
+      <div className="mobile-page-shell print:bg-white print:min-h-0 min-h-[100dvh] flex flex-col justify-between">
         {/* Screen UI */}
-        <div className="max-w-2xl mx-auto px-4 py-6 print:hidden space-y-4">
+        <div className="flex-1 max-w-2xl mx-auto px-4 py-6 print:hidden space-y-4 w-full">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -1143,13 +1144,15 @@ export default function Pos(props: PosProps = {}) {
             couponCode={invoice.couponCode}
           />
         </div>
+        <CenexaFooter />
       </div>
     )
   }
 
   // ══ MAIN POS SCREEN ══════════════════════════════════════════════════
   return (
-    <div data-embedded={embeddedMode} className={`flex flex-col bg-[#FAFAFA] print:hidden overflow-x-hidden ${embeddedMode ? '' : 'h-full overflow-y-auto hide-scrollbar'}`} style={embeddedMode ? undefined : { WebkitOverflowScrolling: 'touch' }}>
+    <div data-embedded={embeddedMode} className={`flex flex-col bg-[#FAFAFA] print:hidden overflow-x-hidden ${embeddedMode ? '' : 'h-[100dvh] max-h-[100dvh] min-h-[100dvh]'}`}>
+      <div className={`flex-1 min-h-0 flex flex-col overflow-x-hidden ${embeddedMode ? '' : 'overflow-y-auto hide-scrollbar'}`} style={embeddedMode ? undefined : { WebkitOverflowScrolling: 'touch' }}>
       {/* Header */}
       <div className="px-3 pt-3 pb-2.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 md:pb-4 shrink-0 flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
         <div className="min-w-0">
@@ -1887,6 +1890,8 @@ export default function Pos(props: PosProps = {}) {
         </div>
 
       </div>
+      </div>
+      {!embeddedMode && <CenexaFooter />}
 
       {depositOpen && createPortal(
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 p-4">

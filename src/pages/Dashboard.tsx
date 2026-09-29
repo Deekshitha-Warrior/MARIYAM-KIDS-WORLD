@@ -63,6 +63,7 @@ import AdvanceOrders from './AdvanceOrders'
 import type { AdvanceOrder } from '../services/advanceOrderService'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { ExpensesView } from '../components/expenses/ExpensesView'
+import CenexaFooter from '../components/common/CenexaFooter'
 import { expenseService, type ExpenseRecord } from '../services/expenseService'
 import { useNavigationStore } from '../store/navigationStore'
 import { useHardwareBarcodeScanner } from '../hooks/useHardwareBarcodeScanner'
@@ -1717,7 +1718,7 @@ export default function Dashboard() {
 
 
   return (
-    <div className="admin-shell h-screen max-h-screen min-h-screen bg-bgMain flex flex-col lg:flex-row overflow-hidden">
+    <div className="admin-shell h-[100dvh] max-h-[100dvh] min-h-[100dvh] bg-bgMain flex flex-col lg:flex-row overflow-hidden">
       {/* Sidebar */}
       <aside
         className={[
@@ -1897,8 +1898,8 @@ export default function Dashboard() {
       </aside>
 
       {/* Main */}
-      <main className="flex-grow flex flex-col overflow-hidden">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto">
+      <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto">
 
         {tab === 'branch_hub' && <BranchHub onNavigate={handleTabClick} />}
         {tab === 'business_overview' && <BusinessOverview onNavigate={handleTabClick} />}
@@ -4661,9 +4662,7 @@ export default function Dashboard() {
         )}
         </div>
         {/* Footer */}
-        <div className="shrink-0 border-t border-gray-100 bg-white/80 py-2 text-center text-[12px] font-semibold text-[#7A8A78] tracking-wide print:hidden">
-          Powered by Cenexa Systems © 2026
-        </div>
+        <CenexaFooter />
       </main>
 
 

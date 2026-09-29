@@ -9,6 +9,7 @@ import { BRAND_EN, BRAND_TA } from '../lib/brand'
 import { isValidPhone, getSubscriberDigits } from '../lib/phone'
 import { useLangStore } from '../store/langStore'
 import { alarmSound } from '../lib/alarmAudio'
+import CenexaFooter from '../components/common/CenexaFooter'
 
 const SITE_URL =
   (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, '') ||
@@ -95,8 +96,9 @@ export default function Login() {
 
   /* ── Render ───────────────────────────────────────────────────── */
   return (
-    <div className="bg-gradient-to-br from-[#eaf2e5] to-[#F9FAFB] min-h-screen flex items-center justify-center p-4">
-      <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-sand/40 w-full max-w-md">
+    <div className="bg-gradient-to-br from-[#eaf2e5] to-[#F9FAFB] min-h-[100dvh] flex flex-col justify-between">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-sand/40 w-full max-w-md">
 
         {/* Brand */}
         <div className="flex flex-col items-center mb-6">
@@ -233,6 +235,8 @@ export default function Login() {
           </p>
         </div>
       </div>
+      </div>
+      <CenexaFooter />
     </div>
   )
 }

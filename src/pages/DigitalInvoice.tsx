@@ -5,6 +5,7 @@ import { Invoice } from '../components/Invoice'
 import { Printer, ArrowLeft, MessageCircle } from 'lucide-react'
 import { printThermalReceipt } from '../lib/thermalPrint'
 import { invoicePdfFile, invoicePdfFileFromElement } from '../lib/invoicePdf'
+import CenexaFooter from '../components/common/CenexaFooter'
 import { uploadInvoicePdf } from '../lib/storage'
 import { isUuid, normalizeStructuredOrderItem, formatInvoiceNo } from '../lib/retail'
 import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
@@ -422,8 +423,9 @@ export default function DigitalInvoice() {
   }
 
   return (
-    <div className="digital-invoice-page bg-[#f9faf6] font-sans print:bg-white print:overflow-visible print:m-0 print:p-0">
-      {/* Top action bar — uses position fixed so it always works on iOS regardless of scroll context */}
+    <div className="digital-invoice-page bg-[#f9faf6] font-sans min-h-[100dvh] flex flex-col justify-between print:bg-white print:overflow-visible print:m-0 print:p-0">
+      <div className="flex-1">
+        {/* Top action bar — uses position fixed so it always works on iOS regardless of scroll context */}
       <div className="bg-[#f9faf6]/95 backdrop-blur-sm p-4 fixed top-0 left-0 right-0 z-50 print:hidden flex items-center justify-between safe-area-inset-top" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
         <button
           type="button"
@@ -476,6 +478,8 @@ export default function DigitalInvoice() {
           />
         </div>
       </div>
+      </div>
+      <CenexaFooter />
     </div>
   )
 }
