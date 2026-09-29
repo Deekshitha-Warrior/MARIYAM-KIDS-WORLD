@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   PlusCircle,
   MinusCircle,
+  RotateCcw,
   Target,
   ArrowRight,
   Package,
@@ -151,197 +152,201 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
   }
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-2.5 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative z-10 bg-white rounded-none sm:rounded-3xl max-w-lg w-full h-screen sm:h-auto sm:max-h-[92vh] border-0 sm:border border-[#E8D399] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200" style={{ maxHeight: '100dvh' }}>
-        {/* Header */}
-        <div className="shrink-0 bg-[#7A1220] px-4 py-3 sm:px-5 sm:py-3.5 border-b border-[#D4AF37]/30 flex items-center justify-between text-white">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] border border-[#D4AF37] flex items-center justify-center text-[#D4AF37]">
-              <SlidersHorizontal size={16} />
+      <div
+        className="relative z-10 bg-white rounded-2xl sm:rounded-3xl max-w-md w-full border border-[#E8D399] shadow-2xl overflow-hidden flex flex-col my-auto max-h-[94dvh] animate-in fade-in zoom-in-95 duration-200"
+      >
+        {/* Compact Header */}
+        <div className="shrink-0 bg-[#7A1220] px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-[#D4AF37]/30 flex items-center justify-between text-white">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#1A1A1A] border border-[#D4AF37] flex items-center justify-center text-[#D4AF37] shrink-0">
+              <SlidersHorizontal size={14} />
             </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-black tracking-wide text-white leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-xs sm:text-sm font-black tracking-wide text-white leading-tight truncate">
                 Adjust Inventory Stock ({BRAND_EN})
               </h2>
-              <p className="text-[11px] text-[#D4AF37] font-semibold leading-tight">
-                Restock, remove stock, or reconcile physical count
+              <p className="text-[10px] text-[#D4AF37] font-semibold leading-tight truncate">
+                Restock, return, deduct loss, or reconcile count
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+            className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0 ml-1.5"
+            aria-label="Close modal"
           >
-            <X size={15} />
+            <X size={14} />
           </button>
         </div>
 
-        {/* Scrollable Form Body */}
+        {/* Modal Form Body */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
-          <div className="overflow-y-auto flex-1 p-2.5 sm:p-3 space-y-2.5">
+          <div className="overflow-y-auto flex-1 p-2.5 sm:p-3 space-y-2">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-2 rounded-xl text-xs flex items-center gap-2">
-                <AlertCircle size={15} className="shrink-0" />
-                <span>{error}</span>
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
+                <AlertCircle size={14} className="shrink-0" />
+                <span className="leading-tight">{error}</span>
               </div>
             )}
 
-            {/* Target SKU card */}
-            <div className="bg-[#FBFAF6] border border-[#E8D399] rounded-xl p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-wider text-[#B48811] flex items-center gap-1">
-                    <Package size={11} /> Target SKU / Product
+            {/* Target SKU card - Compact */}
+            <div className="bg-[#FBFAF6] border border-[#E8D399] rounded-xl p-2 sm:p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[9px] font-black uppercase tracking-wider text-[#B48811] flex items-center gap-1">
+                    <Package size={10} /> Target SKU
                   </div>
-                  <div className="text-xs sm:text-sm font-black text-black truncate mt-0.5">
+                  <div className="text-xs sm:text-sm font-black text-black truncate">
                     {item.name}
                   </div>
-                  {item.variant_name && (
-                    <span className="inline-block text-[11px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 mt-1">
-                      Variant: {item.variant_name}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {item.variant_name && (
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-1 py-0.2 rounded border border-amber-300">
+                        {item.variant_name}
+                      </span>
+                    )}
+                    {item.barcode && (
+                      <span className="text-[10px] font-mono text-gray-600 bg-white px-1 py-0.2 rounded border border-gray-200">
+                        {item.barcode}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider block">
+                <div className="text-right shrink-0 bg-white px-2 py-1 rounded-lg border border-[#E8D399]/60">
+                  <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wider block leading-none">
                     Current Stock
                   </span>
-                  <span className="text-base font-black text-black">{currentStock}</span>
-                  <span className="text-[11px] font-bold text-gray-600 ml-1">units</span>
+                  <span className="text-sm sm:text-base font-black text-black leading-tight">{currentStock}</span>
+                  <span className="text-[10px] font-bold text-gray-600 ml-1">units</span>
                 </div>
               </div>
-              {item.barcode && (
-                <div className="mt-1.5 pt-1.5 border-t border-[#E8D399]/40 flex items-center gap-1.5 text-[11px] font-semibold text-gray-600">
-                  <span>Barcode:</span>
-                  <strong className="font-mono text-black bg-white px-1.5 py-0.2 rounded border border-gray-200">
-                    {item.barcode}
-                  </strong>
-                </div>
-              )}
             </div>
 
-            {/* Action Mode Selector Tabs */}
+            {/* Action Mode Selector Tabs (Single Row of 4 Compact Tabs) */}
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-gray-700 mb-1.5">
+              <label className="block text-[10px] font-black uppercase tracking-wider text-gray-700 mb-1">
                 Select Adjustment Type <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+              <div className="grid grid-cols-4 gap-1">
                 {/* RESTOCK TAB */}
                 <button
                   type="button"
                   onClick={() => { setMode('RESTOCK'); setError('') }}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                  className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
                     mode === 'RESTOCK'
-                      ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm ring-2 ring-emerald-500/20'
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20 shadow-xs'
                       : 'bg-[#FBFAF6] border-gray-200 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <PlusCircle size={17} className={mode === 'RESTOCK' ? 'text-emerald-600' : 'text-gray-400'} />
-                  <span className="text-xs font-black mt-0.5">Restock</span>
-                  <span className="text-[9px] font-semibold text-gray-500">+ Add Units</span>
+                  <PlusCircle size={15} className={mode === 'RESTOCK' ? 'text-emerald-600' : 'text-gray-400'} />
+                  <span className="text-[10px] font-black mt-0.5 leading-tight truncate w-full">Restock</span>
+                  <span className="text-[8px] font-bold text-emerald-700 leading-tight">+ Add</span>
                 </button>
 
                 {/* CUSTOMER RETURN TAB */}
                 <button
                   type="button"
                   onClick={() => { setMode('CUSTOMER_RETURN'); setError('') }}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                  className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
                     mode === 'CUSTOMER_RETURN'
-                      ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-2 ring-blue-500/20'
+                      ? 'bg-blue-50 border-blue-500 text-blue-900 ring-2 ring-blue-500/20 shadow-xs'
                       : 'bg-[#FBFAF6] border-gray-200 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <PlusCircle size={17} className={mode === 'CUSTOMER_RETURN' ? 'text-blue-600' : 'text-gray-400'} />
-                  <span className="text-xs font-black mt-0.5">Customer Return</span>
-                  <span className="text-[9px] font-semibold text-gray-500">+ Add Units</span>
+                  <RotateCcw size={15} className={mode === 'CUSTOMER_RETURN' ? 'text-blue-600' : 'text-gray-400'} />
+                  <span className="text-[10px] font-black mt-0.5 leading-tight truncate w-full">Return</span>
+                  <span className="text-[8px] font-bold text-blue-700 leading-tight">+ Add</span>
                 </button>
 
                 {/* LOSS / DAMAGED TAB */}
                 <button
                   type="button"
                   onClick={() => { setMode('LOSS_DAMAGE'); setError('') }}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                  className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
                     mode === 'LOSS_DAMAGE'
-                      ? 'bg-rose-50 border-rose-500 text-rose-900 shadow-sm ring-2 ring-rose-500/20'
+                      ? 'bg-rose-50 border-rose-500 text-rose-900 ring-2 ring-rose-500/20 shadow-xs'
                       : 'bg-[#FBFAF6] border-gray-200 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <MinusCircle size={17} className={mode === 'LOSS_DAMAGE' ? 'text-rose-600' : 'text-gray-400'} />
-                  <span className="text-xs font-black mt-0.5">Loss / Damaged</span>
-                  <span className="text-[9px] font-semibold text-gray-500">- Deduct Units</span>
+                  <MinusCircle size={15} className={mode === 'LOSS_DAMAGE' ? 'text-rose-600' : 'text-gray-400'} />
+                  <span className="text-[10px] font-black mt-0.5 leading-tight truncate w-full">Loss / Dmg</span>
+                  <span className="text-[8px] font-bold text-rose-700 leading-tight">- Deduct</span>
                 </button>
 
                 {/* RECONCILIATION TAB */}
                 <button
                   type="button"
                   onClick={() => { setMode('RECONCILIATION'); setError('') }}
-                  className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                  className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border text-center transition-all cursor-pointer ${
                     mode === 'RECONCILIATION'
-                      ? 'bg-amber-50 border-[#D4AF37] text-amber-950 shadow-sm ring-2 ring-[#D4AF37]/30'
+                      ? 'bg-amber-50 border-[#D4AF37] text-amber-950 ring-2 ring-[#D4AF37]/30 shadow-xs'
                       : 'bg-[#FBFAF6] border-gray-200 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <Target size={17} className={mode === 'RECONCILIATION' ? 'text-[#D4AF37]' : 'text-gray-400'} />
-                  <span className="text-xs font-black mt-0.5">Reconciliation</span>
-                  <span className="text-[9px] font-semibold text-gray-500">Set Exact Count</span>
+                  <Target size={15} className={mode === 'RECONCILIATION' ? 'text-[#D4AF37]' : 'text-gray-400'} />
+                  <span className="text-[10px] font-black mt-0.5 leading-tight truncate w-full">Reconcile</span>
+                  <span className="text-[8px] font-bold text-amber-700 leading-tight">Exact Set</span>
                 </button>
               </div>
             </div>
 
-            {/* MODE 1: RESTOCK / CUSTOMER RETURN INPUT */}
-            {(mode === 'RESTOCK' || mode === 'CUSTOMER_RETURN') && (
-              <div className="space-y-2.5 bg-emerald-50/60 border border-emerald-200 p-3 sm:p-3.5 rounded-xl">
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-emerald-900 mb-1">
-                    Quantity to Add ({mode === 'CUSTOMER_RETURN' ? 'Customer Return' : 'Restock'}) <span className="text-red-500">*</span>
+            {/* STANDARDIZED HEIGHT QUANTITY INPUT BOX FOR ALL 4 MODES */}
+            {mode === 'RESTOCK' && (
+              <div className="space-y-1.5 bg-emerald-50/60 border border-emerald-200 p-2 sm:p-2.5 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-emerald-900">
+                    Quantity to Add (Restock) <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setAddQuantity((q) => (typeof q === 'number' ? Math.max(0, q - 1) : 0))}
-                      className="w-10 h-10 rounded-lg bg-white hover:bg-emerald-100 text-emerald-900 font-black text-lg flex items-center justify-center border border-emerald-300 transition-colors"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      min="0"
-                      value={addQuantity}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        if (val === '') {
-                          setAddQuantity('')
-                        } else {
-                          const parsed = parseInt(val, 10)
-                          setAddQuantity(isNaN(parsed) ? '' : Math.max(0, parsed))
-                        }
-                      }}
-                      onBlur={() => {
-                        if (addQuantity === '') setAddQuantity(0)
-                      }}
-                      className="flex-1 text-center font-black text-xl py-1.5 rounded-lg border-2 border-emerald-400 bg-white text-emerald-950 focus:border-emerald-600 outline-none shadow-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setAddQuantity((q) => (typeof q === 'number' ? q + 1 : 1))}
-                      className="w-10 h-10 rounded-lg bg-white hover:bg-emerald-100 text-emerald-900 font-black text-lg flex items-center justify-center border border-emerald-300 transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAddQuantity((q) => (typeof q === 'number' ? Math.max(0, q - 1) : 0))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-emerald-100 text-emerald-900 font-black text-base flex items-center justify-center border border-emerald-300 transition-colors shrink-0"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={addQuantity}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '') {
+                        setAddQuantity('')
+                      } else {
+                        const parsed = parseInt(val, 10)
+                        setAddQuantity(isNaN(parsed) ? '' : Math.max(0, parsed))
+                      }
+                    }}
+                    onBlur={() => {
+                      if (addQuantity === '') setAddQuantity(0)
+                    }}
+                    className="flex-1 h-8 sm:h-9 text-center font-black text-lg rounded-lg border-2 border-emerald-400 bg-white text-emerald-950 focus:border-emerald-600 outline-none shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAddQuantity((q) => (typeof q === 'number' ? q + 1 : 1))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-emerald-100 text-emerald-900 font-black text-base flex items-center justify-center border border-emerald-300 transition-colors shrink-0"
+                  >
+                    +
+                  </button>
                 </div>
 
-                {/* Quick Preset Buttons */}
+                {/* Quick Preset Pills */}
                 <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                  <span className="text-[10px] font-bold text-emerald-800 mr-1">Quick Add:</span>
+                  <span className="text-[9px] font-bold text-emerald-800 mr-0.5">Quick:</span>
                   {[1, 5, 10, 25, 50, 100].map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setAddQuantity(preset)}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition-colors cursor-pointer ${
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
                         addQuantity === preset
                           ? 'bg-emerald-600 text-white border-emerald-600'
                           : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100'
@@ -354,64 +359,128 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
               </div>
             )}
 
-            {/* MODE 2: LOSS / DAMAGED INPUT */}
-            {mode === 'LOSS_DAMAGE' && (
-              <div className="space-y-2.5 bg-rose-50/60 border border-rose-200 p-3 sm:p-3.5 rounded-xl">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-rose-900">
-                      Quantity to Remove <span className="text-red-500">*</span>
-                    </label>
-                    <span className="text-[10px] font-bold text-rose-700">
-                      Max: {currentStock} units
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRemoveQuantity((q) => (typeof q === 'number' ? Math.max(0, q - 1) : 0))}
-                      className="w-10 h-10 rounded-lg bg-white hover:bg-rose-100 text-rose-900 font-black text-lg flex items-center justify-center border border-rose-300 transition-colors"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      min="0"
-                      max={currentStock}
-                      value={removeQuantity}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        if (val === '') {
-                          setRemoveQuantity('')
-                        } else {
-                          const parsed = parseInt(val, 10)
-                          setRemoveQuantity(isNaN(parsed) ? '' : Math.min(currentStock, Math.max(0, parsed)))
-                        }
-                      }}
-                      onBlur={() => {
-                        if (removeQuantity === '') setRemoveQuantity(0)
-                      }}
-                      className="flex-1 text-center font-black text-xl py-1.5 rounded-lg border-2 border-rose-400 bg-white text-rose-950 focus:border-rose-600 outline-none shadow-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setRemoveQuantity((q) => (typeof q === 'number' ? Math.min(currentStock, q + 1) : 1))}
-                      className="w-10 h-10 rounded-lg bg-white hover:bg-rose-100 text-rose-900 font-black text-lg flex items-center justify-center border border-rose-300 transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
+            {mode === 'CUSTOMER_RETURN' && (
+              <div className="space-y-1.5 bg-blue-50/60 border border-blue-200 p-2 sm:p-2.5 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-blue-900">
+                    Quantity Returned by Customer <span className="text-red-500">*</span>
+                  </label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAddQuantity((q) => (typeof q === 'number' ? Math.max(0, q - 1) : 0))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-blue-100 text-blue-900 font-black text-base flex items-center justify-center border border-blue-300 transition-colors shrink-0"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={addQuantity}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '') {
+                        setAddQuantity('')
+                      } else {
+                        const parsed = parseInt(val, 10)
+                        setAddQuantity(isNaN(parsed) ? '' : Math.max(0, parsed))
+                      }
+                    }}
+                    onBlur={() => {
+                      if (addQuantity === '') setAddQuantity(0)
+                    }}
+                    className="flex-1 h-8 sm:h-9 text-center font-black text-lg rounded-lg border-2 border-blue-400 bg-white text-blue-950 focus:border-blue-600 outline-none shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAddQuantity((q) => (typeof q === 'number' ? q + 1 : 1))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-blue-100 text-blue-900 font-black text-base flex items-center justify-center border border-blue-300 transition-colors shrink-0"
+                  >
+                    +
+                  </button>
                 </div>
 
-                {/* Quick Preset Buttons */}
+                {/* Quick Preset Pills */}
                 <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                  <span className="text-[10px] font-bold text-rose-800 mr-1">Quick Remove:</span>
+                  <span className="text-[9px] font-bold text-blue-800 mr-0.5">Quick:</span>
+                  {[1, 2, 5, 10, 25, 50].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAddQuantity(preset)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                        addQuantity === preset
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      +{preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mode === 'LOSS_DAMAGE' && (
+              <div className="space-y-1.5 bg-rose-50/60 border border-rose-200 p-2 sm:p-2.5 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-rose-900">
+                    Quantity Lost / Damaged <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[9px] font-bold text-rose-700">
+                    Max: {currentStock} units
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setRemoveQuantity((q) => (typeof q === 'number' ? Math.max(0, q - 1) : 0))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-rose-100 text-rose-900 font-black text-base flex items-center justify-center border border-rose-300 transition-colors shrink-0"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    max={currentStock}
+                    value={removeQuantity}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '') {
+                        setRemoveQuantity('')
+                      } else {
+                        const parsed = parseInt(val, 10)
+                        setRemoveQuantity(isNaN(parsed) ? '' : Math.min(currentStock, Math.max(0, parsed)))
+                      }
+                    }}
+                    onBlur={() => {
+                      if (removeQuantity === '') setRemoveQuantity(0)
+                    }}
+                    className="flex-1 h-8 sm:h-9 text-center font-black text-lg rounded-lg border-2 border-rose-400 bg-white text-rose-950 focus:border-rose-600 outline-none shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRemoveQuantity((q) => (typeof q === 'number' ? Math.min(currentStock, q + 1) : 1))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-rose-100 text-rose-900 font-black text-base flex items-center justify-center border border-rose-300 transition-colors shrink-0"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Quick Preset Pills */}
+                <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                  <span className="text-[9px] font-bold text-rose-800 mr-0.5">Quick:</span>
                   {[1, 2, 5, 10].filter((p) => p <= currentStock).map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setRemoveQuantity(preset)}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition-colors cursor-pointer ${
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
                         removeQuantity === preset
                           ? 'bg-rose-600 text-white border-rose-600'
                           : 'bg-white text-rose-900 border-rose-200 hover:bg-rose-100'
@@ -424,7 +493,7 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setRemoveQuantity(currentStock)}
-                      className="px-2 py-0.5 rounded-md text-[11px] font-black border bg-rose-100 text-rose-900 border-rose-300 hover:bg-rose-200"
+                      className="px-1.5 py-0.5 rounded text-[10px] font-black border bg-rose-100 text-rose-900 border-rose-300 hover:bg-rose-200"
                     >
                       Clear All ({currentStock})
                     </button>
@@ -433,60 +502,87 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
               </div>
             )}
 
-            {/* MODE 3: RECONCILIATION COUNT INPUT */}
             {mode === 'RECONCILIATION' && (
-              <div className="space-y-2.5 bg-amber-50/60 border border-[#E8D399] p-3 sm:p-3.5 rounded-xl">
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-amber-950 mb-1">
-                    Actual Audited Physical Count <span className="text-red-500">*</span>
+              <div className="space-y-1.5 bg-amber-50/60 border border-[#E8D399] p-2 sm:p-2.5 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-amber-950">
+                    Physical Count Reconciliation <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex items-center gap-2">
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCorrectedQuantity((q) => (typeof q === 'number' ? Math.max(0, q - 1) : 0))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-amber-100 text-amber-950 font-black text-base flex items-center justify-center border border-amber-300 transition-colors shrink-0"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    value={correctedQuantity}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '') {
+                        setCorrectedQuantity('')
+                      } else {
+                        const parsed = parseInt(val, 10)
+                        setCorrectedQuantity(isNaN(parsed) ? '' : Math.max(0, parsed))
+                      }
+                    }}
+                    onBlur={() => {
+                      if (correctedQuantity === '') setCorrectedQuantity(0)
+                    }}
+                    className="flex-1 h-8 sm:h-9 text-center font-black text-lg rounded-lg border-2 border-[#D4AF37] bg-white text-black focus:border-black outline-none shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCorrectedQuantity((q) => (typeof q === 'number' ? q + 1 : 1))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white hover:bg-amber-100 text-amber-950 font-black text-base flex items-center justify-center border border-amber-300 transition-colors shrink-0"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Quick Preset Pills for Reconciliation */}
+                <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                  <span className="text-[9px] font-bold text-amber-900 mr-0.5">Set:</span>
+                  {[0, 5, 10, 20, 50, 100].map((preset) => (
                     <button
+                      key={preset}
                       type="button"
-                      onClick={() => setCorrectedQuantity((q) => (typeof q === 'number' ? Math.max(0, q - 1) : 0))}
-                      className="w-10 h-10 rounded-lg bg-white hover:bg-amber-100 text-amber-950 font-black text-lg flex items-center justify-center border border-amber-300 transition-colors"
+                      onClick={() => setCorrectedQuantity(preset)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                        correctedQuantity === preset
+                          ? 'bg-[#B48811] text-white border-[#B48811]'
+                          : 'bg-white text-amber-950 border-amber-200 hover:bg-amber-100'
+                      }`}
                     >
-                      -
+                      {preset}
                     </button>
-                    <input
-                      type="number"
-                      min="0"
-                      value={correctedQuantity}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        if (val === '') {
-                          setCorrectedQuantity('')
-                        } else {
-                          const parsed = parseInt(val, 10)
-                          setCorrectedQuantity(isNaN(parsed) ? '' : Math.max(0, parsed))
-                        }
-                      }}
-                      onBlur={() => {
-                        if (correctedQuantity === '') setCorrectedQuantity(0)
-                      }}
-                      className="flex-1 text-center font-black text-xl py-1.5 rounded-lg border-2 border-[#D4AF37] bg-white text-black focus:border-black outline-none shadow-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setCorrectedQuantity((q) => (typeof q === 'number' ? q + 1 : 1))}
-                      className="w-10 h-10 rounded-lg bg-white hover:bg-amber-100 text-amber-950 font-black text-lg flex items-center justify-center border border-amber-300 transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCorrectedQuantity(currentStock)}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-bold border bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                  >
+                    Current ({currentStock})
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Real-time Math Preview Banner */}
-            <div className="bg-[#FBFAF6] border border-[#E8D399] rounded-xl p-2.5 sm:p-3 flex items-center justify-between text-xs font-bold">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-gray-500 text-[11px]">Current:</span>
-                <span className="text-black font-black text-xs sm:text-sm">{currentStock}</span>
-                <ArrowRight size={13} className="text-gray-400" />
-                <span className="text-gray-500 text-[11px]">New Stock:</span>
+            {/* Real-time Math Preview Banner - Compact */}
+            <div className="bg-[#FBFAF6] border border-[#E8D399] rounded-xl px-2.5 py-1.5 flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500 text-[10px]">Current:</span>
+                <span className="text-black font-black text-xs">{currentStock}</span>
+                <ArrowRight size={12} className="text-gray-400" />
+                <span className="text-gray-500 text-[10px]">New Stock:</span>
                 <span
-                  className={`text-xs sm:text-sm font-black ${
+                  className={`text-xs font-black ${
                     effectiveNewStock > currentStock
                       ? 'text-emerald-700'
                       : effectiveNewStock < currentStock
@@ -498,7 +594,7 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
                 </span>
               </div>
               <span
-                className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                   delta > 0
                     ? 'bg-emerald-100 text-emerald-800'
                     : delta < 0
@@ -510,75 +606,63 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
               </span>
             </div>
 
-            {/* Note Input */}
+            {/* Note Input - Compact */}
             <div>
-              <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                Adjustment Note / Reason Description (Optional)
+              <label className="block text-[10px] font-bold text-gray-600 mb-0.5">
+                Adjustment Note (Optional)
               </label>
               <input
                 type="text"
                 placeholder={
                   mode === 'RESTOCK'
-                    ? 'e.g. Received new stock shipment / batch delivery'
+                    ? 'e.g. Received new stock shipment'
                     : mode === 'CUSTOMER_RETURN'
-                    ? 'e.g. Customer returned items, refund issued'
+                    ? 'e.g. Customer returned items'
                     : mode === 'LOSS_DAMAGE'
-                    ? 'e.g. Broken packaging, water damage, lost in storage'
-                    : 'e.g. Physical inventory count reconciliation'
+                    ? 'e.g. Broken packaging, damage'
+                    : 'e.g. Physical inventory audit'
                 }
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl border border-gray-300 bg-white text-xs text-gray-900 outline-none focus:border-[#7A1220]"
+                className="w-full py-1.5 px-2.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-900 outline-none focus:border-[#7A1220]"
               />
             </div>
           </div>
 
-          {/* Fixed Footer at the bottom */}
-          <div className="shrink-0 px-3 py-2.5 sm:px-5 sm:py-3 bg-[#FBFAF6] border-t border-gray-200 flex items-center justify-end gap-2 min-h-14 sm:min-h-auto" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+          {/* Compact Footer Action Buttons directly visible on 1 screen */}
+          <div className="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 bg-[#FBFAF6] border-t border-gray-200 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 transition-colors cursor-pointer touch-manipulation select-none"
+              className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting || delta === 0}
-              className={`flex items-center gap-1 sm:gap-1.5 px-3 sm:px-5 py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer touch-manipulation select-none ${
-                mode === 'RESTOCK' || mode === 'CUSTOMER_RETURN'
-                  ? 'bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] hover:bg-[#1A1A1A]'
-                  : mode === 'LOSS_DAMAGE'
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-black transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+                mode === 'LOSS_DAMAGE'
                   ? 'bg-rose-700 text-white hover:bg-rose-800 border border-rose-800'
                   : 'bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] hover:bg-[#1A1A1A]'
               }`}
             >
               {submitting ? (
                 <>
-                  <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                  <span className="hidden sm:inline">Saving...</span>
-                  <span className="sm:hidden">Save...</span>
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                  <span>Saving...</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 size={14} className="sm:w-4 sm:h-4 shrink-0" />
-                  <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                  <CheckCircle2 size={14} className="shrink-0" />
+                  <span>
                     {mode === 'RESTOCK'
                       ? `Update (+${numAdd})`
                       : mode === 'CUSTOMER_RETURN'
-                      ? `Update (+${numAdd})`
+                      ? `Update Return (+${numAdd})`
                       : mode === 'LOSS_DAMAGE'
                       ? `Update (-${numRemove})`
                       : `Update (${effectiveNewStock})`}
-                  </span>
-                  <span className="hidden sm:inline">
-                    {mode === 'RESTOCK'
-                      ? ` Restock`
-                      : mode === 'CUSTOMER_RETURN'
-                      ? ` Return`
-                      : mode === 'LOSS_DAMAGE'
-                      ? ` Removal`
-                      : ` Reconciliation`}
                   </span>
                 </>
               )}
