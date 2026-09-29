@@ -96,8 +96,8 @@ export default function Login() {
 
   /* ── Render ───────────────────────────────────────────────────── */
   return (
-    <div className="bg-gradient-to-br from-[#eaf2e5] to-[#F9FAFB] min-h-[100dvh] flex flex-col justify-between">
-      <div className="flex-1 flex items-center justify-center p-4">
+    <div className="bg-gradient-to-br from-[#eaf2e5] to-[#F9FAFB] h-[100dvh] max-h-[100dvh] flex flex-col justify-between overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex items-center justify-center p-4">
         <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-sand/40 w-full max-w-md">
 
         {/* Brand */}

@@ -1899,7 +1899,7 @@ export default function Dashboard() {
 
       {/* Main */}
       <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto">
+        <div className="flex-1 min-h-0 p-4 sm:p-6 lg:p-8 overflow-x-hidden overflow-y-auto overscroll-contain">
 
         {tab === 'branch_hub' && <BranchHub onNavigate={handleTabClick} />}
         {tab === 'business_overview' && <BusinessOverview onNavigate={handleTabClick} />}
