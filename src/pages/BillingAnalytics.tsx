@@ -7,10 +7,12 @@ import {
   RefreshCw,
   Search,
   ShoppingCart,
+  Trash2,
   Trophy,
 } from 'lucide-react'
 import CompactAnalytics from '../components/dashboard/CompactAnalytics'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { cancelAdvanceOrderByCompletedOrderId } from '../services/advanceOrderService'
 
 // Custom Malaysian Ringgit icon
 const RMIcon = ({ size = 16, className = '' }: { size?: number; className?: string }) => (
@@ -95,6 +97,7 @@ type AnalyticsModel = {
   todaySales: number
   completedOrders: number
   posRevenue: number
+  advanceRevenue: number
   onlinePosRevenue: number
   manualRevenue: number
   monthlyRevenue: number
@@ -115,6 +118,15 @@ const isCompletedStatus = (value: unknown) => {
   const status = normalizeStatus(value)
   return status === 'completed' || status === 'paid'
 }
+const toLocalDateKey = (value: string | Date) => {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+const toLocalMonthKey = (value: string | Date) => toLocalDateKey(value).slice(0, 7)
 const startOfWeekMonday = (input: Date) => {
   const date = new Date(input)
   const day = date.getDay()
@@ -142,11 +154,14 @@ const parseOrderItems = (items: unknown): Record<string, unknown>[] => {
 const exportCSV = (orders: BillingOrder[]) => {
   const header = ['Invoice No', 'Customer', 'Phone', 'Bill Type', 'Coupon', 'Discount', 'Delivery', 'Total', 'Date', 'Status']
   const rows = orders.map((order) => {
-    const billType = normalizeOrderType(order.order_type) === 'manual_sale'
+    const orderType = normalizeOrderType(order.order_type)
+    const billType = orderType === 'manual_sale'
       ? 'MANUAL'
-      : normalizeOrderMode(order.order_mode) === 'online'
-        ? 'ONLINE'
-        : 'OFFLINE'
+      : orderType === 'advance_order'
+        ? 'ADVANCE'
+        : normalizeOrderMode(order.order_mode) === 'online'
+          ? 'ONLINE'
+          : 'OFFLINE'
     let dateStr = ''
     try {
       dateStr = new Date(order.created_at).toISOString().slice(0, 10)
@@ -219,7 +234,7 @@ export default function BillingAnalytics() {
   const [analyticsDatePreset, setAnalyticsDatePreset] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all')
   const [analyticsDateFrom, setAnalyticsDateFrom] = useState('')
   const [analyticsDateTo, setAnalyticsDateTo] = useState('')
-  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual'>('all')
+  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'advance' | 'online' | 'manual'>('all')
   const [billSearch, setBillSearch] = useState({
     invoiceNo: '',
     customerName: '',
@@ -229,6 +244,23 @@ export default function BillingAnalytics() {
   })
 
   const isAdmin = user?.role === 'admin'
+
+  const deleteOrder = async (orderId: string, invoiceNo?: string) => {
+    if (!window.confirm(`Are you sure you want to delete bill ${invoiceNo || orderId}? This will remove it permanently and update revenue.`)) return
+    try {
+      await supabase.from('order_items').delete().eq('order_id', orderId)
+      const { error } = await supabase.from('orders').delete().eq('id', orderId)
+      if (error) throw error
+
+      await cancelAdvanceOrderByCompletedOrderId(orderId)
+
+      setOrders((prev) => prev.filter((o) => o.id !== orderId))
+      setOrderItems((prev) => prev.filter((item) => item.order_id !== orderId))
+    } catch (err) {
+      console.error('Failed to delete order:', err)
+      alert('Failed to delete order. Please try again.')
+    }
+  }
 
   const toBillingOrder = (row: Record<string, unknown>): BillingOrder => ({
     id: String(row.id || ''),
@@ -327,6 +359,9 @@ export default function BillingAnalytics() {
     const offlinePOS = billableCompleted.filter(
       (order) => normalizeOrderType(order.order_type) === 'pos_sale' && normalizeOrderMode(order.order_mode) !== 'online',
     )
+    const advanceOrders = billableCompleted.filter(
+      (order) => normalizeOrderType(order.order_type) === 'advance_order',
+    )
     const onlinePOS = billableCompleted.filter(
       (order) => normalizeOrderType(order.order_type) === 'pos_sale' && normalizeOrderMode(order.order_mode) === 'online',
     )
@@ -334,16 +369,17 @@ export default function BillingAnalytics() {
 
     const completedRevenue = billableCompleted.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
     const posRevenue = offlinePOS.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
+    const advanceRevenue = advanceOrders.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
     const onlinePosRevenue = onlinePOS.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
     const manualRevenue = manualSales.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
 
-    const todayKey = new Date().toISOString().slice(0, 10)
-    const monthKey = todayKey.slice(0, 7)
+    const todayKey = toLocalDateKey(new Date())
+    const monthKey = toLocalMonthKey(new Date())
     const todaySales = billableCompleted
-      .filter((order) => order.created_at.startsWith(todayKey))
+      .filter((order) => toLocalDateKey(order.created_at) === todayKey)
       .reduce((sum, order) => sum + toNumber(order.total, 0), 0)
     const monthlyRevenue = billableCompleted
-      .filter((order) => order.created_at.startsWith(monthKey))
+      .filter((order) => toLocalMonthKey(order.created_at) === monthKey)
       .reduce((sum, order) => sum + toNumber(order.total, 0), 0)
 
     const completedIds = new Set(billableCompleted.map((order) => order.id))
@@ -454,6 +490,7 @@ export default function BillingAnalytics() {
       todaySales,
       completedOrders: billableCompleted.length,
       posRevenue,
+      advanceRevenue,
       onlinePosRevenue,
       manualRevenue: manualRevenue || totalManualRevenue,
       monthlyRevenue,
@@ -463,8 +500,9 @@ export default function BillingAnalytics() {
       monthlyTrend,
       channelDistribution: [
         { name: 'Offline Bills', value: posRevenue, color: '#f97316' },
+        { name: 'Advance Bills', value: advanceRevenue, color: '#8b5cf6' },
         { name: 'Online Bills', value: onlinePosRevenue, color: '#3b82f6' },
-        { name: 'Manual Sales', value: manualRevenue || totalManualRevenue, color: '#8b5cf6' },
+        { name: 'Manual Sales', value: manualRevenue || totalManualRevenue, color: '#ec4899' },
       ],
       topCategories,
       weeklySales,
@@ -486,6 +524,7 @@ export default function BillingAnalytics() {
       if (type === 'online_request') return false
 
       if (billTypeFilter === 'manual' && type !== 'manual_sale') return false
+      if (billTypeFilter === 'advance' && type !== 'advance_order') return false
       if (billTypeFilter === 'offline' && !(type === 'pos_sale' && mode !== 'online')) return false
       if (billTypeFilter === 'online' && !(type === 'pos_sale' && mode === 'online')) return false
 
@@ -502,7 +541,7 @@ export default function BillingAnalytics() {
   const summaryCards = [
     {
       label: l('Total Revenue', 'மொத்த வருவாய்'),
-      helper: 'POS + manual completed bills',
+      helper: 'POS + advance + manual bills',
       value: formatCurrency(analytics.totalCompletedRevenue),
       icon: <RMIcon size={18} />,
       color: 'text-emerald-700',
@@ -533,6 +572,14 @@ export default function BillingAnalytics() {
       bg: 'bg-orange-50',
     },
     {
+      label: l('Advance Bills', 'முன்பதிவு பில்'),
+      helper: 'Completed advance orders',
+      value: formatCurrency(analytics.advanceRevenue),
+      icon: <ShoppingCart size={18} />,
+      color: 'text-violet-700',
+      bg: 'bg-violet-50',
+    },
+    {
       label: l('Online Bills', 'ஆன்லைன் பில்'),
       helper: 'Online POS sales',
       value: formatCurrency(analytics.onlinePosRevenue),
@@ -545,16 +592,16 @@ export default function BillingAnalytics() {
       helper: 'Manual item revenue',
       value: formatCurrency(analytics.manualRevenue),
       icon: <ShoppingCart size={18} />,
-      color: 'text-violet-700',
-      bg: 'bg-violet-50',
+      color: 'text-pink-700',
+      bg: 'bg-pink-50',
     },
     {
       label: l('Monthly Revenue', 'மாத வருவாய்'),
       helper: 'Current month',
       value: formatCurrency(analytics.monthlyRevenue),
       icon: <BarChart2 size={18} />,
-      color: 'text-pink-700',
-      bg: 'bg-pink-50',
+      color: 'text-rose-700',
+      bg: 'bg-rose-50',
     },
     {
       label: l('Total Items Sold', 'விற்ற பொருட்கள்'),
@@ -676,7 +723,7 @@ export default function BillingAnalytics() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {summaryCards.map((card) => (
             <StatCard
               key={card.label}
@@ -716,6 +763,7 @@ export default function BillingAnalytics() {
               {([
                 { v: 'all', label: l('All Bills', 'அனைத்து') },
                 { v: 'offline', label: l('Offline', 'ஆஃப்லைன்') },
+                { v: 'advance', label: l('Advance', 'முன்பதிவு') },
                 { v: 'online', label: l('Online', 'ஆன்லைன்') },
                 { v: 'manual', label: l('Manual', 'கைமுறை') },
               ] as const).map(({ v, label }) => (
@@ -772,7 +820,7 @@ export default function BillingAnalytics() {
             </div>
 
             <div className="mt-4 overflow-x-auto rounded-xl border border-[#E5E7EB]/30">
-              <table className="min-w-[980px] w-full text-left text-[13px]">
+              <table className="min-w-[1020px] w-full text-left text-[13px]">
                 <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-wider text-[#374151]">
                   <tr>
                     <th className="px-3 py-3 font-black">Invoice</th>
@@ -785,20 +833,26 @@ export default function BillingAnalytics() {
                     <th className="px-3 py-3 font-black">Total</th>
                     <th className="px-3 py-3 font-black">Date</th>
                     <th className="px-3 py-3 font-black">Status</th>
+                    <th className="px-3 py-3 font-black text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E7EB]/20">
                   {filteredBills.slice(0, 50).map((order) => {
-                    const billTypeLabel = normalizeOrderType(order.order_type) === 'manual_sale'
+                    const orderType = normalizeOrderType(order.order_type)
+                    const billTypeLabel = orderType === 'manual_sale'
                       ? 'MANUAL'
-                      : normalizeOrderMode(order.order_mode) === 'online'
-                        ? 'ONLINE'
-                        : 'OFFLINE'
-                    const billTypeClass = normalizeOrderType(order.order_type) === 'manual_sale'
+                      : orderType === 'advance_order'
+                        ? 'ADVANCE'
+                        : normalizeOrderMode(order.order_mode) === 'online'
+                          ? 'ONLINE'
+                          : 'OFFLINE'
+                    const billTypeClass = orderType === 'manual_sale'
                       ? 'bg-purple-100 text-purple-700'
-                      : normalizeOrderMode(order.order_mode) === 'online'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-orange-100 text-orange-700'
+                      : orderType === 'advance_order'
+                        ? 'bg-violet-100 text-violet-700'
+                        : normalizeOrderMode(order.order_mode) === 'online'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-orange-100 text-orange-700'
                     return (
                       <tr key={order.id} className="hover:bg-[#F9FAFB]/50">
                         <td className="whitespace-nowrap px-3 py-3 font-bold text-[#10B981]">{order.invoice_no || '—'}</td>
@@ -817,12 +871,22 @@ export default function BillingAnalytics() {
                             {normalizeStatus(order.status) || 'pending'}
                           </span>
                         </td>
+                        <td className="px-3 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => void deleteOrder(order.id, order.invoice_no)}
+                            className="inline-flex items-center justify-center p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                            title="Delete Bill"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
                   {filteredBills.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="px-4 py-10 text-center text-[13px] text-[#374151]">
+                      <td colSpan={11} className="px-4 py-10 text-center text-[13px] text-[#374151]">
                         No matching bills found.
                       </td>
                     </tr>

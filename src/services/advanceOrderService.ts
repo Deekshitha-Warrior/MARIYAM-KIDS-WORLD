@@ -113,20 +113,53 @@ const normalizeOrder = (row: Record<string, unknown>): AdvanceOrder => ({
 const rpcRow = (data: unknown) => (Array.isArray(data) ? data[0] : data) as Record<string, unknown>
 
 export async function deleteAdvanceOrder(orderId: string): Promise<void> {
+  let completedOrderId: string | null = null
   if (isSupabaseConfigured) {
+    const { data: adv } = await supabase.from('advance_orders').select('completed_order_id').eq('id', orderId).maybeSingle()
+    if (adv?.completed_order_id) {
+      completedOrderId = adv.completed_order_id
+    }
     const { error } = await supabase.from('advance_orders').delete().eq('id', orderId)
     if (error) throw new Error(error.message)
+    if (completedOrderId) {
+      await supabase.from('orders').delete().eq('id', completedOrderId)
+    }
   }
   
   // Clean up local storage
-  const localOrders = loadLocalOrders().filter(o => o.id !== orderId)
-  saveLocalOrders(localOrders)
+  const localOrders = loadLocalOrders()
+  const target = localOrders.find(o => o.id === orderId)
+  if (target?.completed_order_id) {
+    completedOrderId = completedOrderId || target.completed_order_id
+    if (isSupabaseConfigured) {
+      await supabase.from('orders').delete().eq('id', target.completed_order_id)
+    }
+  }
+  const filtered = localOrders.filter(o => o.id !== orderId)
+  saveLocalOrders(filtered)
   
   const localTimeline = loadLocalTimeline().filter(t => t.advance_order_id !== orderId)
   saveLocalTimeline(localTimeline)
   
   const localPayments = loadLocalPayments().filter(p => p.advance_order_id !== orderId)
   saveLocalPayments(localPayments)
+}
+
+export async function cancelAdvanceOrderByCompletedOrderId(completedOrderId: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    await supabase
+      .from('advance_orders')
+      .update({ completed_order_id: null, invoice_number: null, status: 'cancelled' })
+      .eq('completed_order_id', completedOrderId)
+  }
+  const localOrders = loadLocalOrders()
+  const updated = localOrders.map(o => {
+    if (o.completed_order_id === completedOrderId) {
+      return { ...o, completed_order_id: null, invoice_number: null, status: 'cancelled' as AdvanceStatus }
+    }
+    return o
+  })
+  saveLocalOrders(updated)
 }
 
 export async function listAdvanceOrders(branch?: PosBranch): Promise<AdvanceOrder[]> {

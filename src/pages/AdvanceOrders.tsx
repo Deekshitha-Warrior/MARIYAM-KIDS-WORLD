@@ -37,12 +37,13 @@ const initialForm = { customerName: '', phone: '', address: '', productName: '',
 
 type AdvanceOrdersProps = {
   onOrderCompleted?: (order?: AdvanceOrder) => void
+  onOrderDeleted?: (orderId: string, completedOrderId?: string | null) => void
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="block"><span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-[#6B7280]">{label}</span>{children}</label> }
 const inputClass = 'w-full rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-sm text-[#273126] outline-none transition focus:border-[#7e22ce] focus:ring-2 focus:ring-violet-100'
 
-export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps = {}) {
+export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: AdvanceOrdersProps = {}) {
   const role = useAdminAuthStore(state => state.role)
   const branch = useAdminAuthStore(state => resolveBranch(state.activeBranch))
   const products = useProductStore(state => state.products)
@@ -80,8 +81,11 @@ export default function AdvanceOrders({ onOrderCompleted }: AdvanceOrdersProps =
   const handleDeleteOrder = async (orderId: string, orderName: string) => {
     if (!window.confirm(`Are you sure you want to delete advance order "${orderName}"? This action cannot be undone.`)) return
     try {
+      const target = orders.find(o => o.id === orderId)
+      const completedOrderId = target?.completed_order_id || null
       await deleteAdvanceOrder(orderId)
       setOrders(orders => orders.filter(o => o.id !== orderId))
+      onOrderDeleted?.(orderId, completedOrderId)
       setNotice('Order deleted successfully')
       setTimeout(() => setNotice(''), 3000)
     } catch (err) {

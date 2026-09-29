@@ -60,7 +60,7 @@ import BusinessOverview from '../components/dashboard/BusinessOverview'
 import StaffMemberships from '../components/dashboard/StaffMemberships'
 import StoreSettingsView from '../components/dashboard/StoreSettingsView'
 import AdvanceOrders from './AdvanceOrders'
-import type { AdvanceOrder } from '../services/advanceOrderService'
+import { cancelAdvanceOrderByCompletedOrderId, type AdvanceOrder } from '../services/advanceOrderService'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { ExpensesView } from '../components/expenses/ExpensesView'
 import CenexaFooter from '../components/common/CenexaFooter'
@@ -311,7 +311,7 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
 
   // Order Management bill type filter
-  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual'>('all')
+  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'advance' | 'online' | 'manual'>('all')
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'cash' | 'qr' | 'card' | 'split'>('all')
 
   // Users tab
@@ -422,46 +422,78 @@ export default function Dashboard() {
     reference_number: row.reference_number ? String(row.reference_number) : undefined,
   })
 
-  const handleAdvanceOrderCompleted = useCallback((advance: AdvanceOrder) => {
-    if (!advance.completed_order_id || !advance.invoice_number) return
-    const createdAt = advance.completed_at || new Date().toISOString()
-    const fallbackItem = {
-      name: advance.product_name,
-      category: advance.category,
-      quantity: 1,
-      base_price: advance.total_amount,
-      line_total: advance.total_amount,
-      unit: 'piece',
-      unit_type: 'unit',
-      source: 'advance_order',
+  // Load dashboard data
+  const loadData = useCallback(async () => {
+    if (!isSupabaseConfigured) return
+    setLoading(true)
+    try {
+      const productsPromise = fetchProducts(branch, true)
+      const [cRes, oRes, couponRes, expList] = await Promise.all([
+        supabase.from('categories').select('id, name_en, name_ta, is_active, sort_order').eq('branch', branch).order('sort_order'),
+        supabase.from('orders')
+          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, user_id, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, remarks, reference_number, branch')
+          .eq('branch', branch)
+          .order('created_at', { ascending: false })
+          .limit(1000),
+        supabase.from('coupons')
+          .select('id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value')
+          .order('created_at', { ascending: false }),
+        expenseService.getExpenses(branch),
+      ])
+      if (cRes.error) throw cRes.error
+      if (oRes.error) throw oRes.error
+      const mappedOrders = (oRes.data || []).map(r => toDashboardOrder(r as Record<string, unknown>))
+      setCats((cRes.data || []) as Category[])
+      setOrders(mappedOrders)
+      setSearchResults(mappedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request').slice(0, 100))
+      setCoupons((couponRes.data || []) as DashboardCoupon[])
+      setExpenses(expList || [])
+
+      const orderIds = mappedOrders.map(o => o.id).filter(Boolean)
+      if (orderIds.length > 0) {
+        let oi: unknown[] | null = null
+        let orderItemsError: unknown = null
+        const orderItemsResult = await supabase
+          .from('order_items').select('order_id,product_name,category,quantity,line_total,is_manual')
+          .in('order_id', orderIds)
+        oi = orderItemsResult.data
+        orderItemsError = orderItemsResult.error
+
+        if (orderItemsError) {
+          const fallbackItemsResult = await supabase
+            .from('order_items').select('order_id,product_name,quantity,line_total')
+            .in('order_id', orderIds)
+          oi = fallbackItemsResult.data
+        }
+
+        setOrderItems((oi || []).map(r => ({
+          order_id: String((r as Record<string,unknown>).order_id || ''),
+          product_name: String((r as Record<string,unknown>).product_name || 'Product'),
+          category: String((r as Record<string,unknown>).category || ''),
+          quantity: toNumber((r as Record<string,unknown>).quantity, 0),
+          line_total: toNumber((r as Record<string,unknown>).line_total, 0),
+          is_manual: Boolean((r as Record<string,unknown>).is_manual),
+        })))
+      }
+
+      await productsPromise
+    } catch (err) { console.error('Dashboard load error', err) }
+    finally { setLoading(false) }
+  }, [fetchProducts, branch])
+
+  const handleAdvanceOrderCompleted = useCallback((_advance?: AdvanceOrder) => {
+    void loadData()
+  }, [loadData])
+
+  const handleAdvanceOrderDeleted = useCallback((_advanceId: string, completedOrderId?: string | null) => {
+    if (completedOrderId) {
+      deletedOrderIds.current.add(completedOrderId)
+      setOrders(prev => prev.filter(o => o.id !== completedOrderId))
+      setSearchResults(prev => prev.filter(o => o.id !== completedOrderId))
+      setOrderItems(prev => prev.filter(item => item.order_id !== completedOrderId))
     }
-    const completedItems = advance.products.length ? advance.products : [fallbackItem]
-    const completed: DashboardOrder = {
-      id: advance.completed_order_id,
-      invoice_no: advance.invoice_number,
-      customer_name: advance.customer_name,
-      phone: advance.phone,
-      address: advance.address,
-      created_at: createdAt,
-      total: advance.total_amount,
-      status: 'completed',
-      order_mode: 'offline',
-      order_type: 'advance_order',
-      user_id: user?.id || null,
-      items: completedItems,
-      coupon_code: '',
-      discount_amount: 0,
-      manual_discount_amount: 0,
-      delivery_charge: 0,
-      total_gst: 0,
-      payment_mode: advance.final_payment_method || '',
-      payment_method: advance.final_payment_method || '',
-      invoice_pdf_url: '',
-    }
-    setOrders(current => [completed, ...current.filter(order => order.id !== completed.id)])
-    setSearchResults(current => [completed, ...current.filter(order => order.id !== completed.id)].slice(0, 100))
-    setOrderItems(current => [...completedItems.map(item => ({ order_id: completed.id, product_name: String(item.name || 'Product'), category: String(item.category || advance.category || ''), quantity: Number(item.quantity || 1), line_total: Number(item.line_total || 0), is_manual: false })), ...current.filter(row => row.order_id !== completed.id)])
-  }, [user?.id])
+    void loadData()
+  }, [loadData])
 
   // Analytics (date-aware)
   const analytics = useMemo(() => {
@@ -497,16 +529,16 @@ export default function Dashboard() {
       .filter(o => normalizeStatus(o.status) !== 'cancelled')
       .filter(o => isCompletedStatus(o.status))
       .filter(o => normalizeOrderType(o.order_type) !== 'online_request')
-    // Channel is determined by order_mode. Older orders can use a different
-    // order_type, so requiring exactly `pos_sale` hides valid online bills.
-    const offlinePOS  = billableCompleted.filter(o => normalizeOrderMode(o.order_mode) === 'offline' && normalizeOrderType(o.order_type) !== 'manual_sale')
+    const offlinePOS  = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) !== 'online')
+    const advanceOrders = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'advance_order')
     const onlinePOS   = billableCompleted.filter(o => normalizeOrderMode(o.order_mode) === 'online')
     const manualSales = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'manual_sale')
 
-    // Revenue (WhatsApp never included)
+    // Revenue (WhatsApp never included) - directly calculates from completed bills
     const completedRevenue   = billableCompleted.reduce((s, o) => s + getOrderTotal(o), 0)
     const averageRevenuePerBill = billableCompleted.length > 0 ? completedRevenue / billableCompleted.length : 0
     const posRevenue         = offlinePOS.reduce((s, o) => s + getOrderTotal(o), 0)
+    const advanceRevenue     = advanceOrders.reduce((s, o) => s + getOrderTotal(o), 0)
     const onlinePosRevenue   = onlinePOS.reduce((s, o) => s + getOrderTotal(o), 0)
     const manualRevenue      = manualSales.reduce((s, o) => s + getOrderTotal(o), 0)
 
@@ -694,9 +726,10 @@ export default function Dashboard() {
     ]
     const channelDistribution = [
       { name: 'Offline Bills', value: posRevenue, color: '#f97316' },
+      { name: 'Advance Bills', value: advanceRevenue, color: '#8b5cf6' },
       { name: 'Online Bills',  value: onlinePosRevenue, color: '#3b82f6' },
-      { name: 'Manual Sales',  value: manualRevenue || totalManualRevenue, color: '#8b5cf6' },
-    ]
+      { name: 'Manual Sales',  value: manualRevenue || totalManualRevenue, color: '#ec4899' },
+    ].filter(c => c.value > 0)
 
     const couponMap = new Map<string, { code: string; usage: number; discounts: number; percentage?: number; is_active?: boolean }>()
     coupons.forEach(c => {
@@ -805,6 +838,8 @@ export default function Dashboard() {
       onlineRequestOrders: waOrders,
       completedOrders: billableCompleted.length,
       posRevenue,
+      advanceRevenue,
+      advanceOrderCount: advanceOrders.length,
       onlinePosRevenue,
       // Keep the bill count separate from revenue so the TOTAL ONLINE BILLS
       // card stays visible and always reflects the current completed orders.
@@ -842,6 +877,7 @@ export default function Dashboard() {
       const type = normalizeOrderType(o.order_type)
       const mode = normalizeOrderMode(o.order_mode)
       if (billTypeFilter === 'manual' && type !== 'manual_sale') return false
+      if (billTypeFilter === 'advance' && type !== 'advance_order') return false
       if (billTypeFilter === 'offline' && !(type === 'pos_sale' && mode !== 'online')) return false
       if (billTypeFilter === 'online' && !(type === 'pos_sale' && mode === 'online')) return false
 
@@ -861,64 +897,7 @@ export default function Dashboard() {
     })
   }, [searchResults, billTypeFilter, paymentMethodFilter])
 
-  // Load dashboard data
-  const loadData = useCallback(async () => {
-    if (!isSupabaseConfigured) return
-    setLoading(true)
-    try {
-      const productsPromise = fetchProducts(branch, true)
-      const [cRes, oRes, couponRes, expList] = await Promise.all([
-        supabase.from('categories').select('id, name_en, name_ta, is_active, sort_order').eq('branch', branch).order('sort_order'),
-        supabase.from('orders')
-          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, user_id, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, remarks, reference_number, branch')
-          .eq('branch', branch)
-          .order('created_at', { ascending: false })
-          .limit(1000),
-        supabase.from('coupons')
-          .select('id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value')
-          .order('created_at', { ascending: false }),
-        expenseService.getExpenses(branch),
-      ])
-      if (cRes.error) throw cRes.error
-      if (oRes.error) throw oRes.error
-      const mappedOrders = (oRes.data || []).map(r => toDashboardOrder(r as Record<string, unknown>))
-      setCats((cRes.data || []) as Category[])
-      setOrders(mappedOrders)
-      setSearchResults(mappedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request').slice(0, 100))
-      setCoupons((couponRes.data || []) as DashboardCoupon[])
-      setExpenses(expList || [])
 
-      const orderIds = mappedOrders.map(o => o.id).filter(Boolean)
-      if (orderIds.length > 0) {
-        let oi: unknown[] | null = null
-        let orderItemsError: unknown = null
-        const orderItemsResult = await supabase
-          .from('order_items').select('order_id,product_name,category,quantity,line_total,is_manual')
-          .in('order_id', orderIds)
-        oi = orderItemsResult.data
-        orderItemsError = orderItemsResult.error
-
-        if (orderItemsError) {
-          const fallbackItemsResult = await supabase
-            .from('order_items').select('order_id,product_name,quantity,line_total')
-            .in('order_id', orderIds)
-          oi = fallbackItemsResult.data
-        }
-
-        setOrderItems((oi || []).map(r => ({
-          order_id: String((r as Record<string,unknown>).order_id || ''),
-          product_name: String((r as Record<string,unknown>).product_name || 'Product'),
-          category: String((r as Record<string,unknown>).category || ''),
-          quantity: toNumber((r as Record<string,unknown>).quantity, 0),
-          line_total: toNumber((r as Record<string,unknown>).line_total, 0),
-          is_manual: Boolean((r as Record<string,unknown>).is_manual),
-        })))
-      }
-
-      await productsPromise
-    } catch (err) { console.error('Dashboard load error', err) }
-    finally { setLoading(false) }
-  }, [fetchProducts, branch])
 
   const loadUsers = useCallback(async () => {
     if (!isSupabaseConfigured) return
@@ -967,8 +946,8 @@ export default function Dashboard() {
     } else {
       if (!window.confirm(`Are you sure you want to completely delete order ${invoiceNo}? This cannot be undone.`)) return
     }
-    // Clear FK reference in advance_orders first (if this order was created from an advance order)
-    await supabase.from('advance_orders').update({ completed_order_id: null }).eq('completed_order_id', orderId)
+    // Clear FK reference and cancel linked advance order in advance_orders
+    await cancelAdvanceOrderByCompletedOrderId(orderId)
     const { error } = await supabase.from('orders').delete().eq('id', orderId)
     if (error) {
       alert(`Error deleting order: ${error.message}`)
@@ -978,6 +957,7 @@ export default function Dashboard() {
     deletedOrderIds.current.add(orderId)
     setOrders(prev => prev.filter(o => o.id !== orderId))
     setSearchResults(prev => prev.filter(o => o.id !== orderId))
+    setOrderItems(prev => prev.filter(item => item.order_id !== orderId))
   }
 
   const getOrderWhatsAppPreview = (order: DashboardOrder) => {
@@ -3268,6 +3248,7 @@ export default function Dashboard() {
               if (adv) handleAdvanceOrderCompleted(adv)
               void loadData()
             }}
+            onOrderDeleted={handleAdvanceOrderDeleted}
           />
         )}
 
@@ -3337,7 +3318,8 @@ export default function Dashboard() {
                         className="w-full lg:w-28 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
                       >
                         <option value="all">{l('All Bills', 'அனைத்து')}</option>
-                        <option value="offline">{l('Offline', 'ஆஃப்லைன்')}</option>
+                        <option value="offline">{l('Offline POS', 'ஆஃப்லைன் POS')}</option>
+                        <option value="advance">{l('Advance Bills', 'முன்பதிவு')}</option>
                         <option value="online">{l('Online', 'ஆன்லைன்')}</option>
                         <option value="manual">{l('Manual', 'கைமுறை')}</option>
                       </select>
@@ -3534,8 +3516,21 @@ export default function Dashboard() {
               </div>
               <div className="space-y-3 md:hidden">
                 {filteredSearchResults.slice(0, 50).map(o => {
-                  const billTypeLabel = normalizeOrderType(o.order_type) === 'manual_sale' ? 'MANUAL' : normalizeOrderMode(o.order_mode) === 'online' ? 'ONLINE' : 'OFFLINE'
-                  const billTypeClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-50 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'
+                  const isAdv = normalizeOrderType(o.order_type) === 'advance_order'
+                  const billTypeLabel = normalizeOrderType(o.order_type) === 'manual_sale'
+                    ? 'MANUAL'
+                    : isAdv
+                      ? 'ADVANCE'
+                      : normalizeOrderMode(o.order_mode) === 'online'
+                        ? 'ONLINE'
+                        : 'OFFLINE'
+                  const billTypeClass = normalizeOrderType(o.order_type) === 'manual_sale'
+                    ? 'bg-purple-50 text-purple-700'
+                    : isAdv
+                      ? 'bg-violet-50 text-violet-700 border border-violet-200'
+                      : normalizeOrderMode(o.order_mode) === 'online'
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'bg-orange-50 text-orange-700'
                   return (
                     <div key={o.id} className="rounded-2xl border border-[#E5E7EB]/60 bg-[#FBFAF6] p-3 sm:p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
@@ -3629,8 +3624,21 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]/30 bg-white">
                     {filteredSearchResults.slice(0, 50).map(o => {
-                      const billTypeLabel = normalizeOrderType(o.order_type) === 'manual_sale' ? 'MANUAL' : normalizeOrderMode(o.order_mode) === 'online' ? 'ONLINE' : 'OFFLINE'
-                      const billTypeClass = normalizeOrderType(o.order_type) === 'manual_sale' ? 'bg-purple-50 text-purple-700' : normalizeOrderMode(o.order_mode) === 'online' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'
+                      const isAdv = normalizeOrderType(o.order_type) === 'advance_order'
+                      const billTypeLabel = normalizeOrderType(o.order_type) === 'manual_sale'
+                        ? 'MANUAL'
+                        : isAdv
+                          ? 'ADVANCE'
+                          : normalizeOrderMode(o.order_mode) === 'online'
+                            ? 'ONLINE'
+                            : 'OFFLINE'
+                      const billTypeClass = normalizeOrderType(o.order_type) === 'manual_sale'
+                        ? 'bg-purple-50 text-purple-700'
+                        : isAdv
+                          ? 'bg-violet-50 text-violet-700 border border-violet-200'
+                          : normalizeOrderMode(o.order_mode) === 'online'
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'bg-orange-50 text-orange-700'
                       return (
                         <React.Fragment key={o.id}>
                         <tr key={o.id} className="hover:bg-[#F9FAFB] text-center">
