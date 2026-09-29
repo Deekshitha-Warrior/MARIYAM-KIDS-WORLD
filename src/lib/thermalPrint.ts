@@ -40,7 +40,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
     const instagramUrls = profile.instagramUrls
     // Create an isolated print iframe protected from third-party extension observers
     const iframe = document.createElement('iframe')
-    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;'
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0.01;pointer-events:none;z-index:-1;'
     iframe.setAttribute('aria-hidden', 'true')
     iframe.setAttribute('tabindex', '-1')
     iframe.setAttribute('data-gramm', 'false')
