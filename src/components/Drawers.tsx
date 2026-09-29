@@ -27,20 +27,20 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] bg-black/40 z-50 backdrop-blur-sm" />
-          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 290, damping: 28 }} className="fixed right-0 top-0 bottom-0 h-screen h-[100dvh] w-full max-w-sm bg-white z-50 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" />
+          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 290, damping: 28 }} className="fixed right-0 top-0 bottom-0 h-full max-h-[100dvh] w-full max-w-sm bg-white z-50 flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="text-sageDark" size={20} />
                 <h2 className="font-bold text-lg text-textMain font-headline">{t('drawer.cart')} <span className="text-sm font-normal text-gray-400">({count()} {t('drawer.items')})</span></h2>
               </div>
               <div className="flex items-center gap-3">
-                {items.length > 0 && <button onClick={clear} className="text-xs text-red-400 hover:text-red-600 font-medium">{t('cart.clear_all')}</button>}
-                <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full"><X size={18} /></button>
+                {items.length > 0 && <button onClick={clear} className="text-xs text-red-400 hover:text-red-600 font-medium cursor-pointer">{t('cart.clear_all')}</button>}
+                <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full cursor-pointer"><X size={18} /></button>
               </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto px-4 py-3 space-y-3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-16">
                   <div className="text-6xl">🛒</div>
@@ -60,14 +60,14 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         <p className="text-[11px] text-sageDark font-bold mb-2">{item.unitLabel} • {formatCurrency(item.basePrice)}</p>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-0.5 border border-sand rounded-lg bg-white overflow-hidden">
-                            <button onClick={() => updateQty(item.id, item.qty - getStep(item))} className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-500"><Minus size={11} /></button>
+                            <button onClick={() => updateQty(item.id, item.qty - getStep(item))} className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-500 cursor-pointer"><Minus size={11} /></button>
                             <span className="min-w-12 px-1 text-center text-xs font-bold text-textMain">{item.variantId ? String(item.qty) : formatQuantityDisplay(item.qty, item.selectedUnit, item.unitType)}</span>
-                            <button onClick={() => updateQty(item.id, item.qty + getStep(item))} className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-500"><Plus size={11} /></button>
+                            <button onClick={() => updateQty(item.id, item.qty + getStep(item))} className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 text-gray-500 cursor-pointer"><Plus size={11} /></button>
                           </div>
                           <span className="font-bold text-textMain text-sm">{formatCurrency(item.lineTotal)}</span>
                         </div>
                       </div>
-                      <button onClick={() => remove(item.id)} className="self-start p-1 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                      <button onClick={() => remove(item.id)} className="self-start p-1 text-red-400 hover:text-red-600 cursor-pointer"><Trash2 size={14} /></button>
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -75,7 +75,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
 
             {items.length > 0 && (
-              <div className="px-4 py-4 border-t border-gray-100 space-y-3">
+              <div className="px-4 py-4 border-t border-gray-100 space-y-3 shrink-0 pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.75rem))] bg-white">
                 <div className="flex justify-between font-bold text-textMain text-base">
                   <span>Order Total</span><span>{formatCurrency(orderTotal)}</span>
                 </div>
@@ -102,15 +102,15 @@ export function FavoritesDrawer({ open, onClose }: { open: boolean; onClose: () 
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] bg-black/40 z-50 backdrop-blur-sm" />
-          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 290, damping: 28 }} className="fixed right-0 top-0 bottom-0 h-screen h-[100dvh] w-full max-w-sm bg-white z-50 flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm" />
+          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 290, damping: 28 }} className="fixed right-0 top-0 bottom-0 h-full max-h-[100dvh] w-full max-w-sm bg-white z-50 flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <h2 className="font-bold text-lg text-textMain font-headline flex items-center gap-2">
                 ❤️ {t('drawer.favs')} <span className="text-sm font-normal text-gray-400">({items.length})</span>
               </h2>
-              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full"><X size={18} /></button>
+              <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full cursor-pointer"><X size={18} /></button>
             </div>
-            <div className="flex-grow overflow-y-auto px-4 py-3 space-y-3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))]">
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-16">
                   <div className="text-5xl">🤍</div>
@@ -129,12 +129,12 @@ export function FavoritesDrawer({ open, onClose }: { open: boolean; onClose: () 
                         <p className="text-xs text-sageDark font-bold">{t('cat.' + item.category)}</p>
                         <div className="flex items-center justify-between mt-2">
                           <span className="font-bold text-textMain">{item.unitLabel} • {formatCurrency(item.offerPrice || item.price)}</span>
-                          <button onClick={() => { add(item); onClose() }} className="flex items-center gap-1 bg-sageDark hover:bg-sageDeep text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors">
+                          <button onClick={() => { add(item); onClose() }} className="flex items-center gap-1 bg-sageDark hover:bg-sageDeep text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer">
                             <ShoppingBag size={11} /> {t('drawer.add')}
                           </button>
                         </div>
                       </div>
-                      <button onClick={() => toggle(item)} className="self-start p-1 text-rose-400 hover:text-rose-600"><X size={14} /></button>
+                      <button onClick={() => toggle(item)} className="self-start p-1 text-rose-400 hover:text-rose-600 cursor-pointer"><X size={14} /></button>
                     </motion.div>
                   ))}
                 </AnimatePresence>

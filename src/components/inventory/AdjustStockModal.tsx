@@ -152,10 +152,10 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
   }
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-2.5 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-hidden animate-in fade-in duration-150">
       <div className="absolute inset-0" onClick={onClose} />
       <div
-        className="relative z-10 bg-white rounded-2xl sm:rounded-3xl max-w-md w-full border border-[#E8D399] shadow-2xl overflow-hidden flex flex-col my-auto max-h-[94dvh] animate-in fade-in zoom-in-95 duration-200"
+        className="relative z-10 bg-white rounded-2xl sm:rounded-3xl max-w-md w-full border border-[#E8D399] shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] sm:max-h-[94vh] animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Compact Header */}
         <div className="shrink-0 bg-[#7A1220] px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-[#D4AF37]/30 flex items-center justify-between text-white">
@@ -630,18 +630,18 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
           </div>
 
           {/* Compact Footer Action Buttons directly visible on 1 screen */}
-          <div className="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 bg-[#FBFAF6] border-t border-gray-200 flex items-center justify-end gap-2">
+          <div className="shrink-0 px-3 py-2.5 sm:px-4 sm:py-2.5 bg-[#FBFAF6] border-t border-gray-200 flex items-center justify-end gap-2 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.5rem))]">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 transition-colors cursor-pointer"
+              className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting || delta === 0}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-black transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-black transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] ${
                 mode === 'LOSS_DAMAGE'
                   ? 'bg-rose-700 text-white hover:bg-rose-800 border border-rose-800'
                   : 'bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] hover:bg-[#1A1A1A]'

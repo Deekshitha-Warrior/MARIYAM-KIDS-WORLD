@@ -89,9 +89,9 @@ export const StockHistoryDrawer: React.FC<StockHistoryDrawerProps> = ({
   }
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[9999] overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative z-10 bg-white w-full max-w-md h-screen h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 border-l border-[#E8D399]">
+      <div className="relative z-10 bg-white w-full max-w-md h-full max-h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 border-l border-[#E8D399]">
         {/* Header */}
         <div className="bg-[#7A1220] p-5 border-b border-[#D4AF37]/30 flex items-center justify-between text-white shrink-0">
           <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export const StockHistoryDrawer: React.FC<StockHistoryDrawerProps> = ({
         </div>
 
         {/* Item Summary Bar */}
-        <div className="bg-[#FBFAF6] border-b border-[#E8D399] p-4">
+        <div className="bg-[#FBFAF6] border-b border-[#E8D399] p-4 shrink-0">
           <div className="text-[10px] font-black uppercase tracking-wider text-[#B48811]">
             Target SKU
           </div>
@@ -133,7 +133,7 @@ export const StockHistoryDrawer: React.FC<StockHistoryDrawerProps> = ({
         </div>
 
         {/* Timeline Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))] space-y-3">
           {loading ? (
             <div className="py-12 text-center text-gray-500 text-sm flex flex-col items-center gap-2">
               <RefreshCw size={20} className="animate-spin text-[#7A1220]" />

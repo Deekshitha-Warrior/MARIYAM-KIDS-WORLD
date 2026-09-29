@@ -87,9 +87,9 @@ export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSucc
   }
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative z-10 bg-white rounded-none sm:rounded-2xl w-full max-w-md h-screen h-[100dvh] sm:h-auto sm:max-h-[92vh] shadow-2xl overflow-hidden border-0 sm:border border-[#E8D399]/50 animate-in fade-in zoom-in-95 flex flex-col">
+      <div className="relative z-10 bg-white rounded-none sm:rounded-2xl w-full max-w-md h-full sm:h-auto max-h-[100dvh] sm:max-h-[92vh] shadow-2xl overflow-hidden border-0 sm:border border-[#E8D399]/50 animate-in fade-in zoom-in-95 flex flex-col">
         {/* Header */}
         <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-gray-100 flex items-center justify-between bg-[#FBFAF6] shrink-0">
           <div className="flex items-center gap-2.5">
@@ -113,7 +113,7 @@ export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSucc
         </div>
 
         {/* Item Summary Box */}
-        <div className="px-5 pt-4">
+        <div className="px-5 pt-4 shrink-0">
           <div className="p-3 bg-[#FBFAF6] border border-gray-200 rounded-xl space-y-1.5 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-bold text-gray-900 text-sm">{item.name}</span>
@@ -134,72 +134,74 @@ export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSucc
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
-          {error && (
-            <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div>
-            <label className="block font-bold text-[#374151] mb-1.5">
-              Selling Price (₹) *
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold">
-                <IndianRupee className="w-4 h-4" />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="p-5 space-y-4 text-xs flex-1 min-h-0 overflow-y-auto">
+            {error && (
+              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>{error}</span>
               </div>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                autoFocus
-                value={sellingPrice}
-                onChange={(e) => setSellingPrice(e.target.value)}
-                placeholder="0.00"
-                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-black text-gray-900 focus:outline-none focus:border-[#7A1220] transition-colors"
-              />
-            </div>
-            <p className="text-[10px] text-gray-400 font-medium mt-1">
-              Reflected immediately in POS scanning &amp; digital invoice
-            </p>
-          </div>
+            )}
 
-          <div>
-            <label className="block font-bold text-[#374151] mb-1.5">
-              Purchase / Cost Price (₹) <span className="text-gray-400 font-normal">(Optional)</span>
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold">
-                <IndianRupee className="w-4 h-4" />
+            <div>
+              <label className="block font-bold text-[#374151] mb-1.5">
+                Selling Price (₹) *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold">
+                  <IndianRupee className="w-4 h-4" />
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  autoFocus
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-black text-gray-900 focus:outline-none focus:border-[#7A1220] transition-colors"
+                />
               </div>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value)}
-                placeholder="0.00"
-                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:border-[#7A1220] transition-colors"
-              />
+              <p className="text-[10px] text-gray-400 font-medium mt-1">
+                Reflected immediately in POS scanning &amp; digital invoice
+              </p>
+            </div>
+
+            <div>
+              <label className="block font-bold text-[#374151] mb-1.5">
+                Purchase / Cost Price (₹) <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-bold">
+                  <IndianRupee className="w-4 h-4" />
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:border-[#7A1220] transition-colors"
+                />
+              </div>
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] flex items-center justify-end gap-2 shrink-0">
+          <div className="px-5 py-3 border-t border-gray-200 bg-[#FBFAF6] pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.75rem))] flex items-center justify-end gap-2 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="h-9 px-4 text-xs font-bold rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+              className="h-10 px-4 text-xs font-bold rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="h-9 px-4 text-xs font-bold rounded-xl bg-[#7A1220] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#1A1A1A] transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+              className="h-10 px-5 text-xs font-bold rounded-xl bg-[#7A1220] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#1A1A1A] transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
             >
               {loading ? (
                 <>

@@ -123,12 +123,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-3xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden border border-[#E8D399] animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 overflow-hidden">
+      <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md max-h-[100dvh] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-[#E8D399] animate-in fade-in zoom-in-95 duration-200">
 
-        <div className="flex items-center justify-between p-6 border-b border-[#D4AF37]/30 bg-[#7A1220] text-white">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[#D4AF37]/30 bg-[#7A1220] text-white shrink-0">
           <div>
-            <h2 className="text-lg font-black text-white">Add Product to {BRAND_EN}</h2>
+            <h2 className="text-base sm:text-lg font-black text-white">Add Product to {BRAND_EN}</h2>
             <p className="text-xs text-[#D4AF37] font-semibold">Instantly available in Catalog &amp; Billing</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 text-white transition-colors cursor-pointer">
@@ -136,116 +136,120 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-          {error && <div className="text-red-600 text-xs font-bold bg-red-50 p-3 rounded-xl border border-red-200">{error}</div>}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="p-4 sm:p-6 flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
+            {error && <div className="text-red-600 text-xs font-bold bg-red-50 p-3 rounded-xl border border-red-200">{error}</div>}
 
-          <div>
-            <label className="block text-[11px] font-bold text-gray-700 mb-1.5">Product Name <span className="text-red-500">*</span></label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={e => setFormData({...formData, name: e.target.value})}
-              className="w-full px-4 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-black"
-              placeholder="E.g. Men Slim Fit Cotton Shirt"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1.5">Category</label>
-              {categoryMode === 'select' ? (
-                <div className="flex gap-1">
-                  <select
-                    value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
-                    className="flex-1 w-full px-3 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-xs font-bold appearance-none text-black"
-                  >
-                    <option value="">Select Category</option>
-                    {existingCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => { setCategoryMode('new'); setFormData(f => ({...f, category: ''})) }}
-                    className="px-2.5 py-3 text-xs font-black text-[#7A1220] bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl hover:bg-amber-100 transition-colors shrink-0"
-                    title="Add new category"
-                  >+</button>
-                </div>
-              ) : (
-                <div className="flex gap-1">
-                  <input
-                    type="text"
-                    value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
-                    className="flex-1 w-full px-3 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-xs font-bold text-black"
-                    placeholder="Type Category"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { setCategoryMode('select'); setFormData(f => ({...f, category: ''})) }}
-                    className="px-2.5 py-3 text-xs font-black text-gray-700 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl hover:bg-gray-200 transition-colors shrink-0"
-                    title="Pick from existing"
-                  >↩</button>
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1.5">Price (₹) <span className="text-red-500">*</span></label>
+              <label className="block text-[11px] font-bold text-gray-700 mb-1.5">Product Name <span className="text-red-500">*</span></label>
               <input
-                type="number"
-                step="0.01"
-                value={formData.price}
-                onChange={e => setFormData({...formData, price: e.target.value})}
-                className="w-full px-4 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-right text-black"
-                placeholder="0"
+                type="text"
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                className="w-full px-4 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-black"
+                placeholder="E.g. Men Slim Fit Cotton Shirt"
                 required
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-emerald-800 mb-1.5">
-                Received Stock (Qty)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={formData.stock}
-                onChange={e => setFormData({...formData, stock: e.target.value})}
-                className="w-full px-4 py-2.5 bg-emerald-50/40 border-2 border-emerald-300 rounded-xl focus:outline-none focus:border-emerald-600 focus:bg-white text-sm font-black text-emerald-950"
-                placeholder="0"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1.5">Category</label>
+                {categoryMode === 'select' ? (
+                  <div className="flex gap-1">
+                    <select
+                      value={formData.category}
+                      onChange={e => setFormData({...formData, category: e.target.value})}
+                      className="flex-1 w-full px-3 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-xs font-bold appearance-none text-black cursor-pointer"
+                    >
+                      <option value="">Select Category</option>
+                      {existingCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => { setCategoryMode('new'); setFormData(f => ({...f, category: ''})) }}
+                      className="px-2.5 py-3 text-xs font-black text-[#7A1220] bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl hover:bg-amber-100 transition-colors shrink-0 cursor-pointer"
+                      title="Add new category"
+                    >+</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      value={formData.category}
+                      onChange={e => setFormData({...formData, category: e.target.value})}
+                      className="flex-1 w-full px-3 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-xs font-bold text-black"
+                      placeholder="Type Category"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setCategoryMode('select'); setFormData(f => ({...f, category: ''})) }}
+                      className="px-2.5 py-3 text-xs font-black text-gray-700 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl hover:bg-gray-200 transition-colors shrink-0 cursor-pointer"
+                      title="Pick from existing"
+                    >↩</button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1.5">Price (₹) <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={e => setFormData({...formData, price: e.target.value})}
+                  className="w-full px-4 py-3 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-right text-black"
+                  placeholder="0"
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1.5">
-                Low Stock Alert Limit
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.lowStockAlert}
-                onChange={e => setFormData({...formData, lowStockAlert: e.target.value})}
-                className="w-full px-4 py-2.5 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-black"
-                placeholder="5"
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-emerald-800 mb-1.5">
+                  Received Stock (Qty)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.stock}
+                  onChange={e => setFormData({...formData, stock: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-emerald-50/40 border-2 border-emerald-300 rounded-xl focus:outline-none focus:border-emerald-600 focus:bg-white text-sm font-black text-emerald-950"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1.5">
+                  Low Stock Alert Limit
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.lowStockAlert}
+                  onChange={e => setFormData({...formData, lowStockAlert: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-black"
+                  placeholder="5"
+                />
+              </div>
+            </div>
+
+            <div className="bg-[#FBFAF6] border border-[#E8D399] p-3 rounded-xl text-[11px] text-gray-600 flex items-start gap-2">
+              <Sparkles size={14} className="text-[#B48811] shrink-0 mt-0.5" />
+              <span>Product will be immediately ready in POS search and catalog. Barcode generation is optional.</span>
             </div>
           </div>
 
-          <div className="bg-[#FBFAF6] border border-[#E8D399] p-3 rounded-xl text-[11px] text-gray-600 flex items-start gap-2">
-            <Sparkles size={14} className="text-[#B48811] shrink-0 mt-0.5" />
-            <span>Product will be immediately ready in POS search and catalog. Barcode generation is optional.</span>
+          <div className="p-4 sm:p-5 border-t border-gray-100 bg-[#FBFAF6] shrink-0 pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.75rem))]">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 bg-[#7A1220] border border-[#D4AF37] hover:bg-[#1A1A1A] text-[#D4AF37] rounded-xl text-xs font-black tracking-wider transition-all disabled:opacity-50 shadow-md cursor-pointer active:scale-[0.98]"
+            >
+              {loading ? 'Creating...' : 'Save Product'}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 w-full py-3.5 bg-[#7A1220] border border-[#D4AF37] hover:bg-[#1A1A1A] text-[#D4AF37] rounded-xl text-xs font-black tracking-wider transition-all disabled:opacity-50 shadow-md cursor-pointer"
-          >
-            {loading ? 'Creating...' : 'Save Product'}
-          </button>
         </form>
       </div>
     </div>
