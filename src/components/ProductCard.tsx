@@ -15,12 +15,18 @@ export default function ProductCard({ product }: { product: Product }) {
   const { items, addItem, removeItem, updateQuantity } = useCartStore()
   const { toggle, isFav } = useFavStore()
   const openProduct = useProductModalStore((s) => s.openProduct)
-  const { getDefaultVariant } = useVariantStore()
+  const { getVariants, getDefaultVariant } = useVariantStore()
   const { lang } = useLangStore()
   const l = (en: string, ta: string) => (lang === 'ta' ? ta : en)
 
   const fav = isFav(product.id)
   const defaultVariant = product.hasVariants ? getDefaultVariant(String(product.id)) : null
+  const variants = product.hasVariants ? getVariants(String(product.id)) : []
+
+  const availableStock = Number(product.stockQuantity ?? product.stock ?? 0)
+  const isOutOfStock = product.hasVariants
+    ? (variants.length > 0 ? variants.every((v) => Number(v.stock ?? 0) <= 0) : availableStock <= 0)
+    : availableStock <= 0
 
   // ── Cart state — single source of truth from store ───────────────
   const cartItem = items.find((i) => i.id === product.id)
@@ -59,6 +65,7 @@ export default function ProductCard({ product }: { product: Product }) {
   }
 
   const handleAdd = () => {
+    if (isOutOfStock) return
     if (product.hasVariants) {
       openModal()
     } else {
@@ -76,6 +83,7 @@ export default function ProductCard({ product }: { product: Product }) {
   }
 
   const handleIncrement = () => {
+    if (availableStock > 0 && packQty >= availableStock) return
     updateQuantity(product.id, packQty + 1)
   }
 
@@ -84,7 +92,9 @@ export default function ProductCard({ product }: { product: Product }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative flex h-full flex-col overflow-hidden surface-panel-compact transition-shadow hover:shadow-[0_14px_32px_rgba(44,57,42,0.12)]"
+      className={`group relative flex h-full flex-col overflow-hidden surface-panel-compact transition-shadow hover:shadow-[0_14px_32px_rgba(44,57,42,0.12)] ${
+        isOutOfStock ? 'opacity-85' : ''
+      }`}
     >
       {/* Fav button — desktop only */}
       <motion.button
@@ -99,11 +109,15 @@ export default function ProductCard({ product }: { product: Product }) {
         <Heart size={13} className={fav ? 'fill-rose-500 text-rose-500' : 'text-slate-400'} />
       </motion.button>
 
-      {discount > 0 && (
+      {isOutOfStock ? (
+        <div className="absolute left-2 top-2 z-10 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase text-white shadow-xs">
+          {l('Out of stock', 'இருப்பு இல்லை')}
+        </div>
+      ) : discount > 0 ? (
         <div className="absolute left-2 top-2 z-10 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-white">
           {discount}% OFF
         </div>
-      )}
+      ) : null}
 
       <div className="flex flex-1 flex-col gap-2 p-2.5 sm:p-3">
         {/* Image — click opens modal */}
@@ -121,7 +135,9 @@ export default function ProductCard({ product }: { product: Product }) {
             decoding="async"
             sizes="(max-width: 640px) 50vw, 280px"
             onError={onImgError}
-            className="h-full w-full object-contain transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+            className={`h-full w-full object-contain transition-transform duration-500 ease-out group-hover:scale-[1.03] ${
+              isOutOfStock ? 'grayscale-[40%]' : ''
+            }`}
           />
         </button>
 
@@ -158,7 +174,14 @@ export default function ProductCard({ product }: { product: Product }) {
           {/* ADD / Stepper — pushed to bottom */}
           <div className="mt-auto pt-2">
             <AnimatePresence mode="wait" initial={false}>
-              {product.hasVariants ? (
+              {isOutOfStock ? (
+                <div
+                  key="out-of-stock"
+                  className="flex w-full items-center justify-center rounded-xl bg-gray-100 border border-gray-200 px-3 py-2 text-[11px] font-black text-gray-400 cursor-not-allowed select-none"
+                >
+                  {l('Out of stock', 'இருப்பு இல்லை')}
+                </div>
+              ) : product.hasVariants ? (
                 variantInCart ? (
                   // Variant in cart — show "In Cart" chip that opens modal to manage
                   <motion.button
@@ -215,8 +238,9 @@ export default function ProductCard({ product }: { product: Product }) {
                   <button
                     type="button"
                     onClick={handleIncrement}
+                    disabled={availableStock > 0 && packQty >= availableStock}
                     aria-label="Increase quantity"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white active:bg-white/25"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white active:bg-white/25 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Plus size={12} strokeWidth={3} />
                   </button>

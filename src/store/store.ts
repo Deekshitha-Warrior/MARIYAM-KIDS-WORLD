@@ -408,6 +408,10 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       addItem: (product, qty, unit, variantId, variantName, parentProductId) => {
+        const availableStock = toNumber(product.stockQuantity ?? product.stock, 0)
+        // Prevent adding if out of stock
+        if (availableStock <= 0) return
+
         const items = [...get().items]
         const existing = items.find(i => i.id === product.id)
 
@@ -416,21 +420,27 @@ export const useCartStore = create<CartState>()(
 
         if (existing) {
           existing.selectedUnit = unit
-          const mergedQty = normalizeSelectedQuantity(
+          let mergedQty = normalizeSelectedQuantity(
             existing.qty + qty,
             existing.unitType,
             existing.allowDecimalQuantity,
             1,
           )
+          if (availableStock > 0 && mergedQty > availableStock) {
+            mergedQty = availableStock
+          }
           existing.qty = mergedQty
           existing.lineTotal = calculateLineTotal(mergedQty, existing.unitType, existing.baseQuantity, basePrice)
         } else {
+          const initialQty = availableStock > 0 ? Math.min(qty, availableStock) : qty
+          if (initialQty <= 0) return
+
           items.push({
             ...product,
-            qty,
+            qty: initialQty,
             selectedUnit: unit,
             basePrice,
-            lineTotal,
+            lineTotal: calculateLineTotal(initialQty, product.unitType, product.baseQuantity, basePrice),
             // Variant identity — only set for variant items
             variantId:       variantId       ?? undefined,
             variantName:     variantName     ?? undefined,
@@ -450,12 +460,16 @@ export const useCartStore = create<CartState>()(
       updateQuantity: (id, qty) => {
         const items = get().items.map(item => {
           if (item.id === id) {
-            const newQty = normalizeSelectedQuantity(
+            const availableStock = toNumber(item.stockQuantity ?? item.stock, 0)
+            let newQty = normalizeSelectedQuantity(
               qty,
               item.unitType,
               item.allowDecimalQuantity,
               1,
             )
+            if (availableStock > 0 && newQty > availableStock) {
+              newQty = availableStock
+            }
             return {
               ...item,
               qty: newQty,
@@ -470,6 +484,8 @@ export const useCartStore = create<CartState>()(
       totalItems: () => get().items.length,
       cartSubtotal: () => get().items.reduce((sum, item) => sum + item.lineTotal, 0),
       add: (product) => {
+        const availableStock = toNumber(product.stockQuantity ?? product.stock, 0)
+        if (availableStock <= 0) return
         const packLabel = product.predefinedOptions[0]?.label ?? product.unitLabel
         get().addItem(product, 1, packLabel)
       },

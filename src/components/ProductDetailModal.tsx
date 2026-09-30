@@ -157,8 +157,15 @@ export default function ProductDetailModal({
   const favorite = isFav(product.id)
   const selectedSummary = selectedPackOption?.label ?? product.unitLabel
 
+  const availableStock = Number(product.stockQuantity ?? product.stock ?? 0)
+  const variantStock = selectedVariant ? Number(selectedVariant.stock ?? 0) : 0
+  const isOutOfStock = product.hasVariants
+    ? (selectedVariant ? variantStock <= 0 : false)
+    : availableStock <= 0
+
   const handleAdd = () => {
-    if (product.hasVariants && selectedVariant) {
+    if (product.hasVariants) {
+      if (!selectedVariant || variantStock <= 0) return
       const synthetic = variantToProduct(product, selectedVariant)
       addItem(
         synthetic,
@@ -169,6 +176,7 @@ export default function ProductDetailModal({
         String(product.id),
       )
     } else {
+      if (availableStock <= 0) return
       // qty = 1 pack; pack label is the unit label for display
       addItem(product, 1, selectedPackOption?.label ?? product.unitLabel)
     }
@@ -177,6 +185,7 @@ export default function ProductDetailModal({
   }
 
   const handleMobileAdd = () => {
+    if (availableStock <= 0) return
     const pack = mobilePack ?? compactPackOptions[0] ?? null
     addItem(product, 1, pack?.label ?? product.unitLabel)
     setMobileQty(1)
@@ -188,6 +197,7 @@ export default function ProductDetailModal({
       setMobileQty(0)
       return
     }
+    if (nextQty > mobileQty && availableStock > 0 && nextQty > availableStock) return
     const pack = mobilePack ?? compactPackOptions[0] ?? null
     const unit = pack?.label ?? product.unitLabel
     if (mobileQty <= 0) {
@@ -511,14 +521,20 @@ export default function ProductDetailModal({
                     ) : (
                       <motion.button
                         key="add-btn"
-                        whileTap={{ scale: 0.98 }}
+                        whileTap={selectedVariant && variantStock > 0 ? { scale: 0.98 } : undefined}
                         onClick={handleAdd}
                         type="button"
-                        disabled={!selectedVariant}
-                        className="flex h-[46px] shrink-0 items-center justify-center rounded-2xl bg-[#2c392a] px-4 text-[13px] font-black text-white shadow-[0_14px_28px_rgba(44,57,42,0.2)] disabled:opacity-50"
+                        disabled={!selectedVariant || variantStock <= 0}
+                        className={`flex h-[46px] shrink-0 items-center justify-center rounded-2xl px-4 text-[13px] font-black ${
+                          !selectedVariant || variantStock <= 0
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                            : 'bg-[#2c392a] text-white shadow-[0_14px_28px_rgba(44,57,42,0.2)]'
+                        }`}
                       >
                         <ShoppingCart size={15} />
-                        <span className="ml-2">Add to Cart</span>
+                        <span className="ml-2">
+                          {!selectedVariant ? 'Select Variant' : variantStock <= 0 ? 'Out of Stock' : 'Add to Cart'}
+                        </span>
                       </motion.button>
                     )}
                   </AnimatePresence>
@@ -533,13 +549,18 @@ export default function ProductDetailModal({
 
                   {mobileQty === 0 ? (
                     <motion.button
-                      whileTap={{ scale: 0.98 }}
+                      whileTap={availableStock > 0 ? { scale: 0.98 } : undefined}
                       onClick={handleMobileAdd}
                       type="button"
-                      className="ml-auto flex h-[46px] flex-1 items-center justify-center rounded-2xl bg-[#2c392a] px-4 text-[13px] font-black text-white shadow-[0_14px_28px_rgba(44,57,42,0.2)]"
+                      disabled={availableStock <= 0}
+                      className={`ml-auto flex h-[46px] flex-1 items-center justify-center rounded-2xl px-4 text-[13px] font-black ${
+                        availableStock <= 0
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                          : 'bg-[#2c392a] text-white shadow-[0_14px_28px_rgba(44,57,42,0.2)]'
+                      }`}
                     >
                       <ShoppingCart size={15} />
-                      <span className="ml-2">Add to Cart</span>
+                      <span className="ml-2">{availableStock <= 0 ? 'Out of Stock' : 'Add to Cart'}</span>
                     </motion.button>
                   ) : (
                     <div className="ml-auto flex flex-1 items-center justify-end gap-2">
@@ -555,7 +576,8 @@ export default function ProductDetailModal({
                         <button
                           type="button"
                           onClick={() => handleMobileChangeQty(mobileQty + 1)}
-                          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f4ed] text-[#5f6d59] transition-colors hover:bg-[#ead7b7]/35"
+                          disabled={availableStock > 0 && mobileQty >= availableStock}
+                          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f4ed] text-[#5f6d59] transition-colors hover:bg-[#ead7b7]/35 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <Plus size={13} />
                         </button>
@@ -576,13 +598,18 @@ export default function ProductDetailModal({
                         ) : (
                           <motion.button
                             key="add-btn"
-                            whileTap={{ scale: 0.98 }}
+                            whileTap={availableStock > 0 ? { scale: 0.98 } : undefined}
                             onClick={handleAdd}
                             type="button"
-                            className="flex h-[46px] items-center justify-center rounded-2xl bg-[#2c392a] px-4 text-[13px] font-black text-white shadow-[0_14px_28px_rgba(44,57,42,0.2)]"
+                            disabled={availableStock <= 0}
+                            className={`flex h-[46px] items-center justify-center rounded-2xl px-4 text-[13px] font-black ${
+                              availableStock <= 0
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                                : 'bg-[#2c392a] text-white shadow-[0_14px_28px_rgba(44,57,42,0.2)]'
+                            }`}
                           >
                             <ShoppingCart size={15} />
-                            <span className="ml-2">Add to Cart</span>
+                            <span className="ml-2">{availableStock <= 0 ? 'Out of Stock' : 'Add to Cart'}</span>
                           </motion.button>
                         )}
                       </AnimatePresence>
@@ -918,15 +945,27 @@ export default function ProductDetailModal({
                   )}
                 </div>
                 <motion.button
-                  whileTap={{ scale: 0.97 }}
+                  whileTap={!isOutOfStock && (!product.hasVariants || (selectedVariant && variantStock > 0)) ? { scale: 0.97 } : undefined}
                   onClick={handleAdd}
                   type="button"
-                  disabled={product.hasVariants && !selectedVariant}
-                  className="flex-1 rounded-2xl bg-[#2c392a] py-3.5 text-sm font-black text-white shadow-[0_16px_30px_rgba(44,57,42,0.28)] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={product.hasVariants ? (!selectedVariant || variantStock <= 0) : availableStock <= 0}
+                  className={`flex-1 rounded-2xl py-3.5 text-sm font-black transition-transform ${
+                    (product.hasVariants ? (!selectedVariant || variantStock <= 0) : availableStock <= 0)
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                      : 'bg-[#2c392a] text-white shadow-[0_16px_30px_rgba(44,57,42,0.28)] hover:-translate-y-0.5'
+                  }`}
                 >
                   <span className="inline-flex items-center justify-center gap-2">
                     <ShoppingCart size={16} />
-                    {product.hasVariants ? 'Add Variant to Cart' : 'Add to Cart'}
+                    {product.hasVariants
+                      ? (!selectedVariant
+                          ? 'Select a Variant'
+                          : variantStock <= 0
+                          ? 'Out of Stock'
+                          : 'Add Variant to Cart')
+                      : availableStock <= 0
+                      ? 'Out of Stock'
+                      : 'Add to Cart'}
                   </span>
                 </motion.button>
               </div>

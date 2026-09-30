@@ -71,7 +71,7 @@ export default function VariantSelectormodal({
   }, [open, onClose])
 
   const handleAdd = useCallback(() => {
-    if (!product || !selected) return
+    if (!product || !selected || (selected.stock ?? 0) <= 0) return
     const synthetic = variantToProduct(product, selected)
     addItem(
       synthetic,
