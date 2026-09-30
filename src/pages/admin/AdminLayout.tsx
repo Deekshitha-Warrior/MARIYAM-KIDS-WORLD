@@ -38,21 +38,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* Deep Maroon Sidebar matching reference screenshot */}
       <aside className="w-64 flex-shrink-0 bg-[#70121E] text-white flex flex-col justify-between z-20 shadow-xl select-none">
         <div className="flex flex-col overflow-y-auto hide-scrollbar flex-1 p-4 space-y-5">
-          {/* Header: Logo, Brand Name, Admin Badge, and Collapse Arrow */}
+          {/* Header: Logo, Admin Badge, and Collapse Arrow */}
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-sm">
                 <img
-                  src={BRAND_LOGO}
-                  alt={BRAND_EN}
-                  className="w-full h-full object-contain"
+                  src="/mariyam_kids_world_logo_transparent.png"
+                  alt="Admin"
+                  className="w-full h-full object-contain rounded-full"
                 />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xs font-black tracking-wider uppercase text-white truncate">
-                  {BRAND_EN}
-                </h2>
-                <span className="inline-block text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#C59B27] text-white">
+                <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#C59B27] text-white shadow-xs">
                   ADMIN
                 </span>
               </div>
