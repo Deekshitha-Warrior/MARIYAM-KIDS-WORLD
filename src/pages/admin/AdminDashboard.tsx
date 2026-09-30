@@ -3,9 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AdminLayout } from './AdminLayout'
 import { AdminOverview } from './AdminOverview'
 import { StaffManagementView } from './StaffManagementView'
-import { CrossBranchSalesView } from './CrossBranchSalesView'
-import { CrossBranchInventoryView } from './CrossBranchInventoryView'
-import { ReportsView } from './ReportsView'
 import { BranchWorkspaceContainer } from './BranchWorkspaceContainer'
 import { useBranchContextStore } from '../../store/branchContextStore'
 
@@ -30,34 +27,10 @@ export default function AdminDashboard() {
           }
         />
         <Route
-          path="sales"
-          element={
-            <GlobalModeSync>
-              <CrossBranchSalesView />
-            </GlobalModeSync>
-          }
-        />
-        <Route
-          path="inventory"
-          element={
-            <GlobalModeSync>
-              <CrossBranchInventoryView />
-            </GlobalModeSync>
-          }
-        />
-        <Route
           path="staff"
           element={
             <GlobalModeSync>
               <StaffManagementView />
-            </GlobalModeSync>
-          }
-        />
-        <Route
-          path="reports"
-          element={
-            <GlobalModeSync>
-              <ReportsView />
             </GlobalModeSync>
           }
         />

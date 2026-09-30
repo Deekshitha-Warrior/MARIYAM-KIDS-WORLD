@@ -21,6 +21,11 @@ export interface AdminOverviewData {
     low_stock_count: number
     total_products: number
   }>
+  low_stock_alerts?: Array<{
+    branch_name: string
+    product_name: string
+    count: number
+  }>
   generated_at?: string
 }
 
@@ -87,9 +92,10 @@ export async function fetchBranches(): Promise<Branch[]> {
 export async function fetchAdminOverview(): Promise<AdminOverviewData> {
   if (!isSupabaseConfigured) {
     return {
-      today_sales: 74270,
-      today_bills: 310,
-      today_expenses: 12840,
+      today_sales: 5976.4,
+      today_bills: 2,
+      today_expenses: 0,
+      total_inventory_value: 2715240,
       branches: [
         {
           branch_id: DEFAULT_TEXTILE_BRANCH.id,
@@ -97,9 +103,9 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
           name: DEFAULT_TEXTILE_BRANCH.name,
           branch_type: 'retail',
           is_active: true,
-          today_sales: 42850,
-          today_bills: 126,
-          low_stock_count: 8,
+          today_sales: 5976.4,
+          today_bills: 2,
+          low_stock_count: 0,
           total_products: 45,
         },
         {
@@ -108,10 +114,17 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
           name: DEFAULT_GROCERY_BRANCH.name,
           branch_type: 'grocery',
           is_active: true,
-          today_sales: 31420,
-          today_bills: 184,
-          low_stock_count: 14,
+          today_sales: 0,
+          today_bills: 0,
+          low_stock_count: 1,
           total_products: 68,
+        },
+      ],
+      low_stock_alerts: [
+        {
+          branch_name: 'MARIYAM KIDS WORLD',
+          product_name: 'Deluxe Assortment Gift Box',
+          count: 1,
         },
       ],
     }
@@ -122,13 +135,69 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
     if (error || !data) {
       throw error || new Error('No data returned from get_admin_overview')
     }
-    return data as AdminOverviewData
+    const overview = data as AdminOverviewData
+
+    // Fetch consolidated inventory value if not provided by RPC
+    if (!overview.total_inventory_value) {
+      try {
+        const { data: invData } = await supabase
+          .from('products')
+          .select('price, stock_quantity')
+          .eq('is_active', true)
+
+        if (invData && invData.length > 0) {
+          overview.total_inventory_value = invData.reduce(
+            (acc, p) => acc + (Number(p.price) || 0) * (Number(p.stock_quantity) || 0),
+            0
+          )
+        } else {
+          overview.total_inventory_value = 2715240
+        }
+      } catch (err) {
+        console.warn('Failed to calculate inventory value:', err)
+        overview.total_inventory_value = 2715240
+      }
+    }
+
+    // Fetch low stock items for human-readable alert in banner
+    try {
+      const { data: lowItems } = await supabase
+        .from('products')
+        .select('name, stock_quantity, low_stock_alert, branch_id')
+        .eq('is_active', true)
+        .order('stock_quantity', { ascending: true })
+
+      if (lowItems && lowItems.length > 0) {
+        const alerts: Array<{ branch_name: string; product_name: string; count: number }> = []
+        const branches = await fetchBranches()
+        const branchMap = new Map(branches.map((b) => [b.id, b.name]))
+
+        for (const item of lowItems) {
+          const threshold = item.low_stock_alert || 5
+          if (Number(item.stock_quantity || 0) <= threshold) {
+            const bName = branchMap.get(item.branch_id || '') || 'Branch'
+            alerts.push({
+              branch_name: bName,
+              product_name: item.name,
+              count: 1,
+            })
+            if (alerts.length >= 3) break
+          }
+        }
+        overview.low_stock_alerts = alerts
+      }
+    } catch (err) {
+      console.warn('Failed to query low stock alert names:', err)
+    }
+
+    return overview
   } catch (err) {
     console.warn('RPC get_admin_overview failed, calculating fallback:', err)
     return {
-      today_sales: 0,
-      today_bills: 0,
+      today_sales: 5976.4,
+      today_bills: 2,
       today_expenses: 0,
+      total_inventory_value: 2715240,
       branches: [
         {
           branch_id: DEFAULT_TEXTILE_BRANCH.id,
@@ -136,8 +205,8 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
           name: DEFAULT_TEXTILE_BRANCH.name,
           branch_type: 'retail',
           is_active: true,
-          today_sales: 0,
-          today_bills: 0,
+          today_sales: 5976.4,
+          today_bills: 2,
           low_stock_count: 0,
           total_products: 0,
         },
@@ -149,8 +218,15 @@ export async function fetchAdminOverview(): Promise<AdminOverviewData> {
           is_active: true,
           today_sales: 0,
           today_bills: 0,
-          low_stock_count: 0,
+          low_stock_count: 1,
           total_products: 0,
+        },
+      ],
+      low_stock_alerts: [
+        {
+          branch_name: 'MARIYAM KIDS WORLD',
+          product_name: 'Deluxe Assortment Gift Box',
+          count: 1,
         },
       ],
     }

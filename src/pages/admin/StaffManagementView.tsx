@@ -130,6 +130,11 @@ export const StaffManagementView: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Cenexa Systems Footer */}
+      <div className="text-center pt-6 pb-2 text-xs text-slate-400 font-medium">
+        Powered by Cenexa Systems © 2026
+      </div>
     </div>
   )
 }
