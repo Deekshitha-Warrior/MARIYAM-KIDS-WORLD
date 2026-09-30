@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Eye, EyeOff, AlertCircle, ShieldCheck, Store, ShoppingBag } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useAdminAuthStore } from '../store/store'
 import { useLangStore } from '../store/langStore'
 import { alarmSound } from '../lib/alarmAudio'
@@ -30,7 +30,6 @@ export default function AdminLogin() {
   // Dynamic branch details based on switching
   const branchName = isMariyam ? 'MARIYAM KIDS WORLD' : 'Taj textiles'
   const branchSubtitle = isMariyam ? 'Kids World & Clothing' : 'Retail Billing & Inventory'
-  const branchLogo = isMariyam ? '/mariyam_kids_world_logo.png' : '/taj_textiles_logo.png'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,7 +74,7 @@ export default function AdminLogin() {
       >
         {/* Left Brand Panel with Dynamic Branch Theming */}
         <div
-          className={`hidden flex-col justify-between items-center p-8 lg:p-10 text-white lg:flex overflow-y-auto hide-scrollbar transition-all duration-700 relative overflow-hidden ${
+          className={`hidden flex-col justify-between items-center p-8 lg:p-10 text-white lg:flex overflow-y-auto hide-scrollbar transition-all duration-500 relative overflow-hidden ${
             isMariyam
               ? 'bg-gradient-to-b from-[#350A1F] via-[#200513] to-[#14020B] border-r border-pink-500/25'
               : 'bg-gradient-to-b from-[#0F1E38] via-[#091222] to-[#040913] border-r border-blue-500/25'
@@ -83,85 +82,95 @@ export default function AdminLogin() {
         >
           {/* Subtle Ambient Background Glow */}
           <div
-            className={`absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl pointer-events-none transition-colors duration-700 opacity-30 ${
+            className={`absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl pointer-events-none transition-colors duration-500 opacity-30 ${
               isMariyam ? 'bg-pink-600' : 'bg-blue-600'
             }`}
           />
           <div
-            className={`absolute -bottom-24 -right-24 w-72 h-72 rounded-full blur-3xl pointer-events-none transition-colors duration-700 opacity-20 ${
+            className={`absolute -bottom-24 -right-24 w-72 h-72 rounded-full blur-3xl pointer-events-none transition-colors duration-500 opacity-20 ${
               isMariyam ? 'bg-rose-500' : 'bg-cyan-500'
             }`}
           />
 
           {/* Top Subtitle */}
           <div className="w-full flex items-center justify-between relative z-10">
-            <motion.p
-              key={`sub-${isMariyam}`}
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`text-[11px] font-black uppercase tracking-[0.24em] transition-colors duration-500 ${
+            <p
+              className={`text-[11px] font-black uppercase tracking-[0.24em] transition-colors duration-300 ${
                 isMariyam ? 'text-pink-300' : 'text-amber-300'
               }`}
             >
               {branchSubtitle}
-            </motion.p>
+            </p>
           </div>
 
-          {/* Center Logo Card with 3D Flip Animation */}
+          {/* Center Logo Card with Instant Synchronized 3D Flip Card */}
           <div className="my-auto flex flex-col items-center justify-center py-6 w-full relative z-10">
             <div className="relative max-w-[280px] w-full aspect-square [perspective:1000px]">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={isMariyam ? 'mariyam-logo-box' : 'taj-logo-box'}
-                  initial={{ rotateY: 90, opacity: 0, scale: 0.88 }}
-                  animate={{ rotateY: 0, opacity: 1, scale: 1 }}
-                  exit={{ rotateY: -90, opacity: 0, scale: 0.88 }}
-                  transition={{ duration: 0.45, ease: [0.25, 1, 0.5, 1] }}
-                  className={`w-full h-full p-6 sm:p-8 rounded-3xl flex items-center justify-center transition-all duration-500 border ${
-                    isMariyam
-                      ? 'bg-gradient-to-b from-[#440C29]/90 to-[#290618]/90 border-pink-500/40 shadow-[0_20px_50px_rgba(190,24,93,0.35),0_0_35px_rgba(244,114,182,0.18)]'
-                      : 'bg-gradient-to-b from-[#142646]/90 to-[#0C172B]/90 border-blue-500/40 shadow-[0_20px_50px_rgba(30,58,138,0.4),0_0_35px_rgba(96,165,250,0.18)]'
-                  }`}
+              <motion.div
+                animate={{ rotateY: isMariyam ? 0 : 180 }}
+                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                className="w-full h-full [transform-style:preserve-3d] relative"
+              >
+                {/* FRONT FACE: MARIYAM KIDS WORLD */}
+                <div
+                  className="absolute inset-0 w-full h-full [backface-visibility:hidden] flex items-center justify-center p-6 sm:p-8 rounded-3xl"
+                  style={{
+                    background:
+                      'linear-gradient(180deg, rgba(68, 12, 41, 0.75) 0%, rgba(35, 6, 20, 0.9) 100%)',
+                    border: '1px solid rgba(244, 114, 182, 0.35)',
+                    boxShadow:
+                      '0 20px 50px rgba(190, 24, 93, 0.35), 0 0 35px rgba(244, 114, 182, 0.18)',
+                  }}
                 >
                   <img
-                    src={branchLogo}
-                    alt={branchName}
-                    className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] select-none"
+                    src="/mariyam_kids_world_logo_transparent.png"
+                    alt="MARIYAM KIDS WORLD"
+                    className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.55)] select-none rounded-full"
                   />
-                </motion.div>
-              </AnimatePresence>
+                </div>
+
+                {/* BACK FACE: TAJ TEXTILES (pre-rotated 180deg) */}
+                <div
+                  className="absolute inset-0 w-full h-full [backface-visibility:hidden] flex items-center justify-center p-6 sm:p-8 rounded-3xl [transform:rotateY(180deg)]"
+                  style={{
+                    background:
+                      'linear-gradient(180deg, rgba(20, 38, 70, 0.75) 0%, rgba(10, 20, 38, 0.9) 100%)',
+                    border: '1px solid rgba(96, 165, 250, 0.35)',
+                    boxShadow:
+                      '0 20px 50px rgba(30, 58, 138, 0.4), 0 0 35px rgba(96, 165, 250, 0.18)',
+                  }}
+                >
+                  <img
+                    src="/taj_textiles_logo.png"
+                    alt="Taj textiles"
+                    className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.55)] select-none rounded-2xl"
+                  />
+                </div>
+              </motion.div>
             </div>
 
             {/* Dynamic Branch Name Caption */}
             <div className="mt-5 text-center">
-              <motion.div
-                key={`caption-${isMariyam}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+              <span
+                className={`text-xs font-black tracking-wider uppercase px-2.5 py-1 rounded-full border transition-colors duration-300 ${
+                  isMariyam
+                    ? 'bg-pink-500/20 text-pink-200 border-pink-400/30'
+                    : 'bg-blue-500/20 text-blue-200 border-blue-400/30'
+                }`}
               >
-                <span
-                  className={`text-xs font-black tracking-wider uppercase px-2.5 py-1 rounded-full border transition-colors duration-500 ${
-                    isMariyam
-                      ? 'bg-pink-500/20 text-pink-200 border-pink-400/30'
-                      : 'bg-blue-500/20 text-blue-200 border-blue-400/30'
-                  }`}
-                >
-                  {branchName}
-                </span>
-                <p className="text-[10px] text-gray-300 mt-2 font-medium">
-                  {isMariyam
-                    ? 'Branch 2 • Kids World & Clothing'
-                    : 'Branch 1 • Retail & Textiles'}
-                </p>
-              </motion.div>
+                {branchName}
+              </span>
+              <p className="text-[10px] text-gray-300 mt-2 font-medium">
+                {isMariyam
+                  ? 'Branch 2 • Kids World & Clothing'
+                  : 'Branch 1 • Retail & Textiles'}
+              </p>
             </div>
           </div>
 
           {/* Bottom Security Footer */}
           <div
-            className={`w-full flex items-center justify-center gap-2 text-xs font-bold transition-colors duration-500 relative z-10 ${
+            className={`w-full flex items-center justify-center gap-2 text-xs font-bold transition-colors duration-300 relative z-10 ${
               isMariyam ? 'text-pink-300' : 'text-blue-300'
             }`}
           >
@@ -174,51 +183,32 @@ export default function AdminLogin() {
         <div className="p-5 sm:p-7 lg:p-8 bg-white text-[#111111] overflow-y-auto hide-scrollbar flex flex-col justify-center">
           {/* Dynamic Brand Title in Header */}
           <div className="mb-4 flex flex-col items-center text-center lg:items-start lg:text-left">
-            <motion.p
-              key={`r-sub-${isMariyam}`}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.25 }}
+            <p
               className={`text-[10px] font-black uppercase tracking-[0.22em] transition-colors duration-300 ${
                 isMariyam ? 'text-pink-600' : 'text-blue-700'
               }`}
             >
               {branchSubtitle}
-            </motion.p>
-            <motion.h1
-              key={`r-title-${isMariyam}`}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
-              className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-[#0A0A0A]"
-            >
+            </p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-[#0A0A0A]">
               {branchName}
-            </motion.h1>
+            </h1>
           </div>
 
-          {/* Mode Switcher Tabs: Staff vs Admin (with Sliding Indicator) */}
-          <div className="relative grid grid-cols-2 p-1 bg-[#F3F4F6] rounded-2xl border border-gray-200 mb-4">
-            <motion.div
-              layout
-              className={`absolute inset-y-1 rounded-xl shadow-sm ${
-                isMariyam
-                  ? 'bg-gradient-to-r from-[#9D174D] to-[#BE185D] text-white'
-                  : 'bg-gradient-to-r from-[#1E3A8A] to-[#1D4ED8] text-white'
-              }`}
-              style={{
-                left: mode === 'staff' ? '4px' : 'calc(50% + 2px)',
-                width: 'calc(50% - 6px)',
-              }}
-              transition={{ type: 'spring', stiffness: 450, damping: 35 }}
-            />
+          {/* Mode Switcher Tabs: Staff vs Admin (Simple clean tabs, NO sliding switch animation) */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#F3F4F6] rounded-2xl border border-gray-200 mb-4">
             <button
               type="button"
               onClick={() => {
                 setMode('staff')
                 setError('')
               }}
-              className={`relative z-10 py-2 text-xs font-black rounded-xl transition-colors cursor-pointer ${
-                mode === 'staff' ? 'text-white' : 'text-gray-500 hover:text-black'
+              className={`py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                mode === 'staff'
+                  ? isMariyam
+                    ? 'bg-gradient-to-r from-[#9D174D] to-[#BE185D] text-white shadow-sm'
+                    : 'bg-gradient-to-r from-[#1E3A8A] to-[#1D4ED8] text-white shadow-sm'
+                  : 'text-gray-500 hover:text-black'
               }`}
             >
               Staff POS Login
@@ -229,8 +219,12 @@ export default function AdminLogin() {
                 setMode('admin')
                 setError('')
               }}
-              className={`relative z-10 py-2 text-xs font-black rounded-xl transition-colors cursor-pointer ${
-                mode === 'admin' ? 'text-white' : 'text-gray-500 hover:text-black'
+              className={`py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                mode === 'admin'
+                  ? isMariyam
+                    ? 'bg-gradient-to-r from-[#9D174D] to-[#BE185D] text-white shadow-sm'
+                    : 'bg-gradient-to-r from-[#1E3A8A] to-[#1D4ED8] text-white shadow-sm'
+                  : 'text-gray-500 hover:text-black'
               }`}
             >
               Admin Orchestrator
@@ -263,14 +257,15 @@ export default function AdminLogin() {
                 <div className="relative grid grid-cols-2 p-1.5 rounded-2xl bg-[#F4F4F6] border border-gray-200 overflow-hidden">
                   {/* Sliding Pill Indicator */}
                   <motion.div
-                    layout
                     className={`absolute inset-y-1.5 rounded-xl shadow-md ${
                       isMariyam
                         ? 'bg-gradient-to-r from-[#9D174D] to-[#BE185D] shadow-pink-900/25'
                         : 'bg-gradient-to-r from-[#1E3A8A] to-[#1D4ED8] shadow-blue-900/25'
                     }`}
-                    style={{
+                    animate={{
                       left: isMariyam ? '6px' : 'calc(50% + 3px)',
+                    }}
+                    style={{
                       width: 'calc(50% - 9px)',
                     }}
                     transition={{ type: 'spring', stiffness: 450, damping: 35 }}
