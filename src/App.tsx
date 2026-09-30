@@ -7,6 +7,7 @@ import { clearLocalOrders } from './lib/ordersFallback'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { LowStockAlarmModal } from './components/dashboard/LowStockAlarmModal'
 import { useLowStockMonitor } from './hooks/useLowStockMonitor'
+import { useBranchContextStore } from './store/branchContextStore'
 
 function lazyWithRetry<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>
@@ -97,9 +98,18 @@ function AppShell() {
   const hasStaffOrAdminAccess = Boolean(isLoggedIn && (role === 'admin' || role === 'staff'))
   useLowStockMonitor(hasStaffOrAdminAccess, role)
 
+  const location = useLocation()
+  const activeBranch = useBranchContextStore((state) => state.activeBranch)
+
   useEffect(() => {
-    document.title = BRAND_EN
-  }, [])
+    if (location.pathname.startsWith('/admin')) {
+      document.title = 'MARIYAM KIDS WORLD | Admin Orchestrator'
+    } else if (activeBranch) {
+      document.title = `${activeBranch.name} | POS`
+    } else {
+      document.title = 'MARIYAM KIDS WORLD - Point of Sale & Inventory'
+    }
+  }, [location.pathname, activeBranch])
 
   useEffect(() => {
     if (!isSupabaseConfigured) {

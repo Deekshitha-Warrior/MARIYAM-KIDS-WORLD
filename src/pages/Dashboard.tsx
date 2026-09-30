@@ -5,6 +5,7 @@ import {
   Package, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
   MessageCircle, ChevronDown, Eye, FileText, Printer, MoreVertical, X, Layers, Receipt,
   SlidersHorizontal, Tag, Ticket, Percent, CheckCircle2, Info, Sparkles,
+  ArrowLeft,
 } from 'lucide-react'
 
 // Custom Malaysian Ringgit icon — replaces the generic dollar-sign icon
@@ -1755,6 +1756,24 @@ export default function Dashboard() {
             <ChevronDown size={14} className={`transition-transform duration-300 ${sidebarCollapsed ? '-rotate-90' : 'rotate-90'}`} />
           </button>
         </div>
+
+        {/* If Admin: Prominent Return to Global Admin Button at top of sidebar */}
+        {role === 'admin' && (
+          <div className={`hidden lg:block border-b border-white/10 shrink-0 ${sidebarCollapsed ? 'p-1.5' : 'p-2.5'}`}>
+            <button
+              type="button"
+              onClick={() => {
+                useBranchContextStore.getState().exitBranch()
+                navigate('/admin')
+              }}
+              title="Go back to Global Admin Panel"
+              className="w-full flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 text-xs font-black transition-all shadow-xs cursor-pointer group"
+            >
+              <ArrowLeft size={15} className="shrink-0 transition-transform group-hover:-translate-x-0.5" />
+              {!sidebarCollapsed && <span className="truncate">Go Back to Global Admin</span>}
+            </button>
+          </div>
+        )}
         {/* Mobile mini-header */}
         <div 
           className="flex lg:hidden items-center justify-between px-3 py-2 border-b shrink-0 gap-2"
@@ -1809,6 +1828,20 @@ export default function Dashboard() {
               </div>
             </div>
           </button>
+          {role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => {
+                useBranchContextStore.getState().exitBranch()
+                navigate('/admin')
+              }}
+              title="Go back to Global Admin Panel"
+              className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-amber-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-amber-500/20 active:bg-amber-500/30 transition-colors whitespace-nowrap cursor-pointer border border-amber-500/35"
+            >
+              <ArrowLeft size={13} className="shrink-0" />
+              <span>Global Admin</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -1859,23 +1892,28 @@ export default function Dashboard() {
 
         {/* Desktop Admin & Logout Buttons anchored at bottom */}
         <div className={`hidden lg:block shrink-0 border-t border-white/10 p-2 lg:p-2.5 space-y-1.5 ${sidebarCollapsed ? 'px-1.5' : 'px-2.5'}`}>
-          <button
-            type="button"
-            onClick={() => navigate('/admin')}
-            title="Return to Global Admin Panel"
-            className={[
-              'shrink-0 flex items-center justify-center lg:justify-start',
-              'gap-2.5',
-              'w-full h-[38px] xl:h-[40px]',
-              sidebarCollapsed ? 'lg:w-[42px] lg:justify-center mx-auto' : 'lg:px-3',
-              'rounded-xl font-bold text-[12px] xl:text-[12.5px] transition-all bg-white/10 hover:bg-white/20 text-white overflow-hidden cursor-pointer shadow-xs',
-            ].join(' ')}
-          >
-            <span className="shrink-0 text-amber-400"><ShieldCheck size={17} /></span>
-            <span className={`truncate text-left transition-all duration-200 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
-              Admin Control
-            </span>
-          </button>
+          {role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => {
+                useBranchContextStore.getState().exitBranch()
+                navigate('/admin')
+              }}
+              title="Return to Global Admin Panel"
+              className={[
+                'shrink-0 flex items-center justify-center lg:justify-start',
+                'gap-2.5',
+                'w-full h-[38px] xl:h-[40px]',
+                sidebarCollapsed ? 'lg:w-[42px] lg:justify-center mx-auto' : 'lg:px-3',
+                'rounded-xl font-black text-[12px] xl:text-[12.5px] transition-all bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 overflow-hidden cursor-pointer shadow-xs',
+              ].join(' ')}
+            >
+              <span className="shrink-0 text-amber-400"><ArrowLeft size={16} /></span>
+              <span className={`truncate text-left transition-all duration-200 ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'opacity-100 flex-1'}`}>
+                Go Back to Global Admin
+              </span>
+            </button>
+          )}
           <button
             onClick={() => {
               useAdminAuthStore.getState().logout()

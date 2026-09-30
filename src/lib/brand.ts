@@ -36,14 +36,14 @@ export function getBranchBusinessDetails(branchCode?: string | null): BranchBusi
   return BRANCH_1_DETAILS
 }
 
-export const BRAND_EN = 'Taj textiles'
-export const BRAND_TA = 'Taj textiles'
-export const BRAND_SHORT = 'Taj'
+export const BRAND_EN = 'MARIYAM KIDS WORLD'
+export const BRAND_TA = 'MARIYAM KIDS WORLD'
+export const BRAND_SHORT = 'MARIYAM'
 export const BRAND_SUBTITLE = 'Retail Billing & Inventory'
-export const BRAND_LOGO = '/taj_textiles_logo.png'
-export const BRAND_ICON = '/taj_textiles_logo.png'
-export const BRAND_FAVICON = '/taj_textiles_logo.png'
-export const BRAND_PRODUCTION_DOMAIN = 'https://cen-gen-pos.vercel.app'
+export const BRAND_LOGO = '/mariyam_kids_world_logo_transparent.png'
+export const BRAND_ICON = '/mariyam_kids_world_logo_transparent.png'
+export const BRAND_FAVICON = '/mariyam_kids_world_logo_transparent.png'
+export const BRAND_PRODUCTION_DOMAIN = 'https://mariyam-kids-world.vercel.app'
 
 // Owner / Personal contact (Branch 1 default)
 export const BRAND_OWNER_NAME = 'Mohammed ansari'
