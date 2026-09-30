@@ -1152,7 +1152,7 @@ export default function Pos(props: PosProps = {}) {
   // ══ MAIN POS SCREEN ══════════════════════════════════════════════════
   return (
     <div data-embedded={embeddedMode} className={`flex flex-col bg-[#FAFAFA] print:hidden overflow-hidden ${embeddedMode ? '' : 'h-[100dvh] max-h-[100dvh] min-h-[100dvh]'}`}>
-      <div className={`flex-1 min-h-0 flex flex-col overflow-x-hidden ${embeddedMode ? '' : 'overflow-y-auto overscroll-contain hide-scrollbar'}`} style={embeddedMode ? undefined : { WebkitOverflowScrolling: 'touch' }}>
+      <div className={`flex-1 min-h-0 flex flex-col overflow-x-hidden ${embeddedMode ? '' : 'overflow-y-auto overscroll-contain'}`} style={embeddedMode ? undefined : { WebkitOverflowScrolling: 'touch' }}>
       {/* Header */}
       <div className="px-3 pt-3 pb-2.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 md:pb-4 shrink-0 flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
         <div className="min-w-0">

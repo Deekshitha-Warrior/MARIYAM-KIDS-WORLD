@@ -1799,7 +1799,7 @@ export default function Dashboard() {
         </div>
         {/* Nav List - Height safe and scrollable */}
         <nav
-          className={`flex overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto lg:flex-col gap-1 lg:gap-1 px-2 py-2 lg:px-2.5 lg:py-2.5 flex-1 min-h-0 transition-all duration-300 hide-scrollbar ${sidebarCollapsed ? 'lg:px-1.5' : 'lg:px-2.5'}`}
+          className={`flex overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto lg:flex-col gap-1 lg:gap-1 px-2 py-2 lg:px-2.5 lg:py-2.5 flex-1 min-h-0 transition-all duration-300 ${sidebarCollapsed ? 'lg:px-1.5' : 'lg:px-2.5'}`}
         >
           {navItems.map(item => (
             <React.Fragment key={item.id}>

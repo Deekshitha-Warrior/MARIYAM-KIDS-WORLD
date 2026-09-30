@@ -140,7 +140,7 @@ export default function CatalogModal({ isOpen, branch, onClose, onAdd }: Catalog
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={saveEdit} className="p-6 flex flex-col gap-4">
+            <form onSubmit={saveEdit} className="p-6 flex flex-col gap-4 overflow-y-auto min-h-0 flex-1">
               {editError && <div className="text-red-500 text-sm font-bold bg-red-50 p-3 rounded-xl">{editError}</div>}
               <div>
                 <label className="block text-[10px] font-black text-[#374151] tracking-wider uppercase mb-1.5">Product Name</label>

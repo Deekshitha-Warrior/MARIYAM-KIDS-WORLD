@@ -637,8 +637,9 @@ export default function BillingAnalytics() {
   }
 
   return (
-    <div className="admin-shell min-h-screen bg-white">
-      <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+    <div className="admin-shell h-[100dvh] max-h-[100dvh] min-h-[100dvh] bg-white flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="admin-logo-lockup min-w-[280px]">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#7A1220] border border-[#D4AF37]/40 shadow-sm shrink-0 p-1 overflow-hidden">
@@ -966,6 +967,7 @@ export default function BillingAnalytics() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )
