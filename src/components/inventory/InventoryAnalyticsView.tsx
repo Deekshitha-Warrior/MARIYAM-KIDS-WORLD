@@ -85,7 +85,6 @@ export const InventoryAnalyticsView: React.FC = () => {
       const headers = [
         'Product ID',
         'Product Name',
-        'Tamil Name',
         'Variant ID',
         'Variant Name (Size)',
         'Category',
@@ -110,7 +109,6 @@ export const InventoryAnalyticsView: React.FC = () => {
         return [
           it.product_id,
           (it.name || ''),
-          (it.name_ta || ''),
           it.variant_id || '',
           (it.variant_name || ''),
           (it.category || 'General'),
