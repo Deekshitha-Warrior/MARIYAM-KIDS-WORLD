@@ -6,7 +6,7 @@ import { formatCurrency } from '../lib/retail'
 import { invoicePdfFile } from '../lib/invoicePdf'
 import { printThermalReceipt } from '../lib/thermalPrint'
 import { buildAdvanceDepositWhatsAppMessage, buildProfessionalWhatsAppMessage, publicInvoiceUrl } from '../lib/whatsappMessage'
-import { toWhatsAppUrl } from '../lib/phone'
+import { formatPhoneForDisplay, toWhatsAppUrl } from '../lib/phone'
 import { advanceReceiptPdf, downloadFile, printAdvanceReceipt } from '../lib/advanceReceipt'
 import { useAdminAuthStore, useProductStore, resolveBranch } from '../store/store'
 import { getPeriodBounds } from '../lib/dateRanges'
@@ -337,7 +337,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
                   </td>
                   <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                     <p className="font-bold text-[#273126]">{order.customer_name}</p>
-                    <p className="text-xs text-[#727970]">{order.phone}</p>
+                    <p className="text-xs text-[#727970]">{formatPhoneForDisplay(order.phone)}</p>
                   </td>
                   <td className="max-w-[180px] px-4 py-3.5 align-middle">
                     <p className="truncate font-semibold text-[#273126]">{order.product_name}</p>
@@ -640,7 +640,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
             <div className="grid grid-cols-2 gap-3">
               {[
                 ['Customer', selected.customer_name],
-                ['Phone', selected.phone],
+                ['Phone', formatPhoneForDisplay(selected.phone)],
                 ['Address', selected.address || '-'],
                 ['Product', selected.product_name],
                 ['Category', selected.category || '-'],

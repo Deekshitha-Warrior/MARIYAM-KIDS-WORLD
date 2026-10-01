@@ -1,6 +1,7 @@
 import { BRAND_EN } from './brand'
 import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import { formatCurrency, formatInvoiceNo } from './retail'
+import { formatPhoneForDisplay } from './phone'
 import type { PosBranch } from '../store/store'
 import { getBranchProfile } from './branchProfile'
 import { useSettingsStore } from '../store/store'
@@ -60,19 +61,6 @@ export function printThermalReceipt(data: ThermalReceiptData) {
       catch { return new Date().toLocaleString('en-IN') }
     })()
 
-    const formatCustomerPhone = (phone?: string): string => {
-      if (!phone) return ''
-      const trimmed = phone.trim()
-      const digits = trimmed.replace(/\D/g, '')
-      if (digits.length === 12 && digits.startsWith('91')) {
-        return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`
-      }
-      if (digits.length === 10) {
-        return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
-      }
-      return trimmed
-    }
-
     const html = `
       <!DOCTYPE html>
       <html lang="en" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" spellcheck="false">
@@ -125,7 +113,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
           <div>Date: ${dateStr}</div>
           ${data.paymentMode ? `<div>Payment: ${data.paymentMode}</div>` : ''}
           ${data.customerName ? `<div>Name: ${data.customerName}</div>` : ''}
-          ${data.phone ? `<div>Tel: ${formatCustomerPhone(data.phone)}</div>` : ''}
+          ${data.phone ? `<div>Tel: ${formatPhoneForDisplay(data.phone)}</div>` : ''}
         </div>
 
         <table class="border-bottom" style="width: 100%; table-layout: fixed; border-collapse: collapse;">

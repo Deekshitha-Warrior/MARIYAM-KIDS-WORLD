@@ -5,6 +5,7 @@ import { formatCurrency, formatQuantityDisplay, normalizeStructuredOrderItem, fo
 import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import type { PosBranch } from '../store/store'
 import { getBranchProfile } from './branchProfile'
+import { formatPhoneForDisplay } from './phone'
 
 export type InvoicePdfData = {
   invoiceNo: string
@@ -80,7 +81,7 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   y += 28
 
   const customerName = String(data.customerName || 'Walk-in Customer').trim()
-  const customerPhone = String(data.phone || '—').trim()
+  const customerPhone = formatPhoneForDisplay(data.phone) || '—'
   const customerAddress = String(data.address || '').trim()
   const customerNameLines = doc.splitTextToSize(customerName, 165) as string[]
   const customerAddressLines = customerAddress

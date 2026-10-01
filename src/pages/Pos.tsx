@@ -34,7 +34,7 @@ import {
   formatInvoiceNo,
 } from '../lib/retail'
 import { buildProfessionalWhatsAppMessage, buildAdvanceDepositWhatsAppMessage, publicInvoiceUrl } from '../lib/whatsappMessage'
-import { normalizePhone, toWhatsAppUrl } from '../lib/phone'
+import { formatPhoneForDisplay, normalizePhone, toWhatsAppUrl } from '../lib/phone'
 import { useLangStore } from '../store/langStore'
 import { fetchVariantsByProduct, type ProductVariant } from '../services/variantService'
 import { BarcodeScannerInput, type ScannedItemPayload } from '../components/pos/BarcodeScannerInput'
@@ -1070,7 +1070,7 @@ export default function Pos(props: PosProps = {}) {
               {invoice.phone && (
                 <div>
                   <span className="text-[10px] text-gray-400 font-bold uppercase block">Phone</span>
-                  <span className="font-semibold text-gray-700 block">{invoice.phone}</span>
+                  <span className="font-semibold text-gray-700 block">{formatPhoneForDisplay(invoice.phone)}</span>
                 </div>
               )}
             </div>

@@ -36,7 +36,7 @@ export function getSubscriberDigits(input: string): string | null {
 export function formatPhoneForDisplay(input?: string | null): string {
   if (!input) return ''
   const normalized = normalizePhone(String(input))
-  return normalized ? `${normalized.slice(0, 2)} ${normalized.slice(2)}` : String(input).trim()
+  return normalized ? `+${normalized.slice(0, 2)} ${normalized.slice(2)}` : String(input).trim()
 }
 
 export function normalizePhoneForWhatsApp(input: string): string {
@@ -84,7 +84,7 @@ export function formatPhoneForCSV(input?: string | null): string {
     mobile10 = digits.slice(2)
   }
   if (mobile10.length === 10) {
-    return `\t+91 ${mobile10.slice(0, 5)} ${mobile10.slice(5)}`
+    return `\t+91 ${mobile10}`
   }
   return `\t${trimmed}`
 }

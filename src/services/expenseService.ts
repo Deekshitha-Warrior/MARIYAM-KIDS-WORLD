@@ -313,7 +313,9 @@ export const expenseService = {
         if (!error && data) {
           remoteExpensesAvailable = true
           const local = loadLocalExpenses()
-          const updated = local.map((e) => (e.id === id ? (data as ExpenseRecord) : e))
+          const updated = local.map((e) =>
+            e.id === id && (e.branch || 'pos1') === branch ? (data as ExpenseRecord) : e,
+          )
           saveLocalExpenses(updated)
           return data as ExpenseRecord
         }
@@ -329,10 +331,11 @@ export const expenseService = {
     const current = loadLocalExpenses()
     let updatedRecord: ExpenseRecord | null = null
     const updated = current.map((e) => {
-      if (e.id === id) {
+      if (e.id === id && (e.branch || 'pos1') === branch) {
         updatedRecord = {
           ...e,
           ...payload,
+          branch,
           updated_at: updatedAt,
         }
         return updatedRecord
