@@ -11,7 +11,14 @@ SET name = 'YG ENTERPRISES',
     email = 'chandrums1552004@gmail.com',
     address = 'Manapparai, Trichy, Tamil Nadu - 621 306',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 1
+  -- Guarded: only rebrand a row that is still on a legacy / placeholder
+  -- identity (the 0001 default or the 0012 CLAD seed). A re-run therefore
+  -- never overwrites a profile the owner has since edited in Store Settings.
+  AND COALESCE(email, '') IN (
+        'mypurpleboutique05@gmail.com',
+        'cladclothing26@gmail.com'
+      );
 
 -- 2. Create public 'branding' storage bucket if not exists
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

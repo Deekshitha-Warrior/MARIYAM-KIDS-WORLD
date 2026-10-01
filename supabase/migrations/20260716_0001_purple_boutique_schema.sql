@@ -192,6 +192,11 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Seed the default profile only when the row does not exist yet.
+-- WHY NOT "DO UPDATE ...": this ran on every re-run and reset id = 1 back to
+-- these Purple Boutique / Cyberjaya defaults, which re-armed the retired
+-- CLAD seed in 0012 and silently wiped any profile the owner had saved from
+-- Admin -> Store Settings. A seed must never clobber live data.
 INSERT INTO public.store_settings (id, name, phone, email, address)
 VALUES (
   1,
@@ -200,12 +205,7 @@ VALUES (
   'mypurpleboutique05@gmail.com',
   'FR-02-05A TAMARIND SUITE, Persiaran Multimedia, CYBER 10, 63000 Cyberjaya, Selangor'
 )
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  phone = EXCLUDED.phone,
-  email = EXCLUDED.email,
-  address = EXCLUDED.address,
-  updated_at = NOW();
+ON CONFLICT (id) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN

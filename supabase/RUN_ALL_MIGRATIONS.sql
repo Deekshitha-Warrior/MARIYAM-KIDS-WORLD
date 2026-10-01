@@ -215,6 +215,11 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Seed the default profile only when the row does not exist yet.
+-- WHY NOT "DO UPDATE ...": this ran on every re-run and reset id = 1 back to
+-- these Purple Boutique / Cyberjaya defaults, which re-armed the retired
+-- CLAD seed in section 12 and silently wiped any profile the owner had saved
+-- from Admin -> Store Settings. A seed must never clobber live data.
 INSERT INTO public.store_settings (id, name, phone, email, address)
 VALUES (
   1,
@@ -223,12 +228,7 @@ VALUES (
   'mypurpleboutique05@gmail.com',
   'FR-02-05A TAMARIND SUITE, Persiaran Multimedia, CYBER 10, 63000 Cyberjaya, Selangor'
 )
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  phone = EXCLUDED.phone,
-  email = EXCLUDED.email,
-  address = EXCLUDED.address,
-  updated_at = NOW();
+ON CONFLICT (id) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
@@ -2187,7 +2187,17 @@ BEGIN
 END;
 $$;
 
--- 10. Update Store Settings Default to CLAD
+-- 10. Store Settings: historical CLAD seed - now GUARDED -------------------
+-- The CLAD / cladclothing26@gmail.com identity below is a retired brand.
+-- It was replaced by the rebrand migrations (0016, 0017, 0021) and repaired
+-- for databases that missed them by 20261004_0033. The statement is kept
+-- only so a brand-new install reproduces the original history, so it now
+-- matches the untouched 0001 defaults and skips any row that already holds
+-- a real (or repaired) profile.
+-- WHY THE GUARD: with a bare "WHERE id = 1" this block ran on every re-run
+-- and pushed the retired CLAD header back over the live YG ENTERPRISES
+-- POS 1 profile (Store Settings -> Shop Profile and every POS 1 invoice /
+-- receipt / barcode label), undoing 0016 / 0017 / 0021 / 0033.
 UPDATE public.store_settings
 SET name = 'CLAD',
     owner_name = 'Rubi krishna',
@@ -2195,7 +2205,9 @@ SET name = 'CLAD',
     email = 'cladclothing26@gmail.com',
     address = 'Manapparai, Trichy, Tamil Nadu - 621 306',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 1
+  AND LOWER(BTRIM(COALESCE(name, ''))) = 'yg enterprises'
+  AND COALESCE(email, '') = 'mypurpleboutique05@gmail.com';
 
 COMMIT;
 
@@ -2220,6 +2232,14 @@ CREATE TABLE IF NOT EXISTS public.expense_categories (
 );
 
 -- 2. Seed Default Expense Categories
+-- No conflict target on purpose: this section created
+-- uq_expense_category_name UNIQUE (name), but section 28 (0029) drops that
+-- constraint and replaces it with the branch-scoped unique index
+-- expense_categories_branch_name_unique (branch, LOWER(BTRIM(name))).
+-- A bare "ON CONFLICT DO NOTHING" matches both schemas, while the old
+-- "ON CONFLICT (name)" failed with 42P10 (no unique or exclusion
+-- constraint matching the ON CONFLICT specification) on every database
+-- that had already run section 28 - i.e. on re-runs of this whole script.
 INSERT INTO public.expense_categories (name, is_active) VALUES
   ('Maintenance', TRUE),
   ('Marketing', TRUE),
@@ -2227,7 +2247,7 @@ INSERT INTO public.expense_categories (name, is_active) VALUES
   ('Rent', TRUE),
   ('Salaries', TRUE),
   ('Supplies', TRUE)
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- 3. Store Expenses Table
 -- Note: category_id has ON DELETE SET NULL to preserve historical expense records even if a category is removed
@@ -2338,7 +2358,15 @@ SET name = 'YG ENTERPRISES',
     email = 'chandrums1552004@gmail.com',
     address = 'Manapparai, Trichy, Tamil Nadu - 621 306',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 1
+  -- Guarded: only rebrand a row that is still on a legacy / placeholder
+  -- identity (the 0001 default or the section 12 CLAD seed). A re-run
+  -- therefore never overwrites a profile the owner has since edited in
+  -- Store Settings.
+  AND COALESCE(email, '') IN (
+        'mypurpleboutique05@gmail.com',
+        'cladclothing26@gmail.com'
+      );
 
 -- 2. Create public 'branding' storage bucket if not exists
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -2384,7 +2412,14 @@ BEGIN;
 UPDATE public.store_settings
 SET address = '1892 A, bypass road, Sevoor,arani-632316',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 1
+  -- Guarded: same "legacy identity only" rule as sections 16 / 21, so a
+  -- re-run never moves the address of a profile the owner has edited.
+  AND COALESCE(email, '') IN (
+        'mypurpleboutique05@gmail.com',
+        'cladclothing26@gmail.com',
+        'chandrums1552004@gmail.com'
+      );
 
 COMMIT;
 
@@ -3750,7 +3785,17 @@ SET name = 'YG ENTERPRISES',
     email = 'ygenterprises2000@gmail.com',
     address = '#189, N.S.C. Bose Road, (Opp. Bus Depot, Hotel Sankar Cafe Building), Chennai - 600 001',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 1
+  -- Guarded: only while the row is still on a legacy / placeholder identity
+  -- (0001 default, section 12 CLAD seed or section 16 CHAJI rebrand). This is
+  -- the same self-healing rule 20261004_0033 uses, so a database that missed
+  -- this migration is still repaired, while a profile the owner has already
+  -- edited from Admin -> Store Settings is never overwritten.
+  AND COALESCE(email, '') IN (
+        'mypurpleboutique05@gmail.com',
+        'cladclothing26@gmail.com',
+        'chandrums1552004@gmail.com'
+      );
 
 -- 3. NOTE: any leftover files in the 'branding' storage bucket (created for
 -- CHAJI in migration 0016) are intentionally left alone here — Supabase

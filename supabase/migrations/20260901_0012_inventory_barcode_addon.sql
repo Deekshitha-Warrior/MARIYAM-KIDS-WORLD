@@ -554,7 +554,17 @@ BEGIN
 END;
 $$;
 
--- 10. Update Store Settings Default to CLAD
+-- 10. Store Settings: historical CLAD seed - now GUARDED -------------------
+-- The CLAD / cladclothing26@gmail.com identity below is a retired brand.
+-- It was replaced by the rebrand migrations (0016, 0017, 0021) and repaired
+-- for databases that missed them by 20261004_0033. The statement is kept
+-- only so a brand-new install reproduces the original history, so it now
+-- matches the untouched 0001 defaults and skips any row that already holds
+-- a real (or repaired) profile.
+-- WHY THE GUARD: with a bare "WHERE id = 1" this block ran on every re-run
+-- and pushed the retired CLAD header back over the live YG ENTERPRISES
+-- POS 1 profile (Store Settings -> Shop Profile and every POS 1 invoice /
+-- receipt / barcode label), undoing 0016 / 0017 / 0021 / 0033.
 UPDATE public.store_settings
 SET name = 'CLAD',
     owner_name = 'Rubi krishna',
@@ -562,6 +572,8 @@ SET name = 'CLAD',
     email = 'cladclothing26@gmail.com',
     address = 'Manapparai, Trichy, Tamil Nadu - 621 306',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 1
+  AND LOWER(BTRIM(COALESCE(name, ''))) = 'yg enterprises'
+  AND COALESCE(email, '') = 'mypurpleboutique05@gmail.com';
 
 COMMIT;

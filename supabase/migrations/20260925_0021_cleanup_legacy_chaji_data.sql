@@ -38,7 +38,17 @@ SET name = 'YG ENTERPRISES',
     email = 'ygenterprises2000@gmail.com',
     address = '#189, N.S.C. Bose Road, (Opp. Bus Depot, Hotel Sankar Cafe Building), Chennai - 600 001',
     updated_at = NOW()
-WHERE id = 1;
+WHERE id = 1
+  -- Guarded: only while the row is still on a legacy / placeholder identity
+  -- (0001 default, 0012 CLAD seed or 0016 CHAJI rebrand). This is the same
+  -- self-healing rule 20261004_0033 uses, so a database that missed this
+  -- migration is still repaired, while a profile the owner has already
+  -- edited from Admin -> Store Settings is never overwritten.
+  AND COALESCE(email, '') IN (
+        'mypurpleboutique05@gmail.com',
+        'cladclothing26@gmail.com',
+        'chandrums1552004@gmail.com'
+      );
 
 -- 3. NOTE: any leftover files in the 'branding' storage bucket (created for
 -- CHAJI in migration 0016) are intentionally left alone here — Supabase

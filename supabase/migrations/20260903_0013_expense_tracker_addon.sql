@@ -15,6 +15,15 @@ CREATE TABLE IF NOT EXISTS public.expense_categories (
 );
 
 -- 2. Seed Default Expense Categories
+-- No conflict target on purpose: this file created
+-- uq_expense_category_name UNIQUE (name), but 20260930_0029 drops that
+-- constraint and replaces it with the branch-scoped unique index
+-- expense_categories_branch_name_unique (branch, LOWER(BTRIM(name))).
+-- A bare "ON CONFLICT DO NOTHING" matches both schemas, while the old
+-- "ON CONFLICT (name)" failed with 42P10 (no unique or exclusion
+-- constraint matching the ON CONFLICT specification) on every database
+-- that had already run 0029 - i.e. on re-runs of this file or of
+-- RUN_ALL_MIGRATIONS.sql.
 INSERT INTO public.expense_categories (name, is_active) VALUES
   ('Maintenance', TRUE),
   ('Marketing', TRUE),
@@ -22,7 +31,7 @@ INSERT INTO public.expense_categories (name, is_active) VALUES
   ('Rent', TRUE),
   ('Salaries', TRUE),
   ('Supplies', TRUE)
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- 3. Store Expenses Table
 -- Note: category_id has ON DELETE SET NULL to preserve historical expense records even if a category is removed
