@@ -55,8 +55,8 @@ WHERE schemaname = 'public' AND indexname = 'coupons_code_upper_unique'
 UNION ALL
 
 SELECT '7. movement branch trigger installed',
-       CASE WHEN count(*) = 1 THEN 'OK - trigger active'
+       CASE WHEN count(*) >= 1 THEN 'OK - trigger active'
             ELSE 'PROBLEM - trigger missing' END
-FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgfoid
-WHERE t.tgname = 'enforce_inventory_movement_branch_trigger'
-  AND NOT t.tgisinternal
+FROM pg_trigger
+WHERE tgname = 'enforce_inventory_movement_branch_trigger'
+  AND NOT tgisinternal
