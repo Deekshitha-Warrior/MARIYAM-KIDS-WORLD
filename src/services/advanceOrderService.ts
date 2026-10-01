@@ -28,7 +28,7 @@ export type AdvanceOrder = {
   completed_order_id: string | null
   invoice_number: string | null
   final_payment_method: string | null
-  branch?: PosBranch
+  branch: PosBranch
 }
 
 export type AdvanceTimeline = { id: number; advance_order_id: string; event_type: string; label: string; remarks: string; created_at: string }
@@ -108,6 +108,7 @@ const normalizeOrder = (row: Record<string, unknown>): AdvanceOrder => ({
   completed_order_id: row.completed_order_id ? String(row.completed_order_id) : null,
   invoice_number: row.invoice_number ? String(row.invoice_number) : null,
   final_payment_method: row.final_payment_method ? String(row.final_payment_method) : null,
+  branch: row.branch === 'pos2' ? 'pos2' : 'pos1',
 })
 
 const rpcRow = (data: unknown) => (Array.isArray(data) ? data[0] : data) as Record<string, unknown>
@@ -162,8 +163,9 @@ export async function cancelAdvanceOrderByCompletedOrderId(completedOrderId: str
   saveLocalOrders(updated)
 }
 
-export async function listAdvanceOrders(branch?: PosBranch): Promise<AdvanceOrder[]> {
-  const local = loadLocalOrders()
+export async function listAdvanceOrders(branch: PosBranch = 'pos1'): Promise<AdvanceOrder[]> {
+  const cached = loadLocalOrders()
+  const local = cached.filter(o => (o.branch || 'pos1') === branch)
   if (isSupabaseConfigured) {
     try {
       let query = supabase.from('advance_orders').select('*').order('created_at', { ascending: false })
@@ -176,7 +178,7 @@ export async function listAdvanceOrders(branch?: PosBranch): Promise<AdvanceOrde
         const remoteIds = new Set(remote.map(r => r.id))
         const localOnly = local.filter(l => !remoteIds.has(l.id))
         const merged = [...remote, ...localOnly].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        saveLocalOrders(merged)
+        saveLocalOrders([...merged, ...cached.filter(o => (o.branch || 'pos1') !== branch)])
         return merged
       }
     } catch (err) { console.error('[listAdvanceOrders] Exception:', err) }
@@ -262,6 +264,7 @@ export async function createAdvanceOrder(input: {
       completed_order_id: null,
       invoice_number: null,
       final_payment_method: null,
+      branch: input.branch || 'pos1',
     }
 
     const currentTimeline = loadLocalTimeline()

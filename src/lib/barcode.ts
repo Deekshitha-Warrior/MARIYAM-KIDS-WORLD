@@ -16,15 +16,19 @@ export interface LabelSizeConfig {
 }
 
 export const DEFAULT_LABEL_SIZES: LabelSizeConfig[] = [
+  { id: '1_35x22', name: '35 × 22 mm (Compact Tag)', labelsPerRow: 1, widthMm: 35, heightMm: 22, horizontalGapMm: 0 },
   { id: '2_38x25', name: '38 × 25 mm (Tag / Jewelry)', labelsPerRow: 1, widthMm: 38, heightMm: 25, horizontalGapMm: 0 },
   { id: '1_50x25', name: '50 × 25 mm (Standard Compact)', labelsPerRow: 1, widthMm: 50, heightMm: 25, horizontalGapMm: 0 },
   { id: '2_50x25', name: '50 × 38 mm (Retail Standard)', labelsPerRow: 1, widthMm: 50, heightMm: 38, horizontalGapMm: 0 },
   { id: '1_60x40', name: '60 × 40 mm (Shipping / Product)', labelsPerRow: 1, widthMm: 60, heightMm: 40, horizontalGapMm: 0 },
   { id: '1_100x50', name: '100 × 50 mm (Large Carton / Box)', labelsPerRow: 1, widthMm: 100, heightMm: 50, horizontalGapMm: 0 },
-  // 2-up roll candidates — exact single-label size unconfirmed, test-print on scrap
-  // paper first and delete whichever one doesn't match your physical roll.
-  { id: '2up_50x25', name: '50 × 25 mm × 2 (2-Up Roll, Candidate A)', labelsPerRow: 2, widthMm: 50, heightMm: 25, horizontalGapMm: 2 },
-  { id: '2up_50x30', name: '50 × 30 mm × 2 (2-Up Roll, Candidate B)', labelsPerRow: 2, widthMm: 50, heightMm: 30, horizontalGapMm: 2 },
+  { id: '2up_35x22', name: '35 × 22 mm × 2-Up (Roll, side-by-side)', labelsPerRow: 2, widthMm: 35, heightMm: 22, horizontalGapMm: 2 },
+  { id: '2up_50x25', name: '50 × 25 mm × 2-Up (Roll, side-by-side)', labelsPerRow: 2, widthMm: 50, heightMm: 25, horizontalGapMm: 2 },
+  { id: '3up_35x22', name: '35 × 22 mm × 3-Up (Roll, side-by-side)', labelsPerRow: 3, widthMm: 35, heightMm: 22, horizontalGapMm: 2 },
+  { id: 'a4_4_48x25', name: 'A4 Sheet — 4 columns × 48 × 25 mm', labelsPerRow: 4, widthMm: 48, heightMm: 25, horizontalGapMm: 2 },
+  { id: 'a4_4_48x30', name: 'A4 Sheet — 4 columns × 48 × 30 mm', labelsPerRow: 4, widthMm: 48, heightMm: 30, horizontalGapMm: 2 },
+  { id: 'a4_3_63x38', name: 'A4 Sheet — 3 columns × 63 × 38 mm', labelsPerRow: 3, widthMm: 63, heightMm: 38, horizontalGapMm: 2 },
+  { id: 'a4_2_99x34', name: 'A4 Sheet — 2 columns × 99 × 34 mm (Address label)', labelsPerRow: 2, widthMm: 99, heightMm: 34, horizontalGapMm: 2 },
 ]
 
 export interface BarcodeSettings {
@@ -50,9 +54,12 @@ const LEGACY_SETTINGS_KEY = 'clad_barcode_settings'
 const CUSTOM_SIZES_KEY = 'yg_custom_label_sizes'
 const LEGACY_CUSTOM_SIZES_KEY = 'clad_custom_label_sizes'
 
+const branchKey = (key: string, branch?: string) => branch ? `${key}_${branch}` : key
+
 export function getStoredBarcodeSettings(branch?: string): BarcodeSettings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY) || localStorage.getItem(LEGACY_SETTINGS_KEY)
+    const scopedKey = branchKey(SETTINGS_KEY, branch)
+    const raw = localStorage.getItem(scopedKey) || (!branch || branch === 'pos1' ? localStorage.getItem(SETTINGS_KEY) || localStorage.getItem(LEGACY_SETTINGS_KEY) : null)
     if (raw) {
       const stored = JSON.parse(raw)
       return { ...DEFAULT_BARCODE_SETTINGS, ...stored }
@@ -67,17 +74,18 @@ export function getStoredBarcodeSettings(branch?: string): BarcodeSettings {
   return DEFAULT_BARCODE_SETTINGS
 }
 
-export function saveStoredBarcodeSettings(settings: BarcodeSettings): void {
+export function saveStoredBarcodeSettings(settings: BarcodeSettings, branch?: string): void {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+    localStorage.setItem(branchKey(SETTINGS_KEY, branch), JSON.stringify(settings))
   } catch (e) {
     console.error('Failed to save barcode settings:', e)
   }
 }
 
-export function getStoredCustomSizes(): LabelSizeConfig[] {
+export function getStoredCustomSizes(branch?: string): LabelSizeConfig[] {
   try {
-    const raw = localStorage.getItem(CUSTOM_SIZES_KEY) || localStorage.getItem(LEGACY_CUSTOM_SIZES_KEY)
+    const scopedKey = branchKey(CUSTOM_SIZES_KEY, branch)
+    const raw = localStorage.getItem(scopedKey) || (!branch || branch === 'pos1' ? localStorage.getItem(CUSTOM_SIZES_KEY) || localStorage.getItem(LEGACY_CUSTOM_SIZES_KEY) : null)
     if (raw) return JSON.parse(raw)
   } catch (e) {
     console.error('Failed to parse custom label sizes:', e)
@@ -85,19 +93,19 @@ export function getStoredCustomSizes(): LabelSizeConfig[] {
   return []
 }
 
-export function saveStoredCustomSize(size: LabelSizeConfig): LabelSizeConfig[] {
-  const existing = getStoredCustomSizes().filter((s) => s.id !== size.id)
+export function saveStoredCustomSize(size: LabelSizeConfig, branch?: string): LabelSizeConfig[] {
+  const existing = getStoredCustomSizes(branch).filter((s) => s.id !== size.id)
   const updated = [...existing, { ...size, isCustom: true }]
   try {
-    localStorage.setItem(CUSTOM_SIZES_KEY, JSON.stringify(updated))
+    localStorage.setItem(branchKey(CUSTOM_SIZES_KEY, branch), JSON.stringify(updated))
   } catch (e) {
     console.error('Failed to save custom label size:', e)
   }
   return updated
 }
 
-export function getAllLabelSizes(): LabelSizeConfig[] {
-  return [...DEFAULT_LABEL_SIZES, ...getStoredCustomSizes()]
+export function getAllLabelSizes(branch?: string): LabelSizeConfig[] {
+  return [...DEFAULT_LABEL_SIZES, ...getStoredCustomSizes(branch)]
 }
 
 export interface BarcodeQueueItem {

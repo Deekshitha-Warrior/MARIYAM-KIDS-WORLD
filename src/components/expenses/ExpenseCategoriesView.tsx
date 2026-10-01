@@ -1,14 +1,17 @@
 import React, { useState, useRef } from 'react'
 import { Plus, Trash2, Tag, AlertCircle, CheckCircle2, Edit2, X, Check } from 'lucide-react'
 import { expenseService, type ExpenseCategory } from '../../services/expenseService'
+import type { PosBranch } from '../../store/store'
 
 interface ExpenseCategoriesViewProps {
   categories: ExpenseCategory[]
+  branch: PosBranch
   onCategoriesUpdated: () => void
 }
 
 export const ExpenseCategoriesView: React.FC<ExpenseCategoriesViewProps> = ({
   categories,
+  branch,
   onCategoriesUpdated,
 }) => {
   const [catName, setCatName] = useState('')
@@ -26,11 +29,11 @@ export const ExpenseCategoriesView: React.FC<ExpenseCategoriesViewProps> = ({
     setNotice(null)
     try {
       if (editingCategory) {
-        await expenseService.updateCategory(editingCategory.id, trimmed)
+        await expenseService.updateCategory(editingCategory.id, trimmed, branch)
         setNotice({ type: 'success', text: `Category updated to "${trimmed}" successfully!` })
         setEditingCategory(null)
       } else {
-        await expenseService.createCategory(trimmed)
+        await expenseService.createCategory(trimmed, branch)
         setNotice({ type: 'success', text: `Category "${trimmed}" created successfully!` })
       }
       setCatName('')
@@ -65,7 +68,7 @@ export const ExpenseCategoriesView: React.FC<ExpenseCategoriesViewProps> = ({
     }
 
     try {
-      await expenseService.deleteCategory(cat.id)
+      await expenseService.deleteCategory(cat.id, branch)
       if (editingCategory?.id === cat.id) {
         handleCancelEdit()
       }

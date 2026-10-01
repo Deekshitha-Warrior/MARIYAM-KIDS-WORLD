@@ -89,6 +89,7 @@ function PosGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppShell() {
+  const location = useLocation()
   const initialize = useAuthStore((state) => state.initialize)
   const fetchProducts = useProductStore((state) => state.fetchProducts)
   const fetchVariants = useVariantStore((state) => state.fetchVariants)
@@ -96,7 +97,8 @@ function AppShell() {
   const fetchSettings = useSettingsStore((state) => state.fetchSettings)
   const settingsByBranch = useSettingsStore((state) => state.settingsByBranch)
 
-  const hasStaffOrAdminAccess = Boolean(isLoggedIn && (role === 'admin' || role === 'staff'))
+  const isLoginRoute = location.pathname === '/admin-login' || location.pathname === '/login'
+  const hasStaffOrAdminAccess = Boolean(isLoggedIn && (role === 'admin' || role === 'staff') && !isLoginRoute)
   // Alarm only for the branch being worked in (all branches in the admin's global view)
   useLowStockMonitor(hasStaffOrAdminAccess, role, activeBranch === 'pos1' || activeBranch === 'pos2' ? activeBranch : null)
 

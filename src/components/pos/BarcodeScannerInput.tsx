@@ -6,6 +6,7 @@ import { barcodeService } from '../../services/barcodeService'
 import { BRAND_EN } from '../../lib/brand'
 import { normalizeBarcode } from '../../lib/barcode'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
+import type { PosBranch } from '../../store/store'
 
 export interface ScannedItemPayload {
   product_id: number
@@ -23,11 +24,13 @@ export interface ScannedItemPayload {
 }
 
 export interface BarcodeScannerInputProps {
+  branch: PosBranch
   onItemScanned: (item: ScannedItemPayload) => void
   disabled?: boolean
 }
 
 export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
+  branch,
   onItemScanned,
   disabled = false,
 }) => {
@@ -135,7 +138,7 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
     setErrorMsg('')
 
     try {
-      const record = await barcodeService.lookupBarcode(clean)
+      const record = await barcodeService.lookupBarcode(clean, branch)
 
       if (!record || !record.product) {
         playBeep(false)
@@ -177,7 +180,7 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
     } finally {
       setLoading(false)
     }
-  }, [onItemScanned])
+  }, [branch, onItemScanned])
 
   // Non-Blocking HID Keystroke Interceptor
   useEffect(() => {

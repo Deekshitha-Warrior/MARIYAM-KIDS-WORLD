@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { inventoryService, type InventoryStockItem } from '../../services/inventoryService'
 import { BRAND_EN } from '../../lib/brand'
+import { useAdminAuthStore, resolveBranch } from '../../store/store'
 
 export interface AdjustStockModalProps {
   isOpen: boolean
@@ -30,6 +31,7 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
   item,
   onSuccess,
 }) => {
+  const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
   const [mode, setMode] = useState<AdjustMode>('RESTOCK')
   const [addQuantity, setAddQuantity] = useState<number | ''>(0)
   const [removeQuantity, setRemoveQuantity] = useState<number | ''>(0)
@@ -134,6 +136,7 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
     try {
       await inventoryService.adjustStock({
         product_id: item.product_id,
+        branch,
         variant_id: item.variant_id || null,
         new_quantity: effectiveNewStock,
         reason: effectiveReason,

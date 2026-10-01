@@ -25,8 +25,8 @@ type LabelSizePreset = {
   horizontalGapMm: number
 }
 
-const getAvailablePresets = (): LabelSizePreset[] => {
-  const sizes = getAllLabelSizes()
+const getAvailablePresets = (branch: string): LabelSizePreset[] => {
+  const sizes = getAllLabelSizes(branch)
   return sizes.map((s) => ({
     name: `${s.name} (${s.widthMm}mm × ${s.heightMm}mm${s.labelsPerRow > 1 ? ` × ${s.labelsPerRow} across` : ''})`,
     widthMm: s.widthMm,
@@ -47,14 +47,14 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
   defaultQuantity = 1,
 }) => {
   const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
-  const presets = getAvailablePresets()
+  const presets = getAvailablePresets(branch)
   const [quantity, setQuantity] = useState<string>(String(defaultQuantity || 1))
   const branchDefaults = getDefaultBarcodeSettings(branch)
-  const storedSettings = getStoredBarcodeSettings()
+  const storedSettings = getStoredBarcodeSettings(branch)
   const [selectedPreset, setSelectedPreset] = useState<LabelSizePreset>(
     (() => {
       // Branch default size id (e.g. '1_100x50') → matching preset by physical dimensions
-      const def = getAllLabelSizes().find(sz => sz.id === branchDefaults.selectedSizeId)
+      const def = getAllLabelSizes(branch).find(sz => sz.id === branchDefaults.selectedSizeId)
       return def && presets.find(p => p.widthMm === def.widthMm && p.heightMm === def.heightMm && p.labelsPerRow === (def.labelsPerRow || 1))
     })() || presets[0] ||
     { name: 'Thermal Standard', widthMm: 50, heightMm: 25, labelsPerRow: 1, horizontalGapMm: 0 }
@@ -66,8 +66,8 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
 
   const handlePrinterTypeChange = (type: 'label' | 'regular') => {
     setPrinterType(type)
-    const current = getStoredBarcodeSettings()
-    saveStoredBarcodeSettings({ ...current, printerType: type })
+    const current = getStoredBarcodeSettings(branch)
+    saveStoredBarcodeSettings({ ...current, printerType: type }, branch)
   }
 
   // Close on Escape key & lock body scrolling when open
@@ -192,7 +192,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
               ${
                 isThermal
                   ? `size: ${(selectedPreset.widthMm * columns + gapMm * (columns - 1)).toFixed(2)}mm ${selectedPreset.heightMm}mm; margin: 0;`
-                  : `size: A4 portrait; margin: 10mm;`
+                  : `size: A4 portrait; margin: 4mm;`
               }
             }
             @media print {
@@ -231,7 +231,8 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
               display: flex;
               flex-wrap: wrap;
               align-content: flex-start;
-              gap: 3mm 4mm;
+              width: 202mm;
+              gap: 3mm 2mm;
             }
             .page-wrapper {
               display: block;

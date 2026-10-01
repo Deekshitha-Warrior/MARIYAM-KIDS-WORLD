@@ -75,7 +75,8 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   doc.setTextColor('#7A1220')
   doc.setFont('helvetica', 'bold')
   doc.text(`Date: ${new Date(data.date).toLocaleDateString('en-IN')}`, right - 2, y + 2, { align: 'right' })
-  doc.text(`Payment: ${data.paymentMode || 'POS'}`, right - 2, y + 8, { align: 'right' })
+  const paymentText = `Payment: ${data.paymentMode || 'POS'}`.replace(/[₹\u20b9]/g, 'Rs. ')
+  doc.text(paymentText, right - 2, y + 8, { align: 'right', maxWidth: 100 })
   y += 28
 
   const customerName = String(data.customerName || 'Walk-in Customer').trim()

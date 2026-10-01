@@ -78,7 +78,7 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
     setLoading(true)
     try {
       if (expenseToEdit) {
-        const updated = await expenseService.updateExpense(expenseToEdit.id, {
+        const updated = await expenseService.updateExpense(expenseToEdit.id, branch, {
           expense_date: expenseDate,
           category_id: selectedCategory ? selectedCategory.id : null,
           category_name: categoryName,

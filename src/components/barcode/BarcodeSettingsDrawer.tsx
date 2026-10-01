@@ -9,12 +9,14 @@ import {
   saveStoredBarcodeSettings,
 } from '../../lib/barcode'
 import { CreateCustomSizeModal } from './CreateCustomSizeModal'
+import type { PosBranch } from '../../store/store'
 
 interface BarcodeSettingsDrawerProps {
   isOpen: boolean
   onClose: () => void
   settings: BarcodeSettings
   onUpdateSettings: (newSettings: BarcodeSettings) => void
+  branch: PosBranch
 }
 
 export const BarcodeSettingsDrawer: React.FC<BarcodeSettingsDrawerProps> = ({
@@ -22,8 +24,9 @@ export const BarcodeSettingsDrawer: React.FC<BarcodeSettingsDrawerProps> = ({
   onClose,
   settings,
   onUpdateSettings,
+  branch,
 }) => {
-  const [customSizes, setCustomSizes] = useState<LabelSizeConfig[]>(getStoredCustomSizes())
+  const [customSizes, setCustomSizes] = useState<LabelSizeConfig[]>(getStoredCustomSizes(branch))
   const [showCustomModal, setShowCustomModal] = useState(false)
 
   // Close on Escape key
@@ -52,13 +55,13 @@ export const BarcodeSettingsDrawer: React.FC<BarcodeSettingsDrawerProps> = ({
 
   const handlePrinterChange = (type: 'label' | 'regular') => {
     const updated: BarcodeSettings = { ...settings, printerType: type }
-    saveStoredBarcodeSettings(updated)
+    saveStoredBarcodeSettings(updated, branch)
     onUpdateSettings(updated)
   }
 
   const handleSizeChange = (sizeId: string) => {
     const updated: BarcodeSettings = { ...settings, selectedSizeId: sizeId }
-    saveStoredBarcodeSettings(updated)
+    saveStoredBarcodeSettings(updated, branch)
     onUpdateSettings(updated)
   }
 
@@ -66,7 +69,7 @@ export const BarcodeSettingsDrawer: React.FC<BarcodeSettingsDrawerProps> = ({
     field: 'showSalePrice' | 'showCompanyName' | 'showItemName' | 'showDiscount'
   ) => {
     const updated: BarcodeSettings = { ...settings, [field]: !settings[field] }
-    saveStoredBarcodeSettings(updated)
+    saveStoredBarcodeSettings(updated, branch)
     onUpdateSettings(updated)
   }
 
@@ -239,7 +242,7 @@ export const BarcodeSettingsDrawer: React.FC<BarcodeSettingsDrawerProps> = ({
           isOpen={showCustomModal}
           onClose={() => setShowCustomModal(false)}
           onCreated={(newSize) => {
-            setCustomSizes(getStoredCustomSizes())
+            setCustomSizes(getStoredCustomSizes(branch))
             handleSizeChange(newSize.id)
           }}
         />

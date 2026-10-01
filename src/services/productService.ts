@@ -31,6 +31,7 @@ export async function updateItemPrice(params: {
   id: number | string
   newPrice: number
   newCostPrice?: number
+  branch: PosBranch
 }): Promise<void> {
   if (params.newPrice < 0) throw new Error('Price cannot be negative')
 
@@ -46,6 +47,7 @@ export async function updateItemPrice(params: {
       .from('product_variants')
       .update(updatePayload)
       .eq('id', params.id)
+      .eq('branch', params.branch)
     if (error) throw error
   } else {
     const updatePayload: Record<string, unknown> = {
@@ -59,6 +61,7 @@ export async function updateItemPrice(params: {
       .from('products')
       .update(updatePayload)
       .eq('id', params.id)
+      .eq('branch', params.branch)
     if (error) throw error
   }
 }
@@ -154,4 +157,3 @@ export async function getOrCreateUnregisteredProduct(
     category: 'Unregistered',
   }
 }
-

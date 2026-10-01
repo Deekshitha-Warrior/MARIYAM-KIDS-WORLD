@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  BarChart2,
+  Boxes,
+  CreditCard,
   Download,
+  Grid2X2,
   LayoutDashboard,
+  Package,
+  Receipt,
   RefreshCw,
   Search,
   ShoppingCart,
   Trash2,
   Trophy,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react'
 import CompactAnalytics from '../components/dashboard/CompactAnalytics'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -43,9 +50,12 @@ const RMIcon = ({ size = 16, className = '' }: { size?: number; className?: stri
 )
 import { useAuthStore, useProductStore, useAdminAuthStore, resolveBranch, type Product } from '../store/store'
 import { formatCurrency, normalizeOrderMode, toNumber } from '../lib/retail'
-import { formatPhoneForCSV } from '../lib/phone'
+import { formatPhoneForCSV, formatPhoneForDisplay } from '../lib/phone'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
 import { getPeriodRange } from '../lib/dateRanges'
+import { expenseService, type ExpenseRecord } from '../services/expenseService'
+import { listAdvanceOrders, type AdvanceOrder } from '../services/advanceOrderService'
+import { branchShortLabel } from '../lib/branchTheme'
 
 type BillingOrder = {
   id: string
@@ -58,6 +68,7 @@ type BillingOrder = {
   status: string
   order_mode: string
   order_type: string
+  payment_mode: string
   items: unknown
   coupon_code: string
   discount_amount: number
@@ -96,11 +107,13 @@ type AnalyticsModel = {
   totalCompletedRevenue: number
   todaySales: number
   completedOrders: number
+  offlineBillCount: number
+  onlineBillCount: number
   posRevenue: number
   advanceRevenue: number
   onlinePosRevenue: number
   manualRevenue: number
-  monthlyRevenue: number
+  averageRevenuePerBill: number
   totalProductsSold: number
   bestCategory: string
   bestProduct: string
@@ -126,7 +139,6 @@ const toLocalDateKey = (value: string | Date) => {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-const toLocalMonthKey = (value: string | Date) => toLocalDateKey(value).slice(0, 7)
 const startOfWeekMonday = (input: Date) => {
   const date = new Date(input)
   const day = date.getDay()
@@ -226,15 +238,18 @@ export default function BillingAnalytics() {
   const { user, loading: authLoading } = useAuthStore()
   const { products, fetchProducts } = useProductStore()
   const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
+  const setActiveBranch = useAdminAuthStore((state) => state.setActiveBranch)
   const l = (en: string, _ta?: string) => en
 
   const [loading, setLoading] = useState(false)
   const [orders, setOrders] = useState<BillingOrder[]>([])
   const [orderItems, setOrderItems] = useState<BillingOrderItem[]>([])
+  const [advanceOrders, setAdvanceOrders] = useState<AdvanceOrder[]>([])
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
   const [analyticsDatePreset, setAnalyticsDatePreset] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all')
   const [analyticsDateFrom, setAnalyticsDateFrom] = useState('')
   const [analyticsDateTo, setAnalyticsDateTo] = useState('')
-  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'advance' | 'online' | 'manual'>('all')
+  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual'>('all')
   const [billSearch, setBillSearch] = useState({
     invoiceNo: '',
     customerName: '',
@@ -249,7 +264,7 @@ export default function BillingAnalytics() {
     if (!window.confirm(`Are you sure you want to delete bill ${invoiceNo || orderId}? This will remove it permanently and update revenue.`)) return
     try {
       await supabase.from('order_items').delete().eq('order_id', orderId)
-      const { error } = await supabase.from('orders').delete().eq('id', orderId)
+      const { error } = await supabase.from('orders').delete().eq('id', orderId).eq('branch', branch)
       if (error) throw error
 
       await cancelAdvanceOrderByCompletedOrderId(orderId)
@@ -273,6 +288,7 @@ export default function BillingAnalytics() {
     status: String(row.status || 'pending'),
     order_mode: normalizeOrderMode(row.order_mode),
     order_type: normalizeOrderType(row.order_type),
+    payment_mode: String(row.payment_mode || row.payment_method || ''),
     items: row.items,
     coupon_code: String(row.coupon_code || ''),
     discount_amount: toNumber(row.discount_amount, 0),
@@ -298,18 +314,22 @@ export default function BillingAnalytics() {
 
     setLoading(true)
     try {
-      const [ordersRes] = await Promise.all([
+      const [ordersRes, advanceRows, expenseRows] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, items, coupon_code, discount_amount, delivery_charge')
+          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, payment_mode, payment_method, items, coupon_code, discount_amount, delivery_charge')
           .eq('branch', branch)
           .order('created_at', { ascending: false })
           .limit(1000),
-        fetchProducts(branch, true),
+        listAdvanceOrders(branch),
+        expenseService.getExpenses(branch),
       ])
+      await fetchProducts(branch, true)
 
       const mappedOrders = (ordersRes.data || []).map((row) => toBillingOrder(row as Record<string, unknown>))
       setOrders(mappedOrders)
+      setAdvanceOrders(advanceRows)
+      setExpenses(expenseRows)
 
       const orderIds = mappedOrders.map((order) => order.id).filter(Boolean)
       if (orderIds.length > 0) {
@@ -349,17 +369,17 @@ export default function BillingAnalytics() {
 
   const analytics = useMemo<AnalyticsModel>(() => {
     let dated = orders
-    if (analyticsDateFrom) dated = dated.filter((order) => order.created_at >= `${analyticsDateFrom}T00:00:00`)
-    if (analyticsDateTo) dated = dated.filter((order) => order.created_at <= `${analyticsDateTo}T23:59:59`)
+    if (analyticsDateFrom) dated = dated.filter((order) => toLocalDateKey(order.created_at) >= analyticsDateFrom)
+    if (analyticsDateTo) dated = dated.filter((order) => toLocalDateKey(order.created_at) <= analyticsDateTo)
 
     const nonCancelled = dated.filter((order) => normalizeStatus(order.status) !== 'cancelled')
     const completedOrders = nonCancelled.filter((order) => isCompletedStatus(order.status))
-    const billableCompleted = completedOrders.filter((order) => normalizeOrderType(order.order_type) !== 'online_request')
+    const billableCompleted = completedOrders.filter((order) => ['pos_sale', 'manual_sale', 'advance_order'].includes(normalizeOrderType(order.order_type)))
 
     const offlinePOS = billableCompleted.filter(
       (order) => normalizeOrderType(order.order_type) === 'pos_sale' && normalizeOrderMode(order.order_mode) !== 'online',
     )
-    const advanceOrders = billableCompleted.filter(
+    const advanceOrders = completedOrders.filter(
       (order) => normalizeOrderType(order.order_type) === 'advance_order',
     )
     const onlinePOS = billableCompleted.filter(
@@ -374,18 +394,16 @@ export default function BillingAnalytics() {
     const manualRevenue = manualSales.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
 
     const todayKey = toLocalDateKey(new Date())
-    const monthKey = toLocalMonthKey(new Date())
     const todaySales = billableCompleted
       .filter((order) => toLocalDateKey(order.created_at) === todayKey)
       .reduce((sum, order) => sum + toNumber(order.total, 0), 0)
-    const monthlyRevenue = billableCompleted
-      .filter((order) => toLocalMonthKey(order.created_at) === monthKey)
-      .reduce((sum, order) => sum + toNumber(order.total, 0), 0)
+
+    const selectedRevenue = billableCompleted.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
 
     const completedIds = new Set(billableCompleted.map((order) => order.id))
     const completedItems = orderItems.length > 0
       ? orderItems.filter((item) => completedIds.has(item.order_id))
-      : completedOrders.flatMap((order) => parseOrderItems(order.items).map((row) => ({
+      : billableCompleted.flatMap((order) => parseOrderItems(order.items).map((row) => ({
           order_id: order.id,
           product_name: String((row as Record<string, unknown>).product_name || (row as Record<string, unknown>).name || 'Product'),
           quantity: toNumber((row as Record<string, unknown>).quantity ?? (row as Record<string, unknown>).qty, 0),
@@ -443,13 +461,13 @@ export default function BillingAnalytics() {
 
     const monthlyRevenueMap = new Map<string, number>()
     billableCompleted.forEach((order) => {
-      const key = order.created_at.slice(0, 7)
+      const key = toLocalDateKey(order.created_at).slice(0, 7)
       monthlyRevenueMap.set(key, (monthlyRevenueMap.get(key) || 0) + toNumber(order.total, 0))
     })
     const monthlyTrend = Array.from({ length: 6 }, (_, index) => {
-      const date = new Date()
-      date.setMonth(date.getMonth() - (5 - index))
-      const key = date.toISOString().slice(0, 7)
+      const today = new Date()
+      const date = new Date(today.getFullYear(), today.getMonth() - (5 - index), 1)
+      const key = toLocalDateKey(date).slice(0, 7)
       return {
         key,
         month: date.toLocaleDateString('en-IN', { month: 'short' }),
@@ -459,15 +477,15 @@ export default function BillingAnalytics() {
 
     const weeklyRevenueMap = new Map<string, number>()
     billableCompleted.forEach((order) => {
-      const key = order.created_at.slice(0, 10)
+      const key = toLocalDateKey(order.created_at)
       weeklyRevenueMap.set(key, (weeklyRevenueMap.get(key) || 0) + toNumber(order.total, 0))
     })
-    const weekAnchor = new Date(`${analyticsDateTo || analyticsDateFrom || new Date().toISOString().slice(0, 10)}T00:00:00`)
+    const weekAnchor = new Date(`${analyticsDateTo || analyticsDateFrom || toLocalDateKey(new Date())}T00:00:00`)
     const weekStart = startOfWeekMonday(weekAnchor)
     const weeklySales = Array.from({ length: 7 }, (_, index) => {
       const date = new Date(weekStart)
       date.setDate(weekStart.getDate() + index)
-      const key = date.toISOString().slice(0, 10)
+      const key = toLocalDateKey(date)
       return {
         day: date.toLocaleDateString('en-IN', { weekday: 'long' }),
         date: key,
@@ -489,11 +507,13 @@ export default function BillingAnalytics() {
       totalCompletedRevenue: completedRevenue,
       todaySales,
       completedOrders: billableCompleted.length,
+      offlineBillCount: offlinePOS.length,
+      onlineBillCount: onlinePOS.length,
       posRevenue,
       advanceRevenue,
       onlinePosRevenue,
       manualRevenue: manualRevenue || totalManualRevenue,
-      monthlyRevenue,
+      averageRevenuePerBill: billableCompleted.length ? selectedRevenue / billableCompleted.length : 0,
       totalProductsSold,
       bestCategory,
       bestProduct,
@@ -524,93 +544,50 @@ export default function BillingAnalytics() {
       if (type === 'online_request') return false
 
       if (billTypeFilter === 'manual' && type !== 'manual_sale') return false
-      if (billTypeFilter === 'advance' && type !== 'advance_order') return false
       if (billTypeFilter === 'offline' && !(type === 'pos_sale' && mode !== 'online')) return false
       if (billTypeFilter === 'online' && !(type === 'pos_sale' && mode === 'online')) return false
 
       if (normalizedSearch.invoiceNo && !String(order.invoice_no || '').toLowerCase().includes(normalizedSearch.invoiceNo)) return false
       if (normalizedSearch.customerName && !String(order.customer_name || '').toLowerCase().includes(normalizedSearch.customerName)) return false
       if (normalizedSearch.phone && !String(order.phone || '').toLowerCase().includes(normalizedSearch.phone)) return false
-      if (billSearch.dateFrom && order.created_at < `${billSearch.dateFrom}T00:00:00`) return false
-      if (billSearch.dateTo && order.created_at > `${billSearch.dateTo}T23:59:59`) return false
+      const orderDate = toLocalDateKey(order.created_at)
+      if (billSearch.dateFrom && orderDate < billSearch.dateFrom) return false
+      if (billSearch.dateTo && orderDate > billSearch.dateTo) return false
 
       return true
     })
   }, [billSearch, billTypeFilter, orders])
 
+  const isInSelectedPeriod = (date: string) => {
+    const key = date.length === 10 ? date : toLocalDateKey(date)
+    return (!analyticsDateFrom || key >= analyticsDateFrom) && (!analyticsDateTo || key <= analyticsDateTo)
+  }
+  const periodExpenses = expenses.filter(expense => isInSelectedPeriod(expense.expense_date))
+  const periodAdvanceOrders = advanceOrders.filter(order => isInSelectedPeriod(order.created_at))
+  const expenseTotal = periodExpenses.reduce((sum, expense) => sum + toNumber(expense.amount, 0), 0)
+  const depositOrders = periodAdvanceOrders.filter(order => order.status !== 'cancelled')
+  const depositTotal = depositOrders.reduce((sum, order) => sum + toNumber(order.deposit_amount, 0), 0)
+  const completedAdvanceOrders = advanceOrders.filter(order => order.status === 'completed' && isInSelectedPeriod(order.completed_at || order.created_at))
+  const completedAdvanceTotal = completedAdvanceOrders.reduce((sum, order) => sum + toNumber(order.total_amount, 0), 0)
+  const creditOrders = orders.filter(order => isInSelectedPeriod(order.created_at) && isCompletedStatus(order.status) && order.payment_mode.toLowerCase().includes('credit'))
+  const creditTotal = creditOrders.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
+  const netProfit = analytics.totalCompletedRevenue - expenseTotal
   const summaryCards = [
-    {
-      label: l('Total Revenue', 'மொத்த வருவாய்'),
-      helper: 'POS + advance + manual bills',
-      value: formatCurrency(analytics.totalCompletedRevenue),
-      icon: <RMIcon size={18} />,
-      color: 'text-emerald-700',
-      bg: 'bg-emerald-50',
-    },
-    {
-      label: l("Today's Sales", 'இன்றைய விற்பனை'),
-      helper: 'Completed today',
-      value: formatCurrency(analytics.todaySales),
-      icon: <BarChart2 size={18} />,
-      color: 'text-blue-700',
-      bg: 'bg-blue-50',
-    },
-    {
-      label: l('Completed Bills', 'முடிந்த பில்கள்'),
-      helper: 'Paid / completed bills',
-      value: analytics.completedOrders,
-      icon: <Trophy size={18} />,
-      color: 'text-green-700',
-      bg: 'bg-green-50',
-    },
-    {
-      label: l('Offline Bills', 'ஆஃப்லைன் பில்'),
-      helper: 'Walk-in POS sales',
-      value: formatCurrency(analytics.posRevenue),
-      icon: <ShoppingCart size={18} />,
-      color: 'text-orange-700',
-      bg: 'bg-orange-50',
-    },
-    {
-      label: l('Advance Bills', 'முன்பதிவு பில்'),
-      helper: 'Completed advance orders',
-      value: formatCurrency(analytics.advanceRevenue),
-      icon: <ShoppingCart size={18} />,
-      color: 'text-violet-700',
-      bg: 'bg-violet-50',
-    },
-    {
-      label: l('Online Bills', 'ஆன்லைன் பில்'),
-      helper: 'Online POS sales',
-      value: formatCurrency(analytics.onlinePosRevenue),
-      icon: <ShoppingCart size={18} />,
-      color: 'text-cyan-700',
-      bg: 'bg-cyan-50',
-    },
-    {
-      label: l('Manual Bills', 'கைமுறை பில்'),
-      helper: 'Manual item revenue',
-      value: formatCurrency(analytics.manualRevenue),
-      icon: <ShoppingCart size={18} />,
-      color: 'text-pink-700',
-      bg: 'bg-pink-50',
-    },
-    {
-      label: l('Monthly Revenue', 'மாத வருவாய்'),
-      helper: 'Current month',
-      value: formatCurrency(analytics.monthlyRevenue),
-      icon: <BarChart2 size={18} />,
-      color: 'text-rose-700',
-      bg: 'bg-rose-50',
-    },
-    {
-      label: l('Total Items Sold', 'விற்ற பொருட்கள்'),
-      helper: 'From completed bills',
-      value: Math.round(analytics.totalProductsSold),
-      icon: <ShoppingCart size={18} />,
-      color: 'text-indigo-700',
-      bg: 'bg-indigo-50',
-    },
+    { label: 'Total Revenue', helper: 'Completed POS and manual sales', value: formatCurrency(analytics.totalCompletedRevenue), icon: <RMIcon size={18} />, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+    { label: netProfit < 0 ? 'Net Loss' : 'Net Profit', helper: `Revenue (${formatCurrency(analytics.totalCompletedRevenue)}) − Expenses (${formatCurrency(expenseTotal)})`, value: formatCurrency(Math.abs(netProfit)), icon: netProfit < 0 ? <TrendingDown size={18} /> : <TrendingUp size={18} />, color: netProfit < 0 ? 'text-rose-600' : 'text-emerald-700', bg: netProfit < 0 ? 'bg-rose-50' : 'bg-emerald-50' },
+    { label: 'Total Expenses', helper: 'Expenses in selected period', value: formatCurrency(expenseTotal), icon: <Receipt size={18} />, color: 'text-amber-700', bg: 'bg-amber-50' },
+    { label: "Today's Sales", helper: 'Completed POS and manual sales today', value: formatCurrency(analytics.todaySales), icon: <TrendingUp size={18} />, color: 'text-blue-700', bg: 'bg-blue-50' },
+    { label: 'Offline Revenue', helper: 'Completed walk-in POS sales', value: formatCurrency(analytics.posRevenue), icon: <RMIcon size={18} />, color: 'text-cyan-700', bg: 'bg-cyan-50' },
+    { label: 'Online Revenue', helper: 'Completed online POS sales', value: formatCurrency(analytics.onlinePosRevenue), icon: <RMIcon size={18} />, color: 'text-sky-700', bg: 'bg-sky-50' },
+    { label: 'Completed Bills', helper: 'Completed POS and manual bills', value: analytics.completedOrders, icon: <Trophy size={18} />, color: 'text-green-700', bg: 'bg-green-50' },
+    { label: 'Total Offline Bills', helper: 'Walk-in POS orders', value: analytics.offlineBillCount, icon: <Grid2X2 size={18} />, color: 'text-rose-700', bg: 'bg-rose-50' },
+    { label: 'Total Online Bills', helper: 'Completed online POS orders', value: analytics.onlineBillCount, icon: <Package size={18} />, color: 'text-blue-700', bg: 'bg-blue-50' },
+    { label: 'Total Items Sold', helper: 'Items on completed POS and manual bills', value: Math.round(analytics.totalProductsSold), icon: <Boxes size={18} />, color: 'text-indigo-700', bg: 'bg-indigo-50' },
+    { label: 'Average Revenue Per Bill', helper: 'Revenue divided by completed POS and manual bills', value: formatCurrency(analytics.averageRevenuePerBill), icon: <RMIcon size={18} />, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+    { label: 'Top Product', helper: 'Most sold item in selected period', value: analytics.bestProduct, icon: <Trophy size={18} />, color: 'text-pink-700', bg: 'bg-pink-50' },
+    { label: 'Completed Advance Orders', helper: `${completedAdvanceOrders.length} orders completed`, value: formatCurrency(completedAdvanceTotal), icon: <Package size={18} />, color: 'text-violet-700', bg: 'bg-violet-50' },
+    { label: 'Advance Deposits Received', helper: `${depositOrders.length} non-cancelled advance orders`, value: formatCurrency(depositTotal), icon: <Wallet size={18} />, color: 'text-sky-700', bg: 'bg-sky-50' },
+    { label: 'Credit Bills Received', helper: `${creditOrders.length} settled credit bills`, value: formatCurrency(creditTotal), icon: <CreditCard size={18} />, color: 'text-rose-700', bg: 'bg-rose-50' },
   ]
 
   if (authLoading || loading) {
@@ -652,6 +629,13 @@ export default function BillingAnalytics() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 rounded-xl border border-[#E5E7EB]/60 bg-white px-3 py-2 text-[12px] font-bold text-[#374151]">
+              Branch
+              <select value={branch} onChange={(e) => setActiveBranch(e.target.value as 'pos1' | 'pos2')} className="bg-transparent font-black outline-none">
+                <option value="pos1">{branchShortLabel('pos1')}</option>
+                <option value="pos2">{branchShortLabel('pos2')}</option>
+              </select>
+            </label>
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB]/60 bg-white px-4 py-2 text-[13px] font-bold text-[#374151] hover:bg-[#F9FAFB]"
@@ -764,7 +748,6 @@ export default function BillingAnalytics() {
               {([
                 { v: 'all', label: l('All Bills', 'அனைத்து') },
                 { v: 'offline', label: l('Offline', 'ஆஃப்லைன்') },
-                { v: 'advance', label: l('Advance', 'முன்பதிவு') },
                 { v: 'online', label: l('Online', 'ஆன்லைன்') },
                 { v: 'manual', label: l('Manual', 'கைமுறை') },
               ] as const).map(({ v, label }) => (
@@ -858,7 +841,7 @@ export default function BillingAnalytics() {
                       <tr key={order.id} className="hover:bg-[#F9FAFB]/50">
                         <td className="whitespace-nowrap px-3 py-3 font-bold text-[#10B981]">{order.invoice_no || '—'}</td>
                         <td className="max-w-[140px] truncate px-3 py-3 font-semibold text-[#111111]">{order.customer_name}</td>
-                        <td className="whitespace-nowrap px-3 py-3 text-[#374151]">{order.phone}</td>
+                        <td className="whitespace-nowrap px-3 py-3 text-[#374151]">{formatPhoneForDisplay(order.phone)}</td>
                         <td className="px-3 py-3">
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${billTypeClass}`}>{billTypeLabel}</span>
                         </td>

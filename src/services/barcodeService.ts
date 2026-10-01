@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { PosBranch } from '../store/store'
 
 export interface BarcodeRegistryRecord {
   id: string
@@ -79,13 +80,13 @@ export const barcodeService = {
   /**
    * Lookup barcode value in registry and resolve product + variant info.
    */
-  async lookupBarcode(barcodeValue: string): Promise<BarcodeRegistryRecord | null> {
+  async lookupBarcode(barcodeValue: string, branch: PosBranch): Promise<BarcodeRegistryRecord | null> {
     // Normalize to uppercase so hardware scanners emitting lowercase still match
     const cleanValue = (barcodeValue ?? '').trim().toUpperCase()
     if (!cleanValue) return null
 
     // 1. Direct registry lookup (case-insensitive via ilike)
-    const { data, error } = await supabase
+    let registryQuery = supabase
       .from('barcode_registry')
       .select(`
         id, barcode_value, entity_type, product_id, variant_id, is_active, created_by_name, created_at, updated_at,
@@ -94,7 +95,8 @@ export const barcodeService = {
       `)
       .ilike('barcode_value', cleanValue)
       .eq('is_active', true)
-      .maybeSingle()
+    registryQuery = registryQuery.eq('branch', branch)
+    const { data, error } = await registryQuery.maybeSingle()
 
     if (error) {
       console.warn('[barcodeService.lookupBarcode] Query error:', error)
@@ -112,11 +114,12 @@ export const barcodeService = {
     }
 
     // 2. Fallback: Check product_variants.barcode (case-insensitive)
-    const { data: varData } = await supabase
+    let variantQuery = supabase
       .from('product_variants')
       .select('id, product_id, variant_name, price, stock, sku, barcode, product:products (id, name, name_ta, price, offer_price, image_url, category)')
       .ilike('barcode', cleanValue)
-      .maybeSingle()
+    variantQuery = variantQuery.eq('branch', branch)
+    const { data: varData } = await variantQuery.maybeSingle()
 
     if (varData) {
       const p = Array.isArray(varData.product) ? varData.product[0] : varData.product
@@ -142,11 +145,12 @@ export const barcodeService = {
     }
 
     // 3. Fallback: Check products.barcode (case-insensitive)
-    const { data: prodData } = await supabase
+    let productQuery = supabase
       .from('products')
       .select('id, name, name_ta, price, offer_price, image_url, category, barcode, stock_quantity')
       .ilike('barcode', cleanValue)
-      .maybeSingle()
+    productQuery = productQuery.eq('branch', branch)
+    const { data: prodData } = await productQuery.maybeSingle()
 
     if (prodData) {
       return {

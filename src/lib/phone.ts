@@ -32,6 +32,13 @@ export function getSubscriberDigits(input: string): string | null {
   return normalized ? normalized.slice(2) : null
 }
 
+/** Display valid Indian mobile numbers with the country code kept separate. */
+export function formatPhoneForDisplay(input?: string | null): string {
+  if (!input) return ''
+  const normalized = normalizePhone(String(input))
+  return normalized ? `${normalized.slice(0, 2)} ${normalized.slice(2)}` : String(input).trim()
+}
+
 export function normalizePhoneForWhatsApp(input: string): string {
   if (!input) return ''
   const digits = input.replace(/\D/g, '')
@@ -81,4 +88,3 @@ export function formatPhoneForCSV(input?: string | null): string {
   }
   return `\t${trimmed}`
 }
-

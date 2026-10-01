@@ -62,11 +62,14 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
 
   // Settings - Use branch-specific defaults, fall back to stored settings
   const [settings, setSettings] = useState<BarcodeSettings>(() => {
-    const stored = getStoredBarcodeSettings()
+    const stored = getStoredBarcodeSettings(branch)
     const branchDefaults = getDefaultBarcodeSettings(branch)
     // Merge: stored settings override branch defaults
     return { ...branchDefaults, ...stored }
   })
+  useEffect(() => {
+    setSettings({ ...getDefaultBarcodeSettings(branch), ...getStoredBarcodeSettings(branch) })
+  }, [branch])
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false)
   const [showSheetPreviewModal, setShowSheetPreviewModal] = useState(false)
   const [updateStock, setUpdateStock] = useState(false)
@@ -122,7 +125,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
   const previewSvgRef = useRef<SVGSVGElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const allSizes = getAllLabelSizes()
+  const allSizes = getAllLabelSizes(branch)
   const currentSizeConfig: LabelSizeConfig =
     allSizes.find((s) => s.id === settings.selectedSizeId) || allSizes[0]
 
@@ -144,7 +147,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
     // Fetch variants if applicable
     if (prod.has_variants) {
       try {
-        const vars = await fetchVariantsByProduct(String(prod.id))
+        const vars = await fetchVariantsByProduct(String(prod.id), branch)
         setVariants(vars)
         if (vars.length > 0) {
           const matched = targetVariantId ? vars.find(v => v.id === targetVariantId) : vars[0]
@@ -163,7 +166,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
       setVariants([])
       setSelectedVariant(null)
     }
-  }, [settings.showDiscount])
+  }, [settings.showDiscount, branch, barcodePrefix])
 
   // Initialize with preselected product if passed
   useEffect(() => {
@@ -1359,6 +1362,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
           isOpen={showSettingsDrawer}
           onClose={() => setShowSettingsDrawer(false)}
           settings={settings}
+          branch={branch}
           onUpdateSettings={(newSettings) => setSettings(newSettings)}
         />
       )}

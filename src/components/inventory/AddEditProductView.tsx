@@ -113,7 +113,7 @@ export const AddEditProductView: React.FC<{
 
     if (p.hasVariants) {
       try {
-        const vars = await fetchVariantsByProduct(String(p.id))
+        const vars = await fetchVariantsByProduct(String(p.id), branch)
         setVariantRows(
           vars.map((v) => ({
             id: v.id,
@@ -420,7 +420,8 @@ export const AddEditProductView: React.FC<{
               const { data: curVar } = await supabase
                 .from('product_variants')
                 .select('stock')
-                .eq('id', v.id)
+          .eq('id', v.id)
+          .eq('branch', branch)
                 .single()
 
               const prevVarStock = curVar?.stock ?? 0
@@ -437,6 +438,7 @@ export const AddEditProductView: React.FC<{
                   barcode: v.customBarcode?.trim() || null,
                 })
                 .eq('id', v.id)
+                .eq('branch', branch)
 
               if (varDelta !== 0) {
                 await supabase.from('inventory_movements').insert({

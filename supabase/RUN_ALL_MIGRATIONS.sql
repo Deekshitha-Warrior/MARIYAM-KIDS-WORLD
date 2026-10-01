@@ -935,6 +935,8 @@ NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 
+
+
 -- ============================================================
 -- SECTION 4 / 27 — 20260719_0004_advance_orders.sql
 -- ============================================================
@@ -4444,3 +4446,81 @@ NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 
+-- ============================================================
+-- SECTION 28 / 28 — 20260930_0029_isolate_coupons_and_expense_categories.sql
+-- ============================================================
+
+BEGIN;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS branch TEXT NOT NULL DEFAULT 'pos1';
+ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS branch TEXT NOT NULL DEFAULT 'pos1';
+ALTER TABLE public.expense_categories DROP CONSTRAINT IF EXISTS uq_expense_category_name;
+DO $$ BEGIN
+  ALTER TABLE public.coupons ADD CONSTRAINT coupons_branch_check CHECK (branch IN ('pos1', 'pos2'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  ALTER TABLE public.expense_categories ADD CONSTRAINT expense_categories_branch_check CHECK (branch IN ('pos1', 'pos2'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DROP INDEX IF EXISTS public.coupons_code_upper_unique;
+CREATE UNIQUE INDEX IF NOT EXISTS coupons_branch_code_upper_unique ON public.coupons (branch, UPPER(BTRIM(code)));
+CREATE INDEX IF NOT EXISTS coupons_branch_active_idx ON public.coupons(branch, is_active, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS expense_categories_branch_name_unique ON public.expense_categories(branch, LOWER(BTRIM(name)));
+CREATE INDEX IF NOT EXISTS expense_categories_branch_active_idx ON public.expense_categories(branch, is_active);
+INSERT INTO public.expense_categories (name, is_active, branch)
+SELECT seed.name, TRUE, 'pos2'
+FROM (VALUES ('Maintenance'), ('Marketing'), ('Other'), ('Rent'), ('Salaries'), ('Supplies')) AS seed(name)
+WHERE NOT EXISTS (SELECT 1 FROM public.expense_categories c WHERE c.branch = 'pos2' AND LOWER(BTRIM(c.name)) = LOWER(BTRIM(seed.name)));
+DO $$
+DECLARE r RECORD; v_definition TEXT; v_updated TEXT;
+BEGIN
+  FOR r IN
+    SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.prokind = 'f'
+      AND pg_get_functiondef(p.oid) ILIKE '%UPDATE public.coupons%'
+      AND pg_get_functiondef(p.oid) ILIKE '%p_coupon_code%'
+      AND pg_get_functiondef(p.oid) ILIKE '%v_branch%'
+  LOOP
+    v_definition := pg_get_functiondef(r.oid);
+    v_updated := replace(v_definition, 'WHERE UPPER(BTRIM(code)) = UPPER(BTRIM(p_coupon_code))',
+      'WHERE UPPER(BTRIM(code)) = UPPER(BTRIM(p_coupon_code)) AND branch = v_branch');
+    IF v_updated <> v_definition THEN EXECUTE v_updated; END IF;
+  END LOOP;
+END $$;
+
+-- 0030: physically remove a product or variant and its inventory audit rows,
+-- while preserving historical order-item snapshots.
+CREATE OR REPLACE FUNCTION public.delete_inventory_item(
+  p_product_id bigint,
+  p_variant_id uuid DEFAULT NULL,
+  p_branch text DEFAULT 'pos1'
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE v_branch text := CASE WHEN p_branch = 'pos2' THEN 'pos2' ELSE 'pos1' END;
+BEGIN
+  IF p_variant_id IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM public.product_variants WHERE id = p_variant_id AND product_id = p_product_id AND branch = v_branch) THEN
+      RAISE EXCEPTION 'Variant does not belong to the selected product and POS branch';
+    END IF;
+    DELETE FROM public.inventory_movements WHERE variant_id = p_variant_id AND branch = v_branch;
+    DELETE FROM public.barcode_registry WHERE variant_id = p_variant_id AND product_id = p_product_id AND branch = v_branch;
+    DELETE FROM public.product_variants WHERE id = p_variant_id AND product_id = p_product_id AND branch = v_branch;
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.products WHERE id = p_product_id AND branch = v_branch) THEN
+    RAISE EXCEPTION 'Product does not belong to the selected POS branch';
+  END IF;
+  DELETE FROM public.inventory_movements WHERE branch = v_branch AND
+    (product_id = p_product_id OR variant_id IN (SELECT id FROM public.product_variants WHERE product_id = p_product_id AND branch = v_branch));
+  DELETE FROM public.barcode_registry WHERE product_id = p_product_id AND branch = v_branch;
+  DELETE FROM public.product_variants WHERE product_id = p_product_id AND branch = v_branch;
+  DELETE FROM public.products WHERE id = p_product_id AND branch = v_branch;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.delete_inventory_item(bigint, uuid, text) TO anon, authenticated;
+
+NOTIFY pgrst, 'reload schema';
+COMMIT;

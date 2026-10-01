@@ -4,6 +4,12 @@ export type PeriodPreset = 'today' | 'week' | 'month' | 'year'
 export const toLocalDateStr = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
+/** Get a timestamp's local calendar date for inclusive date-filter comparisons. */
+export const toLocalDateKey = (value: string | Date): string => {
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : toLocalDateStr(date)
+}
+
 /**
  * Full calendar period containing `now`, as local Date objects:
  * - today: 00:00 → 23:59:59.999 today

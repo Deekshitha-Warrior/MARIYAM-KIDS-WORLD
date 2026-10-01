@@ -55,6 +55,7 @@ export interface InventoryMovement {
 
 export interface StockAdjustmentPayload {
   product_id: number
+  branch: PosBranch
   variant_id?: string | null
   new_quantity: number
   reason: 'RESTOCK' | 'DAMAGE' | 'CORRECTION' | 'RETURN'
@@ -192,45 +193,32 @@ export const inventoryService = {
   },
 
   /**
-   * Deactivate / delete a product or variant from inventory and catalog.
+   * Permanently delete a product or variant and its inventory movement ledger rows.
    */
   async deleteInventoryItem(productId: number, variantId: string | null | undefined, branch: PosBranch): Promise<void> {
-    if (variantId) {
-      const { error: vErr } = await supabase
-        .from('product_variants')
-        .update({ is_active: false })
-        .eq('id', variantId)
-        .eq('branch', branch)
-      if (vErr) throw vErr
-
-      await supabase
-        .from('barcode_registry')
-        .update({ is_active: false })
-        .eq('variant_id', variantId)
-    } else {
-      const { error: pErr } = await supabase
-        .from('products')
-        .update({ is_active: false })
-        .eq('id', productId)
-        .eq('branch', branch)
-      if (pErr) throw pErr
-
-      await supabase
-        .from('product_variants')
-        .update({ is_active: false })
-        .eq('product_id', productId)
-
-      await supabase
-        .from('barcode_registry')
-        .update({ is_active: false })
-        .eq('product_id', productId)
-    }
+    const { error } = await supabase.rpc('delete_inventory_item', {
+      p_product_id: productId,
+      p_variant_id: variantId || null,
+      p_branch: branch,
+    })
+    if (error) throw error
   },
 
   /**
    * Adjust stock for an item with an audit log reason.
    */
   async adjustStock(payload: StockAdjustmentPayload) {
+    const stockTable = payload.variant_id ? 'product_variants' : 'products'
+    const stockId = payload.variant_id || payload.product_id
+    const { data: scopedItem, error: scopeError } = await supabase
+      .from(stockTable)
+      .select('id')
+      .eq('id', stockId)
+      .eq('branch', payload.branch)
+      .maybeSingle()
+    if (scopeError) throw scopeError
+    if (!scopedItem) throw new Error('Stock item does not belong to the selected POS branch.')
+
     const { data, error } = await supabase.rpc('adjust_inventory_stock', {
       p_product_id: payload.product_id,
       p_variant_id: payload.variant_id || null,

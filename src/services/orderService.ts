@@ -98,8 +98,15 @@ export const createOrderWithStock = async (input: CreateOrderInput): Promise<Cre
     data = newRpcResult.data
     error = newRpcResult.error
 
-    // 3. Fallback to create_order_without_stock for legacy setups
-    if (newRpcResult.error?.code === 'PGRST202') {
+    // A legacy order RPC has no branch argument and defaults every bill to
+    // POS 1. Never use it for a POS 2 checkout, or its bill and revenue will
+    // be recorded under the wrong branch.
+    if (newRpcResult.error?.code === 'PGRST202' && branch === 'pos2') {
+      error = new Error('POS 2 checkout requires the branch-isolation database migration. Please update the database before creating this bill.')
+    }
+
+    // 3. Keep the legacy fallback only for POS 1, its original default branch.
+    if (newRpcResult.error?.code === 'PGRST202' && branch === 'pos1') {
     const legacyResult = await supabase.rpc('create_order_without_stock', {
       p_address:                address,
       p_coupon_code:            couponCode,

@@ -17,13 +17,13 @@ import {
 
 // Custom Malaysian Ringgit icon
 const RMIcon = ({ size = 20, className = '' }: { size?: number; className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-label="Malaysian Ringgit">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-label="Indian Rupee">
     <rect x="2" y="2" width="20" height="20" rx="4" />
     <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" stroke="none" fill="currentColor" fontFamily="Arial, sans-serif">₹</text>
   </svg>
 )
 
-type DateFilter = 'all' | 'today' | 'week' | 'month'
+type DateFilter = 'all' | 'today' | 'week' | 'month' | 'year' | 'custom'
 type StatusFilter = 'all' | 'pending' | 'ready' | 'completed' | 'cancelled'
 
 const STATUS_LABELS: Record<AdvanceStatus, string> = {
@@ -57,6 +57,8 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [selected, setSelected] = useState<AdvanceOrder | null>(null)
   const [timeline, setTimeline] = useState<AdvanceTimeline[]>([])
   const [payments, setPayments] = useState<AdvancePayment[]>([])
@@ -96,9 +98,9 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   // Fetch active coupons for the payment modal
   useEffect(() => {
     if (!isSupabaseConfigured) return
-    supabase.from('coupons').select('code, percentage').eq('is_active', true)
+    supabase.from('coupons').select('code, percentage').eq('branch', branch).eq('is_active', true)
       .then(({ data }) => { if (data) setAvailableCoupons(data as { code: string; percentage: number }[]) })
-  }, [])
+  }, [branch])
 
   const applyCoupon = () => {
     const code = couponInput.trim().toUpperCase()
@@ -142,16 +144,29 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
     try { const history = await getAdvanceOrderHistory(order.id); setTimeline(history.timeline); setPayments(history.payments) } catch (err) { setError(err instanceof Error ? err.message : 'Unable to load order details') }
   }
 
-  const analytics = useMemo(() => ({
-    total: orders.length,
-    pending: orders.filter(o => o.status === 'pending_deposit' || o.status === 'waiting_final_payment').length,
-    deposits: orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.deposit_amount, 0),
-    outstanding: orders.filter(o => !['completed', 'cancelled'].includes(o.status)).reduce((sum, o) => sum + o.remaining_balance, 0),
-    ready: orders.filter(o => o.status === 'ready_for_delivery').length,
-    completed: orders.filter(o => o.status === 'completed').length,
-  }), [orders])
+  const periodOrders = useMemo(() => orders.filter(order => {
+    if (dateFilter === 'custom') {
+      const createdAt = new Date(order.created_at)
+      const createdKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}-${String(createdAt.getDate()).padStart(2, '0')}`
+      return (!dateFrom || createdKey >= dateFrom) && (!dateTo || createdKey <= dateTo)
+    }
+    if (dateFilter === 'all') return true
+    const created = new Date(order.created_at)
+    const { start, end } = getPeriodBounds(dateFilter)
+    return created >= start && created <= end
+  }), [orders, dateFilter, dateFrom, dateTo])
 
-  const filtered = useMemo(() => orders.filter(order => {
+  const analytics = useMemo(() => ({
+    total: periodOrders.length,
+    pending: periodOrders.filter(o => o.status === 'pending_deposit' || o.status === 'waiting_final_payment').length,
+    pendingDepositReceived: periodOrders.filter(o => o.status === 'pending_deposit').reduce((sum, o) => sum + o.deposit_amount, 0),
+    outstanding: periodOrders.filter(o => !['completed', 'cancelled'].includes(o.status)).reduce((sum, o) => sum + o.remaining_balance, 0),
+    value: periodOrders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + o.total_amount, 0),
+    ready: periodOrders.filter(o => o.status === 'ready_for_delivery').length,
+    completed: periodOrders.filter(o => o.status === 'completed').length,
+  }), [periodOrders])
+
+  const filtered = useMemo(() => periodOrders.filter(order => {
     const query = search.trim().toLowerCase()
     const searchable = [order.deposit_id, order.customer_name, order.phone, order.product_name, STATUS_LABELS[order.status]].join(' ').toLowerCase()
     if (query && !searchable.includes(query)) return false
@@ -159,18 +174,13 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
     if (statusFilter === 'ready' && order.status !== 'ready_for_delivery') return false
     if (statusFilter === 'completed' && order.status !== 'completed') return false
     if (statusFilter === 'cancelled' && order.status !== 'cancelled') return false
-    if (dateFilter !== 'all') {
-      const created = new Date(order.created_at)
-      const { start, end } = getPeriodBounds(dateFilter)
-      if (created < start || created > end) return false
-    }
     return true
-  }), [orders, search, statusFilter, dateFilter])
+  }), [periodOrders, search, statusFilter])
 
   const create = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true); setError(''); setNotice('')
     const total = Number(form.totalAmount); const deposit = Number(form.depositAmount)
-    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(deposit) || deposit <= 0 || deposit >= total) { setError('Deposit must be greater than RM0 and less than the total order amount.'); setSaving(false); return }
+    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(deposit) || deposit <= 0 || deposit >= total) { setError('Deposit must be greater than ₹0 and less than the total order amount.'); setSaving(false); return }
     try {
       const created = await createAdvanceOrder({ ...form, totalAmount: total, depositAmount: deposit, referenceNumber: form.reference_number, createdByName: role || 'Staff', products: [{ name: form.productName, category: form.category, description: form.description, quantity: 1, base_price: total, line_total: total, unit: 'piece', unit_type: 'unit', source: 'advance_order' }], branch })
       setOrders(current => [created, ...current]); setForm(initialForm); setCreateOpen(false); setNotice(`${created.deposit_id} created. Deposit is tracked separately and has not been added to revenue.`)
@@ -241,8 +251,8 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
 
       if (paymentForm.method === 'split') {
         try {
-          await supabase.from('orders').update({ payment_mode: finalMethodStr, payment_method: finalMethodStr }).eq('id', result.order_id)
-          await supabase.from('advance_orders').update({ final_payment_method: finalMethodStr }).eq('id', paymentOrder.id)
+          await supabase.from('orders').update({ payment_mode: finalMethodStr, payment_method: finalMethodStr }).eq('id', result.order_id).eq('branch', branch)
+          await supabase.from('advance_orders').update({ final_payment_method: finalMethodStr }).eq('id', paymentOrder.id).eq('branch', branch)
         } catch { /* best effort db update */ }
       }
 
@@ -288,17 +298,19 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   }
 
   const cards = [
-    ['Total Deposits', analytics.total, FileText, 'text-violet-700 bg-violet-50'], ['Pending Deposit Orders', analytics.pending, Clock3, 'text-amber-700 bg-amber-50'],
-    ['Total Deposit Amount', formatCurrency(analytics.deposits), RMIcon, 'text-fuchsia-700 bg-fuchsia-50'], ['Outstanding Balance', formatCurrency(analytics.outstanding), RMIcon, 'text-red-700 bg-red-50'],
-    ['Ready For Collection', analytics.ready, PackageCheck, 'text-blue-700 bg-blue-50'], ['Completed Deposit Orders', analytics.completed, CheckCircle2, 'text-emerald-700 bg-emerald-50'],
+    ['Pending Deposit Amount Received', formatCurrency(analytics.pendingDepositReceived), `${periodOrders.filter(o => o.status === 'pending_deposit').length} bills with pending deposits`, RMIcon, 'text-emerald-700 bg-emerald-50'],
+    ['Needed to Receive (Pending)', formatCurrency(analytics.outstanding), `${analytics.pending} Bills with Balance Due`, RMIcon, 'text-amber-700 bg-amber-50'],
+    ['Total Advance Orders Value', formatCurrency(analytics.value), `${analytics.total} Total Advance Orders`, FileText, 'text-fuchsia-700 bg-fuchsia-50'],
+    ['Ready for Delivery', analytics.ready, 'Ready for customer pickup/delivery', PackageCheck, 'text-blue-700 bg-blue-50'],
+    ['Pending Orders', analytics.pending, 'Awaiting balance or confirmation', Clock3, 'text-rose-700 bg-rose-50'],
   ] as const
 
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">Separate from sales</p><h2 className="text-2xl font-black text-[#273126]">Advance Orders</h2><p className="mt-1 text-sm text-[#6B7280]">Deposits never count as revenue. Full order value is recognized only after final payment.</p></div><div className="flex gap-2"><button onClick={() => void load()} className="rounded-xl border bg-white p-3 text-[#647064]" title="Refresh"><RefreshCw size={18}/></button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-emerald-600">Separate from sales</p><h2 className="text-2xl font-black text-[#273126]">Advance Orders</h2><p className="mt-1 text-sm text-[#6B7280]">Deposits are tracked separately. Full order value is recognized once final payment is completed.</p></div><div className="flex gap-2"><button onClick={() => setCreateOpen(true)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white">+ New Advance Order</button><button onClick={() => void load()} className="rounded-xl border bg-white p-3 text-[#647064]" title="Refresh"><RefreshCw size={18}/></button></div></div>
     {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
     {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{notice}</div>}
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{cards.map(([label, value, Icon, color]) => <div key={label} className="rounded-2xl border border-[#ECE9E2] bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[11px] font-black uppercase tracking-wide text-[#879086]">{label}</p><p className="mt-2 text-2xl font-black text-[#273126]">{value}</p></div><div className={`rounded-xl p-3 ${color}`}><Icon size={21}/></div></div></div>)}</div>
-    <div className="rounded-2xl border border-[#ECE9E2] bg-white p-4 shadow-sm"><div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]"><label className="relative"><Search className="absolute left-3 top-3 text-[#9CA3AF]" size={17}/><input className={`${inputClass} pl-10`} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Deposit ID, customer, phone, product or status"/></label><div className="flex flex-wrap gap-2">{(['all','pending','ready','completed','cancelled'] as StatusFilter[]).map(value => <button key={value} onClick={() => setStatusFilter(value)} className={`rounded-lg px-3 py-2 text-xs font-black capitalize ${statusFilter === value ? 'bg-[#7e22ce] text-white' : 'bg-[#F5F3F7] text-[#626B61]'}`}>{value}</button>)}</div><select className={inputClass} value={dateFilter} onChange={e => setDateFilter(e.target.value as DateFilter)}><option value="all">All Dates</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option></select></div></div>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{cards.map(([label, value, helper, Icon, color]) => <div key={label} className="rounded-2xl border border-[#ECE9E2] bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-wide text-[#879086]">{label}</p><div className={`rounded-xl p-2 ${color}`}><Icon size={19}/></div></div><p className="mt-3 text-2xl font-black text-[#273126]">{value}</p><p className="mt-2 border-t pt-2 text-[11px] text-[#647064]">{helper}</p></div>)}</div>
+    <div className="rounded-2xl border border-[#ECE9E2] bg-white p-4 shadow-sm"><div className="flex flex-wrap gap-3"><label className="relative min-w-[240px] flex-1"><Search className="absolute left-3 top-3 text-[#9CA3AF]" size={17}/><input className={`${inputClass} pl-10`} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Deposit ID, customer, phone, product or status"/></label><div className="flex flex-wrap gap-2">{(['all','pending','ready','completed','cancelled'] as StatusFilter[]).map(value => <button key={value} onClick={() => setStatusFilter(value)} className={`rounded-lg px-3 py-2 text-xs font-black capitalize ${statusFilter === value ? 'bg-[#7A1220] text-white' : 'bg-[#F5F3F7] text-[#626B61]'}`}>{value === 'all' ? 'All' : value}</button>)}</div></div><div className="mt-3 border-t pt-3"><p className="mb-2 text-xs font-black text-[#647064]">Filter by Date</p><div className="flex flex-wrap gap-2">{(['today','week','month','year','all'] as const).map(value => <button key={value} onClick={() => {setDateFilter(value);setDateFrom('');setDateTo('')}} className={`rounded-lg px-3 py-2 text-xs font-bold ${dateFilter === value ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>{value === 'all' ? 'All' : value === 'week' ? 'This Week' : value === 'month' ? 'This Month' : value === 'year' ? 'This Year' : 'Today'}</button>)}<button onClick={() => setDateFilter('custom')} className={`rounded-lg px-3 py-2 text-xs font-bold ${dateFilter === 'custom' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>Custom</button></div><div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="From Date"><input type="date" className={inputClass} value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setDateFilter('custom')}}/></Field><Field label="To Date"><input type="date" className={inputClass} value={dateTo} onChange={e=>{setDateTo(e.target.value);setDateFilter('custom')}}/></Field></div></div></div>
     <div className="overflow-hidden rounded-2xl border border-[#ECE9E2] bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
@@ -435,7 +447,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
 
     {createOpen && createPortal(
       <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-        <form onSubmit={create} className="max-h-[92vh] w-full max-w-4xl overflow-hidden overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border border-[#E8D399]">
+        <form onSubmit={create} className="max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-3xl bg-white p-6 shadow-2xl border border-[#E8D399]">
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h3 className="text-xl font-black text-[#7A1220]">Create Advance Order</h3>
@@ -472,7 +484,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
 
     {paymentOrder && createPortal(
       <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-        <form onSubmit={receivePayment} className="w-full max-w-md max-h-[92vh] overflow-hidden overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl border border-[#E8D399]">
+        <form onSubmit={receivePayment} className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl bg-white p-6 shadow-2xl border border-[#E8D399]">
           <div className="mb-5 flex items-start justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-emerald-600 font-mono">{paymentOrder.deposit_id}</p>
@@ -591,12 +603,12 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
     )}
 
     {selected && createPortal(
-      <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen h-[100dvh] z-[9999] flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
         {/* Backdrop click dismiss */}
         <div className="absolute inset-0" onClick={() => setSelected(null)} />
 
         {/* Drawer Panel covering full view height */}
-        <div className="relative z-10 h-screen h-[100dvh] w-full max-w-xl bg-white shadow-2xl flex flex-col border-l border-[#E8D399] animate-in slide-in-from-right duration-200">
+        <div className="relative z-10 flex h-[100dvh] min-h-0 w-full max-w-xl flex-col border-l border-[#E8D399] bg-white shadow-2xl animate-in slide-in-from-right duration-200">
           {/* Sticky Drawer Header */}
           <div className="shrink-0 px-6 py-4 border-b border-gray-200 bg-[#7A1220] text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -624,7 +636,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
           </div>
 
           {/* Scrollable Drawer Body */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain p-6 space-y-6">
             <div className="grid grid-cols-2 gap-3">
               {[
                 ['Customer', selected.customer_name],

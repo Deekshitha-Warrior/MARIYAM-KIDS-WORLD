@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, Tag, IndianRupee, AlertCircle, Barcode, Check } from 'lucide-react'
 import { updateItemPrice } from '../../services/productService'
 import type { InventoryStockItem } from '../../services/inventoryService'
+import { useAdminAuthStore, resolveBranch } from '../../store/store'
 
 interface Props {
   isOpen: boolean
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSuccess }) => {
+  const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
   const [sellingPrice, setSellingPrice] = useState<string>(item ? String(item.price ?? '') : '')
   const [costPrice, setCostPrice] = useState<string>(
     item && item.purchase_price !== undefined ? String(item.purchase_price) : ''
@@ -71,6 +73,7 @@ export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSucc
         id: entityId,
         newPrice: numPrice,
         newCostPrice: numCost,
+        branch,
       })
 
       onSuccess({

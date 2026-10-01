@@ -169,8 +169,9 @@ interface SettingsState {
 interface VariantStoreState {
   variantsMap: Record<string, ProductVariant[]>
   fetched: boolean
-  fetchVariants: () => Promise<void>
-  refetchVariants: () => Promise<void>
+  fetchedScope: string | null
+  fetchVariants: (branch?: PosBranch) => Promise<void>
+  refetchVariants: (branch?: PosBranch) => Promise<void>
   getVariants: (productId: string) => ProductVariant[]
   getDefaultVariant: (productId: string) => ProductVariant | null
   hasVariants: (productId: string | number) => boolean
@@ -357,6 +358,7 @@ export const useAuthStore = create<AuthState>()(
 // --- Product Store ---
 // `branch` scopes the fetch to one POS counter's isolated catalog; omitted, it
 // returns the combined catalog (used by the public storefront).
+let productFetchRequestId = 0
 export const useProductStore = create<ProductState>((set, get) => ({
   products: [],
   loading: false,
@@ -366,6 +368,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
   fetchProducts: async (branch, force = false) => {
     const scope = branch ?? 'all'
     if (!force && scope === get().lastFetchScope && Date.now() - get().lastFetch < 300000 && get().products.length > 0) return
+    const requestId = ++productFetchRequestId
 
     if (!isSupabaseConfigured) {
       set({
@@ -387,6 +390,8 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
       if (error) throw error
 
+      if (requestId !== productFetchRequestId) return
+
       const categoriesById = Object.fromEntries(
         (categoryData || []).map(category => [String(category.id), String(category.name_en || '').trim()]),
       )
@@ -394,6 +399,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
       set({ products: normalized, loading: false, lastFetch: Date.now(), lastFetchScope: scope })
     } catch (err) {
+      if (requestId !== productFetchRequestId) return
       set({
         error: err instanceof Error ? err.message : 'Unable to fetch products',
         loading: false,
@@ -526,28 +532,36 @@ export const useProductModalStore = create<ProductModalState>()((set) => ({
 }))
 
 // --- Variant Store ---
+let variantFetchRequestId = 0
 export const useVariantStore = create<VariantStoreState>()((set, get) => ({
   variantsMap: {},
   fetched: false,
-  fetchVariants: async () => {
-    if (get().fetched) return
-    const { data } = await fetchAllVariants()
+  fetchedScope: null,
+  fetchVariants: async (branch) => {
+    const scope = branch || 'all'
+    if (get().fetched && get().fetchedScope === scope) return
+    const requestId = ++variantFetchRequestId
+    const { data } = await fetchAllVariants(branch)
+    if (requestId !== variantFetchRequestId) return
     const map: Record<string, ProductVariant[]> = {}
     for (const v of data) {
       if (!map[v.productId]) map[v.productId] = []
       map[v.productId].push(v)
     }
-    set({ variantsMap: map, fetched: true })
+    set({ variantsMap: map, fetched: true, fetchedScope: scope })
   },
-  refetchVariants: async () => {
-    set({ fetched: false })
-    const { data } = await fetchAllVariants()
+  refetchVariants: async (branch) => {
+    const scope = branch || 'all'
+    const requestId = ++variantFetchRequestId
+    set({ fetched: false, fetchedScope: scope })
+    const { data } = await fetchAllVariants(branch)
+    if (requestId !== variantFetchRequestId) return
     const map: Record<string, ProductVariant[]> = {}
     for (const v of data) {
       if (!map[v.productId]) map[v.productId] = []
       map[v.productId].push(v)
     }
-    set({ variantsMap: map, fetched: true })
+    set({ variantsMap: map, fetched: true, fetchedScope: scope })
   },
   getVariants: (productId) => get().variantsMap[String(productId)] || [],
   getDefaultVariant: (productId) => {

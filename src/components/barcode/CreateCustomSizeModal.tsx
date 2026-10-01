@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Info } from 'lucide-react'
 import { type LabelSizeConfig, saveStoredCustomSize } from '../../lib/barcode'
+import { useAdminAuthStore, resolveBranch } from '../../store/store'
 
 interface CreateCustomSizeModalProps {
   isOpen: boolean
@@ -14,6 +15,7 @@ export const CreateCustomSizeModal: React.FC<CreateCustomSizeModalProps> = ({
   onClose,
   onCreated,
 }) => {
+  const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
   const [name, setName] = useState('')
   const [labelsPerRow, setLabelsPerRow] = useState<number>(1)
   const [widthMm, setWidthMm] = useState<string>('50')
@@ -68,7 +70,7 @@ export const CreateCustomSizeModal: React.FC<CreateCustomSizeModalProps> = ({
       isCustom: true,
     }
 
-    saveStoredCustomSize(newSizeConfig)
+    saveStoredCustomSize(newSizeConfig, branch)
     onCreated(newSizeConfig)
     onClose()
   }
@@ -270,4 +272,3 @@ export const CreateCustomSizeModal: React.FC<CreateCustomSizeModalProps> = ({
     document.body
   )
 }
-

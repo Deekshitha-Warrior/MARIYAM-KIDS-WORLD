@@ -68,14 +68,16 @@ function mapVariant(r: Record<string, unknown>): ProductVariant {
 
 // ── Read ──────────────────────────────────────────────────────────
 
-export async function fetchAllVariants(): Promise<{ data: ProductVariant[]; error: string | null }> {
+export async function fetchAllVariants(branch?: PosBranch): Promise<{ data: ProductVariant[]; error: string | null }> {
   if (!isSupabaseConfigured) return { data: [], error: null }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('product_variants')
     .select(VARIANT_COLS)
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
+  if (branch) query = query.eq('branch', branch)
+  const { data, error } = await query
 
   if (error) return { data: [], error: error.message }
   return {
@@ -84,15 +86,17 @@ export async function fetchAllVariants(): Promise<{ data: ProductVariant[]; erro
   }
 }
 
-export async function fetchVariantsByProduct(productId: string): Promise<ProductVariant[]> {
+export async function fetchVariantsByProduct(productId: string, branch: PosBranch): Promise<ProductVariant[]> {
   if (!isSupabaseConfigured) return []
 
-  const { data } = await supabase
+  let query = supabase
     .from('product_variants')
     .select(VARIANT_COLS)
     .eq('product_id', productId)
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
+  query = query.eq('branch', branch)
+  const { data } = await query
 
   return (data || []).map(r => mapVariant(r as Record<string, unknown>))
 }
@@ -132,6 +136,7 @@ export async function createVariant(input: VariantInput): Promise<{ data: Produc
 export async function updateVariant(
   id: string,
   updates: Partial<VariantInput>,
+  branch: PosBranch,
 ): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured) return { error: 'Not configured' }
 
@@ -154,17 +159,19 @@ export async function updateVariant(
     .from('product_variants')
     .update(payload)
     .eq('id', id)
+    .eq('branch', branch)
 
   return { error: error?.message ?? null }
 }
 
-export async function deleteVariant(id: string): Promise<{ error: string | null }> {
+export async function deleteVariant(id: string, branch: PosBranch): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured) return { error: 'Not configured' }
 
   const { error } = await supabase
     .from('product_variants')
     .update({ is_active: false })
     .eq('id', id)
+    .eq('branch', branch)
 
   return { error: error?.message ?? null }
 }
@@ -172,6 +179,7 @@ export async function deleteVariant(id: string): Promise<{ error: string | null 
 export async function setDefaultVariant(
   variantId: string,
   productId: string,
+  branch: PosBranch,
 ): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured) return { error: 'Not configured' }
 
@@ -180,11 +188,13 @@ export async function setDefaultVariant(
     .from('product_variants')
     .update({ is_default: false })
     .eq('product_id', productId)
+    .eq('branch', branch)
 
   const { error } = await supabase
     .from('product_variants')
     .update({ is_default: true })
     .eq('id', variantId)
+    .eq('branch', branch)
 
   return { error: error?.message ?? null }
 }

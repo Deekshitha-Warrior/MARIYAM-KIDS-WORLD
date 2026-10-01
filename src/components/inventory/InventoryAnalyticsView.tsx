@@ -20,7 +20,7 @@ import { getPeriodBounds } from '../../lib/dateRanges'
 
 export const InventoryAnalyticsView: React.FC = () => {
   const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
-  const [range, setRange] = useState<'all' | 'today' | 'week' | 'month'>('all')
+  const [range, setRange] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('all')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<InventoryAnalyticsSummary>({
     incomingStock: 0,
@@ -249,6 +249,13 @@ export const InventoryAnalyticsView: React.FC = () => {
             }`}
           >
             This Month
+          </button>
+          <button
+            type="button"
+            onClick={() => setRange('year')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${range === 'year' ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs' : 'text-gray-600 hover:text-black'}`}
+          >
+            This Year
           </button>
         </div>
 

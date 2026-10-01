@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, History, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react'
 import { inventoryService, type InventoryMovement, type InventoryStockItem } from '../../services/inventoryService'
 import { BRAND_EN } from '../../lib/brand'
+import { useAdminAuthStore, resolveBranch } from '../../store/store'
 
 export interface StockHistoryDrawerProps {
   isOpen: boolean
@@ -15,6 +16,7 @@ export const StockHistoryDrawer: React.FC<StockHistoryDrawerProps> = ({
   onClose,
   item,
 }) => {
+  const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
   const [movements, setMovements] = useState<InventoryMovement[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -30,6 +32,7 @@ export const StockHistoryDrawer: React.FC<StockHistoryDrawerProps> = ({
       try {
         const res = await inventoryService.fetchMovements({
           product_id: item.product_id,
+          branch,
           variant_id: item.variant_id || null,
           limit: 50,
         })
@@ -46,7 +49,7 @@ export const StockHistoryDrawer: React.FC<StockHistoryDrawerProps> = ({
     return () => {
       isMounted = false
     }
-  }, [isOpen, item])
+  }, [isOpen, item, branch])
 
   // Close drawer on Escape key
   useEffect(() => {

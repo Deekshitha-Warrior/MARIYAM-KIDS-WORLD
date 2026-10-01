@@ -15,7 +15,7 @@ export interface BranchProfile {
   phone: string
   email: string
   logo: string
-  /** One "🎀 https://www.instagram.com/<handle>/" line per handle, newline-separated */
+  /** One Instagram URL per line */
   instagramUrls: string
 }
 
@@ -27,7 +27,7 @@ export function instagramUrlsFromIds(raw: string | null | undefined): string {
     .split(/[\s,]+/)
     .map((h) => h.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/+$/, '').trim())
     .filter(Boolean)
-  return handles.map((h) => `🎀 https://www.instagram.com/${h}/`).join('\n')
+  return handles.map((h) => `https://www.instagram.com/${h}/`).join('\n')
 }
 
 /**

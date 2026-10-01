@@ -50,7 +50,7 @@ import { Invoice } from '../components/Invoice'
 import { printThermalReceipt } from '../lib/thermalPrint'
 import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
 import { invoicePdfFile } from '../lib/invoicePdf'
-import { formatPhoneForCSV } from '../lib/phone'
+import { formatPhoneForCSV, formatPhoneForDisplay } from '../lib/phone'
 // toWhatsAppUrl removed - using direct link building in handlers
 import { createVariant, updateVariant, deleteVariant, setDefaultVariant, type ProductVariant } from '../services/variantService'
 import { useVariantStore } from '../store/store'
@@ -71,7 +71,7 @@ import { BarcodeRedirectDialog } from '../components/pos/BarcodeRedirectDialog'
 import { exportAnalyticsToCSV, exportAnalyticsToPDF } from '../services/analyticsExport'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
 import { branchShortLabel } from '../lib/branchTheme'
-import { getPeriodRange } from '../lib/dateRanges'
+import { getPeriodRange, toLocalDateKey } from '../lib/dateRanges'
 import {
   ResponsiveContainer,
   XAxis,
@@ -264,6 +264,9 @@ export default function Dashboard() {
 
   // Variant management state
   const { getVariants, refetchVariants } = useVariantStore()
+  useEffect(() => {
+    void refetchVariants(branch)
+  }, [branch, refetchVariants])
   const [variantForm, setVariantForm] = useState({ name: '', sizeLabel: '', price: '', purchasePrice: '', mrp: '', sku: '', barcode: '', stock: '50', weightValue: '', weightUnit: '', isDefault: false })
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null)
   const [variantNotice, setVariantNotice] = useState('')
@@ -284,7 +287,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState({ invoiceNo: '', phone: '', customerName: '', dateFrom: '', dateTo: '' })
   const [todayBillsSearch, setTodayBillsSearch] = useState('')
   const [productAnalyticsSearch, setProductAnalyticsSearch] = useState('')
-  const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'custom' | ''>('')
+  const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'year' | 'custom' | ''>('')
   const [historyQuickSearch, setHistoryQuickSearch] = useState('')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [searchResults, setSearchResults] = useState<DashboardOrder[]>([])
@@ -311,7 +314,7 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
 
   // Order Management bill type filter
-  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'advance' | 'online' | 'manual'>('all')
+  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual'>('all')
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'cash' | 'qr' | 'card' | 'split'>('all')
 
   // Users tab
@@ -437,6 +440,7 @@ export default function Dashboard() {
           .limit(1000),
         supabase.from('coupons')
           .select('id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value')
+          .eq('branch', branch)
           .order('created_at', { ascending: false }),
         expenseService.getExpenses(branch),
       ])
@@ -874,10 +878,12 @@ export default function Dashboard() {
   // Bill-type & Payment-method filtered results for Order Management table (client-side, instant)
   const filteredSearchResults = useMemo(() => {
     return searchResults.filter(o => {
+      const createdDate = toLocalDateKey(o.created_at)
+      if (search.dateFrom && createdDate < search.dateFrom) return false
+      if (search.dateTo && createdDate > search.dateTo) return false
       const type = normalizeOrderType(o.order_type)
       const mode = normalizeOrderMode(o.order_mode)
       if (billTypeFilter === 'manual' && type !== 'manual_sale') return false
-      if (billTypeFilter === 'advance' && type !== 'advance_order') return false
       if (billTypeFilter === 'offline' && !(type === 'pos_sale' && mode !== 'online')) return false
       if (billTypeFilter === 'online' && !(type === 'pos_sale' && mode === 'online')) return false
 
@@ -895,7 +901,7 @@ export default function Dashboard() {
       }
       return true
     })
-  }, [searchResults, billTypeFilter, paymentMethodFilter])
+  }, [searchResults, billTypeFilter, paymentMethodFilter, search.dateFrom, search.dateTo])
 
 
 
@@ -916,9 +922,10 @@ export default function Dashboard() {
     const { data } = await supabase
       .from('coupons')
       .select('id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value')
+      .eq('branch', branch)
       .order('created_at', { ascending: false })
     setCoupons((data || []) as DashboardCoupon[])
-  }, [])
+  }, [branch])
 
   const toggleUserRole = async (u: ProfileUser) => {
     const newRole = u.role === 'admin' ? 'customer' : 'admin'
@@ -931,7 +938,7 @@ export default function Dashboard() {
   }
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    await supabase.from('orders').update({ status: newStatus }).eq('id', orderId)
+    await supabase.from('orders').update({ status: newStatus }).eq('id', orderId).eq('branch', branch)
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
     setSearchResults(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
   }
@@ -948,7 +955,7 @@ export default function Dashboard() {
     }
     // Clear FK reference and cancel linked advance order in advance_orders
     await cancelAdvanceOrderByCompletedOrderId(orderId)
-    const { error } = await supabase.from('orders').delete().eq('id', orderId)
+    const { error } = await supabase.from('orders').delete().eq('id', orderId).eq('branch', branch)
     if (error) {
       alert(`Error deleting order: ${error.message}`)
       return
@@ -1095,11 +1102,12 @@ export default function Dashboard() {
       expiry_date: couponForm.expiry_date || null,
       usage_limit: couponForm.usage_limit ? toNumber(couponForm.usage_limit, 0) : null,
       min_order_value: toNumber(couponForm.min_order_value, 0),
+      branch,
     }
     let error: unknown = null
     if (editingCouponId !== null) {
       // Update existing - don't change code (it's the PK equivalent)
-      const res = await supabase.from('coupons').update({ ...payload }).eq('id', editingCouponId)
+      const res = await supabase.from('coupons').update({ ...payload }).eq('id', editingCouponId).eq('branch', branch)
       error = res.error
     } else {
       // Insert new coupon - UNIQUE constraint on code catches duplicates
@@ -1143,12 +1151,12 @@ export default function Dashboard() {
 
   const deleteCoupon = async (coupon: DashboardCoupon) => {
     if (!window.confirm(`Delete coupon "${coupon.code}"? This cannot be undone.`)) return
-    await supabase.from('coupons').delete().eq('id', coupon.id)
+    await supabase.from('coupons').delete().eq('id', coupon.id).eq('branch', branch)
     await loadCoupons()
   }
 
   const toggleCoupon = async (coupon: DashboardCoupon) => {
-    await supabase.from('coupons').update({ is_active: !coupon.is_active }).eq('id', coupon.id)
+    await supabase.from('coupons').update({ is_active: !coupon.is_active }).eq('id', coupon.id).eq('branch', branch)
     await loadCoupons()
   }
 
@@ -1193,7 +1201,7 @@ export default function Dashboard() {
     setAnalyticsDateFrom(from); setAnalyticsDateTo(to)
   }
 
-  const applyDatePreset = (preset: 'today' | 'week' | 'month' | 'custom') => {
+  const applyDatePreset = (preset: 'today' | 'week' | 'month' | 'year' | 'custom') => {
     setDatePreset(preset)
     if (preset === 'custom') { setSearch(s => ({ ...s, dateFrom: '', dateTo: '' })); return }
     const { from, to } = getPeriodRange(preset)
@@ -1234,6 +1242,7 @@ export default function Dashboard() {
       let q = supabase.from('orders')
         .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, remarks, reference_number, branch')
         .neq('order_type', 'online_request')
+        .eq('branch', branch)
         .order('created_at', { ascending: false })
         .limit(hasQuery ? 1000 : 500)
 
@@ -1277,12 +1286,10 @@ export default function Dashboard() {
         q = q.ilike('customer_name', `%${custInput}%`)
       }
 
-      // Apply date filters only if no specific text query is active or if custom date range was selected
-      if (!hasQuery || datePreset === 'custom') {
-        // Local-day bounds converted to UTC instants (created_at is timestamptz)
-        if (search.dateFrom) q = q.gte('created_at', new Date(`${search.dateFrom}T00:00:00`).toISOString())
-        if (search.dateTo)   q = q.lte('created_at', new Date(`${search.dateTo}T23:59:59.999`).toISOString())
-      }
+      // Local-day bounds converted to UTC instants (created_at is timestamptz).
+      // Keep date filters active together with invoice/customer/phone searches.
+      if (search.dateFrom) q = q.gte('created_at', new Date(`${search.dateFrom}T00:00:00`).toISOString())
+      if (search.dateTo)   q = q.lte('created_at', new Date(`${search.dateTo}T23:59:59.999`).toISOString())
 
       if (billTypeFilter === 'manual')       q = q.eq('order_type', 'manual_sale')
       else if (billTypeFilter === 'offline') q = q.eq('order_type', 'pos_sale').eq('order_mode', 'offline')
@@ -1401,7 +1408,7 @@ export default function Dashboard() {
       }
 
       const { error } = editingProd
-        ? await supabase.from('products').update(payload).eq('id', editingProd.id)
+        ? await supabase.from('products').update(payload).eq('id', editingProd.id).eq('branch', branch)
         : await supabase.from('products').insert({ ...payload, branch })
       if (error) throw error
       setProductNotice(editingProd ? 'Product updated!' : 'Product added!')
@@ -1437,7 +1444,7 @@ export default function Dashboard() {
   }
 
   const handleToggleActive = async (p: Product) => {
-    const { error } = await supabase.from('products').update({ is_active: !p.isActive }).eq('id', p.id)
+    const { error } = await supabase.from('products').update({ is_active: !p.isActive }).eq('id', p.id).eq('branch', branch)
     if (error) { setProductNotice(error.message); return }
     setProductNotice(`Product ${p.isActive ? 'deactivated' : 'activated'}`)
     await loadData()
@@ -1445,7 +1452,7 @@ export default function Dashboard() {
 
   const handleDeleteProd = async (id: string | number) => {
     if (!window.confirm('Permanently deactivate this product?')) return
-    const { error } = await supabase.from('products').update({ is_active: false }).eq('id', id)
+    const { error } = await supabase.from('products').update({ is_active: false }).eq('id', id).eq('branch', branch)
     if (error) { setProductNotice(error.message); return }
     setProductNotice('Product deactivated'); await loadData()
   }
@@ -1477,7 +1484,7 @@ export default function Dashboard() {
         branch,
       }
       if (editingVariantId) {
-        const { error } = await updateVariant(editingVariantId, payload)
+        const { error } = await updateVariant(editingVariantId, payload, branch)
         if (error) throw new Error(error)
         setVariantNotice('Variant updated!')
       } else {
@@ -1486,28 +1493,28 @@ export default function Dashboard() {
         setVariantNotice('Variant added!')
         // Ensure product has_variants = true
         if (!editingProd.hasVariants) {
-          await supabase.from('products').update({ has_variants: true }).eq('id', editingProd.id)
+          await supabase.from('products').update({ has_variants: true }).eq('id', editingProd.id).eq('branch', branch)
         }
       }
       setVariantForm({ name: '', sizeLabel: '', price: '', purchasePrice: '', mrp: '', sku: '', barcode: '', stock: '50', weightValue: '', weightUnit: '', isDefault: false })
       setEditingVariantId(null)
-      await refetchVariants()
+      await refetchVariants(branch)
     } catch (err) { setVariantNotice(toErr(err, 'Error saving variant')) }
     finally { setVariantLoading(false) }
   }
 
   const handleDeleteVariant = async (variantId: string) => {
     if (!window.confirm('Remove this variant?')) return
-    const { error } = await deleteVariant(variantId)
+    const { error } = await deleteVariant(variantId, branch)
     if (error) { setVariantNotice(error); return }
     setVariantNotice('Variant removed')
-    await refetchVariants()
+    await refetchVariants(branch)
   }
 
   const handleSetDefault = async (variantId: string) => {
     if (!editingProd) return
-    const { error } = await setDefaultVariant(variantId, String(editingProd.id))
-    if (!error) { setVariantNotice('Default updated'); await refetchVariants() }
+    const { error } = await setDefaultVariant(variantId, String(editingProd.id), branch)
+    if (!error) { setVariantNotice('Default updated'); await refetchVariants(branch) }
   }
 
   const startEditVariant = (v: ProductVariant) => {
@@ -1535,7 +1542,7 @@ export default function Dashboard() {
     const payload = { ...newCat, name_en: newCat.name_en.trim() }
     const { error } = editingCategoryId === null
       ? await supabase.from('categories').insert({ ...payload, is_active: true, branch })
-      : await supabase.from('categories').update(payload).eq('id', editingCategoryId)
+      : await supabase.from('categories').update(payload).eq('id', editingCategoryId).eq('branch', branch)
     if (error) {
       setCategoryNotice({ type: 'error', text: error.message || 'Could not add category.' })
       return
@@ -1553,6 +1560,7 @@ export default function Dashboard() {
       .from('products')
       .update({ category: 'Uncategorized', category_id: null })
       .eq('category_id', c.id)
+      .eq('branch', branch)
     if (linkedProductsError) {
       setCategoryNotice({ type: 'error', text: linkedProductsError.message || 'Could not unlink products from category.' })
       return
@@ -1561,11 +1569,12 @@ export default function Dashboard() {
       .from('products')
       .update({ category: 'Uncategorized', category_id: null })
       .eq('category', c.name_en)
+      .eq('branch', branch)
     if (legacyProductsError) {
       setCategoryNotice({ type: 'error', text: legacyProductsError.message || 'Could not sync products.' })
       return
     }
-    const { error } = await supabase.from('categories').delete().eq('id', c.id)
+    const { error } = await supabase.from('categories').delete().eq('id', c.id).eq('branch', branch)
     if (error) {
       setCategoryNotice({ type: 'error', text: error.message || 'Could not delete category.' })
       return
@@ -1580,7 +1589,7 @@ export default function Dashboard() {
   const toggleCat = async (c: Category) => {
     // Optimistic update
     setCats(prev => prev.map(cat => cat.id === c.id ? { ...cat, is_active: !c.is_active } : cat))
-    const { error } = await supabase.from('categories').update({ is_active: !c.is_active }).eq('id', c.id)
+    const { error } = await supabase.from('categories').update({ is_active: !c.is_active }).eq('id', c.id).eq('branch', branch)
     if (error) {
       setCategoryNotice({ type: 'error', text: 'Failed to update category status.' })
       // Revert on error
@@ -1603,8 +1612,8 @@ export default function Dashboard() {
       setCats(normalizedCats.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
       
       await Promise.all([
-        supabase.from('categories').update({ sort_order: currentNormalized.sort_order }).eq('id', c.id),
-        supabase.from('categories').update({ sort_order: prevNormalized.sort_order }).eq('id', prevCat.id)
+        supabase.from('categories').update({ sort_order: currentNormalized.sort_order }).eq('id', c.id).eq('branch', branch),
+        supabase.from('categories').update({ sort_order: prevNormalized.sort_order }).eq('id', prevCat.id).eq('branch', branch)
       ])
     } else if (dir === 'down' && currentIndex < cats.length - 1) {
       const nextCat = cats[currentIndex + 1]
@@ -1619,8 +1628,8 @@ export default function Dashboard() {
       setCats(normalizedCats.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
       
       await Promise.all([
-        supabase.from('categories').update({ sort_order: currentNormalized.sort_order }).eq('id', c.id),
-        supabase.from('categories').update({ sort_order: nextNormalized.sort_order }).eq('id', nextCat.id)
+        supabase.from('categories').update({ sort_order: currentNormalized.sort_order }).eq('id', c.id).eq('branch', branch),
+        supabase.from('categories').update({ sort_order: nextNormalized.sort_order }).eq('id', nextCat.id).eq('branch', branch)
       ])
     }
   }
@@ -3311,27 +3320,26 @@ export default function Dashboard() {
                   {/* Dropdown controls & Filters toggle in a responsive grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0 w-full lg:w-auto">
                     {/* Bill Type Dropdown */}
-                    <div className="relative min-w-0">
+                    <div className="relative min-w-0 lg:w-28">
                       <select
                         value={billTypeFilter}
                         onChange={e => setBillTypeFilter(e.target.value as typeof billTypeFilter)}
-                        className="w-full lg:w-28 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
+                        className="w-full h-11 appearance-none pl-2.5 pr-7 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
                       >
                         <option value="all">{l('All Bills', 'அனைத்து')}</option>
                         <option value="offline">{l('Offline POS', 'ஆஃப்லைன் POS')}</option>
-                        <option value="advance">{l('Advance Bills', 'முன்பதிவு')}</option>
                         <option value="online">{l('Online', 'ஆன்லைன்')}</option>
                         <option value="manual">{l('Manual', 'கைமுறை')}</option>
                       </select>
-                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
 
                     {/* Payment Method Dropdown */}
-                    <div className="relative min-w-0">
+                    <div className="relative min-w-0 lg:w-32">
                       <select
                         value={paymentMethodFilter}
                         onChange={e => setPaymentMethodFilter(e.target.value as typeof paymentMethodFilter)}
-                        className="w-full lg:w-32 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
+                        className="w-full h-11 appearance-none pl-2.5 pr-7 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
                       >
                         <option value="all">{l('All Payments', 'அனைத்து முறை')}</option>
                         <option value="cash">{l('Cash Only', 'ரொக்கம்')}</option>
@@ -3339,11 +3347,11 @@ export default function Dashboard() {
                         <option value="card">{l('Card', 'கார்டு')}</option>
                         <option value="split">{l('Split Payment', 'பிரிவு கட்டணம்')}</option>
                       </select>
-                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
 
                     {/* Date Preset Dropdown */}
-                    <div className="relative min-w-0">
+                    <div className="relative min-w-0 lg:w-32">
                       <select
                         value={datePreset}
                         onChange={e => {
@@ -3358,15 +3366,16 @@ export default function Dashboard() {
                             }
                           }
                         }}
-                        className="w-full lg:w-32 h-11 appearance-none pl-2.5 pr-6 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
+                        className="w-full h-11 appearance-none pl-2.5 pr-7 rounded-xl bg-[#F9FAFB] border border-gray-200 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#D4AF37] cursor-pointer hover:bg-gray-100 transition-colors truncate"
                       >
                         <option value="">{l('All Dates', 'தேதி: அனைத்து')}</option>
                         <option value="today">{l('Today', 'இன்று')}</option>
                         <option value="week">{l('This Week', 'இந்த வாரம்')}</option>
                         <option value="month">{l('This Month', 'இந்த மாதம்')}</option>
+                        <option value="year">{l('This Year', 'இந்த ஆண்டு')}</option>
                         <option value="custom">{l('Custom...', 'தேர்வு...')}</option>
                       </select>
-                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
 
                     {/* Advanced Filters Toggle Button */}
@@ -3492,7 +3501,7 @@ export default function Dashboard() {
                   )}
                   {datePreset && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-semibold">
-                      Date: {datePreset === 'today' ? 'Today' : datePreset === 'week' ? 'This Week' : datePreset === 'month' ? 'This Month' : 'Custom'}
+                      Date: {datePreset === 'today' ? 'Today' : datePreset === 'week' ? 'This Week' : datePreset === 'month' ? 'This Month' : datePreset === 'year' ? 'This Year' : 'Custom'}
                       <button type="button" onClick={() => { setDatePreset(''); setSearch(s => ({ ...s, dateFrom: '', dateTo: '' })) }} className="hover:text-red-600 cursor-pointer"><X size={11} /></button>
                     </span>
                   )}
@@ -3644,7 +3653,7 @@ export default function Dashboard() {
                         <tr key={o.id} className="hover:bg-[#F9FAFB] text-center">
                           <td className="whitespace-nowrap px-2 py-3 text-[11px] font-bold text-[#111111]">{formatInvoiceNo(o.invoice_no)}</td>
                           <td className="max-w-[100px] truncate px-2 py-3 text-[11px] font-semibold text-[#111111]">{o.customer_name}</td>
-                          <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#374151]">{o.phone}</td>
+                          <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#374151]">{formatPhoneForDisplay(o.phone)}</td>
                           <td className="px-2 py-3"><span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase ${billTypeClass}`}>{billTypeLabel}</span></td>
                           <td className="px-2 py-3 text-[11px]">
                             {o.coupon_code ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{o.coupon_code}</span> : <span className="text-[#9BAB9A]">—</span>}

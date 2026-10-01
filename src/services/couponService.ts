@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/retail'
+import type { PosBranch } from '../store/store'
 
 const COUPON_COLUMNS = 'id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value'
 
@@ -26,6 +27,7 @@ export function isCouponExpired(expiry: string | null | undefined, now: Date = n
 export async function validateCoupon(
   rawCode: string,
   subtotal: number,
+  branch: PosBranch = 'pos1',
 ): Promise<{ data: AppliedCoupon | null; error: string | null }> {
   const code = rawCode.trim().toUpperCase()
 
@@ -38,6 +40,7 @@ export async function validateCoupon(
       .from('coupons')
       .select(COUPON_COLUMNS)
       .eq('is_active', true)
+      .eq('branch', branch)
       .ilike('code', code)
       .single()
 

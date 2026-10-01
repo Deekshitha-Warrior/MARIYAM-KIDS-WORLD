@@ -115,6 +115,11 @@ const recalc = (item: PosItem, nextQty: number): PosItem => {
   return { ...item, qty: q, lineTotal: calculateLineTotal(q, item.unitType, item.baseQuantity, item.basePrice) }
 }
 
+const getVariantBaseName = (item: Pick<PosItem, 'name' | 'variantName'>): string => {
+  const suffix = item.variantName ? ` - ${item.variantName}` : ''
+  return suffix && item.name.endsWith(suffix) ? item.name.slice(0, -suffix.length) : item.name
+}
+
 
 // ── Category colours ───────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -202,10 +207,10 @@ export default function Pos(props: PosProps = {}) {
 
   useEffect(() => {
     void fetchProducts(branch)
-    void fetchVariants()
+    void fetchVariants(branch)
     if (!isSupabaseConfigured) return
 
-    supabase.from('coupons').select('code').eq('is_active', true).order('created_at', { ascending: false }).limit(20)
+    supabase.from('coupons').select('code').eq('branch', branch).eq('is_active', true).order('created_at', { ascending: false }).limit(20)
       .then(({ data, error }) => {
         if (error) console.error('Failed to fetch coupons', error)
         else if (data) setAvailableCoupons(data)
@@ -285,7 +290,7 @@ export default function Pos(props: PosProps = {}) {
       const variantProduct: Product = {
         ...product,
         id: specificVariant.id,
-        name: `${product.name} - ${specificVariant.variantName}`,
+        name: product.name,
         price: specificVariant.price,
         offerPrice: null,
         stock: specificVariant.stock,
@@ -314,7 +319,7 @@ export default function Pos(props: PosProps = {}) {
       try {
         let vars = getVariants(String(product.id))
         if (!vars || vars.length === 0) {
-          vars = await fetchVariantsByProduct(String(product.id))
+          vars = await fetchVariantsByProduct(String(product.id), branch)
         }
 
         if (vars && vars.length > 1) {
@@ -348,7 +353,7 @@ export default function Pos(props: PosProps = {}) {
     const variantProduct: Product = {
       ...variantPickerProduct,
       id: selectedVariant.id,
-      name: `${variantPickerProduct.name} - ${selectedVariant.variantName}`,
+      name: variantPickerProduct.name,
       price: selectedVariant.price,
       offerPrice: null,
       stock: selectedVariant.stock,
@@ -436,7 +441,7 @@ export default function Pos(props: PosProps = {}) {
     const clean = normalizeBarcode(codeToProcess)
     if (!clean) return
     try {
-      const record = await barcodeService.lookupBarcode(clean)
+      const record = await barcodeService.lookupBarcode(clean, branch)
       if (!record || !record.product) {
         setError(`Barcode "${clean}" not recognized in catalog`)
         return
@@ -464,7 +469,7 @@ export default function Pos(props: PosProps = {}) {
       console.error('Failed to process incoming barcode:', err)
       setError('Failed to scan barcode')
     }
-  }, [])
+  }, [branch, handleScannedItem])
 
   useEffect(() => {
     const code = props.externalScannedCode || externalCodeFromStore
@@ -633,7 +638,7 @@ export default function Pos(props: PosProps = {}) {
 
         // Refresh product stores so catalog reflects new price
         void fetchProducts(branch, true)
-        void fetchVariants()
+        void fetchVariants(branch)
       } catch (err: unknown) {
         console.error('Failed to update price in inventory:', err)
         setPriceEditModal(prev => ({
@@ -694,6 +699,7 @@ export default function Pos(props: PosProps = {}) {
       const { data, error: dbErr } = await supabase
         .from('coupons')
         .select('*')
+        .eq('branch', branch)
         .eq('is_active', true)
         .ilike('code', code)
         .single()
@@ -821,7 +827,7 @@ export default function Pos(props: PosProps = {}) {
           productId:    item.parentProductId ? item.parentProductId : toProductId(item.id),
           variantId:    item.variantId   ?? null,
           variantName:  item.variantName ?? null,
-          name: item.name,
+          name: getVariantBaseName(item),
           tamilName: item.tamilName || item.nameTa || null,
           quantity: item.qty,
           unit: item.selectedUnit,
@@ -871,7 +877,7 @@ export default function Pos(props: PosProps = {}) {
         remarks: remarks.trim(),
         reference_number: referenceNumber.trim(),
         billing_date: effectiveBillingDate,
-      }).eq('id', created.orderId)
+      }).eq('id', created.orderId).eq('branch', branch)
 
       if (updateErr) {
         console.warn('Post-order update warning:', updateErr)
@@ -883,6 +889,7 @@ export default function Pos(props: PosProps = {}) {
         .from('orders')
         .select('id, invoice_no')
         .eq('id', created.orderId)
+        .eq('branch', branch)
         .maybeSingle()
 
       if (verifyErr || !verifiedOrder) {
@@ -979,7 +986,7 @@ export default function Pos(props: PosProps = {}) {
       })
       // Upload PDF and save its URL — total fields already saved immediately after RPC
       const url = await uploadInvoicePdf(file, inv.invoiceNo)
-      await supabase.from('orders').update({ invoice_pdf_url: url }).eq('id', inv.id)
+      await supabase.from('orders').update({ invoice_pdf_url: url }).eq('id', inv.id).eq('branch', branch)
       setInvoice(current => current?.id === inv.id ? { ...current, invoicePdfUrl: url } : current)
     } catch (err) {
       console.warn('Invoice PDF could not be stored:', err)
@@ -1324,7 +1331,7 @@ export default function Pos(props: PosProps = {}) {
 
               {/* Barcode Scanner Bar */}
               <div className="w-full">
-                <BarcodeScannerInput onItemScanned={handleScannedItem} />
+                <BarcodeScannerInput branch={branch} onItemScanned={handleScannedItem} />
               </div>
 
               <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1480,7 +1487,7 @@ export default function Pos(props: PosProps = {}) {
                         />
                       ) : (
                         <div className="px-3 py-2 w-full truncate border border-transparent flex items-center gap-2">
-                          <span className="text-[13px] font-bold text-[#111111] truncate">{item.name} {item.variantName ? `- ${item.variantName}` : ''}</span>
+                              <span className="text-[13px] font-bold text-[#111111] truncate">{getVariantBaseName(item)} {item.variantName ? `- ${item.variantName}` : ''}</span>
                         </div>
                       )}
                       {item.source !== 'manual' && (
@@ -1871,9 +1878,11 @@ export default function Pos(props: PosProps = {}) {
                   type="button"
                   onClick={openDepositOrder}
                   disabled={saving || items.length === 0}
-                  className="min-h-[44px] rounded-xl border-2 border-[#7A1220] bg-white px-3 py-3 text-[12px] font-black uppercase tracking-wide text-[#7A1220] transition-colors hover:bg-[#7A1220] hover:text-[#D4AF37] disabled:opacity-40 cursor-pointer"
+                  aria-label="Save as Deposit Order"
+                  title={items.length === 0 ? 'Add an item before creating a deposit order' : 'Continue to enter deposit and delivery details'}
+                  className="inline-flex min-h-[44px] w-full min-w-0 items-center justify-center rounded-xl border-2 border-[#7A1220] bg-[#7A1220] px-2 py-3 text-center text-[12px] font-black leading-tight tracking-wide !text-white transition-colors hover:bg-[#5f0e19] hover:!text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:!text-gray-600 disabled:opacity-100"
                 >
-                  Save as Deposit Order
+                  <span className="block whitespace-normal !text-inherit">Save as Deposit Order</span>
                 </button>
                 <button
                   type="button"
@@ -1884,7 +1893,7 @@ export default function Pos(props: PosProps = {}) {
                   {saving ? 'Processing...' : 'Complete Sale'}
                 </button>
               </div>
-              <p className="mt-2 text-center text-[10px] font-bold text-[#6B7280]">Deposit orders do not count as revenue until the remaining payment is received.</p>
+              <p className="mt-2 text-center text-[10px] font-bold text-[#6B7280]">Enter deposit and delivery details in the next step. Deposits do not count as revenue until full payment is received.</p>
             </div>
           </div>
         </div>

@@ -74,9 +74,10 @@ const saveLocalExpenses = (records: ExpenseRecord[]) => {
   }
 }
 
-const loadLocalCategories = (): ExpenseCategory[] => {
+const categoryStorageKey = (branch: PosBranch) => `${STORAGE_CATEGORIES_KEY}_${branch}`
+const loadLocalCategories = (branch: PosBranch): ExpenseCategory[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_CATEGORIES_KEY) || localStorage.getItem(LEGACY_STORAGE_CATEGORIES_KEY)
+    const raw = localStorage.getItem(categoryStorageKey(branch)) || (branch === 'pos1' ? localStorage.getItem(STORAGE_CATEGORIES_KEY) || localStorage.getItem(LEGACY_STORAGE_CATEGORIES_KEY) : null)
     if (raw) return JSON.parse(raw) as ExpenseCategory[]
   } catch {
     // fallback
@@ -86,13 +87,13 @@ const loadLocalCategories = (): ExpenseCategory[] => {
     name,
     is_active: true,
   }))
-  saveLocalCategories(defaults)
+  saveLocalCategories(branch, defaults)
   return defaults
 }
 
-const saveLocalCategories = (cats: ExpenseCategory[]) => {
+const saveLocalCategories = (branch: PosBranch, cats: ExpenseCategory[]) => {
   try {
-    localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(cats))
+    localStorage.setItem(categoryStorageKey(branch), JSON.stringify(cats))
   } catch (err) {
     console.warn('Failed to save categories to localStorage:', err)
   }
@@ -183,7 +184,7 @@ export const expenseService = {
           remoteExpensesAvailable = true
           // Update local backup
           if (!filters?.fromDate && !filters?.toDate && (!filters?.categoryId || filters.categoryId === 'all')) {
-            saveLocalExpenses(data as ExpenseRecord[])
+            saveLocalExpenses([...loadLocalExpenses().filter(e => (e.branch || 'pos1') !== branch), ...(data as ExpenseRecord[])])
           }
           return data as ExpenseRecord[]
         }
@@ -280,6 +281,7 @@ export const expenseService = {
   // 3b. Update an Expense
   async updateExpense(
     id: string,
+    branch: PosBranch,
     payload: {
       expense_date?: string
       category_id?: number | null
@@ -304,6 +306,7 @@ export const expenseService = {
             updated_at: updatedAt,
           })
           .eq('id', id)
+          .eq('branch', branch)
           .select()
           .single()
 
@@ -344,10 +347,10 @@ export const expenseService = {
   },
 
   // 4. Delete an Expense
-  async deleteExpense(id: string): Promise<void> {
+  async deleteExpense(id: string, branch: PosBranch): Promise<void> {
     if (isSupabaseConfigured && remoteExpensesAvailable !== false) {
       try {
-        const { error } = await supabase.from('expenses').delete().eq('id', id)
+        const { error } = await supabase.from('expenses').delete().eq('id', id).eq('branch', branch)
         if (!error) {
           remoteExpensesAvailable = true
         } else if (error.code === 'PGRST205' || error.message?.includes('not find')) {
@@ -359,22 +362,23 @@ export const expenseService = {
     }
 
     const current = loadLocalExpenses()
-    const filtered = current.filter((e) => e.id !== id)
+    const filtered = current.filter((e) => !(e.id === id && (e.branch || 'pos1') === branch))
     saveLocalExpenses(filtered)
   },
 
   // 5. Category Operations
-  async getCategories(): Promise<ExpenseCategory[]> {
+  async getCategories(branch: PosBranch): Promise<ExpenseCategory[]> {
     if (isSupabaseConfigured && remoteCategoriesAvailable !== false) {
       try {
         const { data, error } = await supabase
           .from('expense_categories')
           .select('*')
+          .eq('branch', branch)
           .order('name', { ascending: true })
 
         if (!error && data && data.length > 0) {
           remoteCategoriesAvailable = true
-          saveLocalCategories(data as ExpenseCategory[])
+          saveLocalCategories(branch, data as ExpenseCategory[])
           return data as ExpenseCategory[]
         }
         if (error && (error.code === 'PGRST205' || error.message?.includes('not find'))) {
@@ -385,10 +389,10 @@ export const expenseService = {
       }
     }
 
-    return loadLocalCategories()
+    return loadLocalCategories(branch)
   },
 
-  async createCategory(name: string): Promise<ExpenseCategory> {
+  async createCategory(name: string, branch: PosBranch): Promise<ExpenseCategory> {
     const cleanName = name.trim()
     if (!cleanName) throw new Error('Category name cannot be empty')
 
@@ -396,14 +400,14 @@ export const expenseService = {
       try {
         const { data, error } = await supabase
           .from('expense_categories')
-          .insert({ name: cleanName, is_active: true })
+          .insert({ name: cleanName, is_active: true, branch })
           .select()
           .single()
 
         if (!error && data) {
           remoteCategoriesAvailable = true
-          const local = loadLocalCategories()
-          saveLocalCategories([...local, data as ExpenseCategory])
+          const local = loadLocalCategories(branch)
+          saveLocalCategories(branch, [...local, data as ExpenseCategory])
           return data as ExpenseCategory
         }
         if (error && (error.code === 'PGRST205' || error.message?.includes('not find'))) {
@@ -414,23 +418,24 @@ export const expenseService = {
       }
     }
 
-    const local = loadLocalCategories()
+    const local = loadLocalCategories(branch)
     const newCat: ExpenseCategory = {
       id: Date.now(),
       name: cleanName,
       is_active: true,
       created_at: new Date().toISOString(),
     }
-    saveLocalCategories([...local, newCat])
+    saveLocalCategories(branch, [...local, newCat])
     return newCat
   },
 
-  async deleteCategory(id: number): Promise<void> {
+  async deleteCategory(id: number, branch: PosBranch): Promise<void> {
     if (isSupabaseConfigured && remoteCategoriesAvailable !== false) {
       try {
         const { error } = await supabase
           .from('expense_categories')
           .delete()
+          .eq('branch', branch)
           .eq('id', id)
 
         if (!error) {
@@ -443,12 +448,12 @@ export const expenseService = {
       }
     }
 
-    const local = loadLocalCategories()
+    const local = loadLocalCategories(branch)
     const filtered = local.filter((c) => c.id !== id)
-    saveLocalCategories(filtered)
+    saveLocalCategories(branch, filtered)
   },
 
-  async updateCategory(id: number, name: string): Promise<ExpenseCategory> {
+  async updateCategory(id: number, name: string, branch: PosBranch): Promise<ExpenseCategory> {
     const cleanName = name.trim()
     if (!cleanName) throw new Error('Category name cannot be empty')
 
@@ -457,15 +462,16 @@ export const expenseService = {
         const { data, error } = await supabase
           .from('expense_categories')
           .update({ name: cleanName, updated_at: new Date().toISOString() })
+          .eq('branch', branch)
           .eq('id', id)
           .select()
           .single()
 
         if (!error && data) {
           remoteCategoriesAvailable = true
-          const local = loadLocalCategories()
+          const local = loadLocalCategories(branch)
           const updated = local.map((c) => (c.id === id ? (data as ExpenseCategory) : c))
-          saveLocalCategories(updated)
+          saveLocalCategories(branch, updated)
           return data as ExpenseCategory
         }
         if (error && (error.code === 'PGRST205' || error.message?.includes('not find'))) {
@@ -476,7 +482,7 @@ export const expenseService = {
       }
     }
 
-    const local = loadLocalCategories()
+    const local = loadLocalCategories(branch)
     let updatedCat: ExpenseCategory = { id, name: cleanName, is_active: true }
     const updated = local.map((c) => {
       if (c.id === id) {
@@ -485,7 +491,7 @@ export const expenseService = {
       }
       return c
     })
-    saveLocalCategories(updated)
+    saveLocalCategories(branch, updated)
     return updatedCat
   },
 }
@@ -519,4 +525,3 @@ export function exportExpensesToCSV(expenses: ExpenseRecord[]): void {
   document.body.removeChild(link)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-

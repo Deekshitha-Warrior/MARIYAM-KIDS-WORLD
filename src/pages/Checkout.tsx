@@ -78,7 +78,7 @@ export default function Checkout() {
     setCouponError('')
     setAppliedCoupon(null)
 
-    const { data, error } = await validateCoupon(code, subtotal)
+    const { data, error } = await validateCoupon(code, subtotal, 'pos1')
     if (error) {
       setCouponError(error)
     } else if (data) {
