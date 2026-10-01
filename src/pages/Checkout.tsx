@@ -174,6 +174,10 @@ export default function Checkout() {
         discountAmount,
         couponCode:       couponValid ? appliedCoupon?.code : undefined,
         couponPercentage: couponValid ? appliedCoupon?.percentage : 0,
+        // Website requests are fulfilled by the original shop counter (POS 1).
+        // Stated explicitly so a website order can never fall into POS 2's bills,
+        // revenue or order-management queue by accident.
+        branch:           'pos1',
       })
 
       const snapshot: BookedOrderSnapshot = {

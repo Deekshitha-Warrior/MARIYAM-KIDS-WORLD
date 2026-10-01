@@ -201,7 +201,13 @@ export const inventoryService = {
       p_variant_id: variantId || null,
       p_branch: branch,
     })
-    if (error) throw error
+    if (error) {
+      const message = [error.message, error.details, error.hint].filter(Boolean).join(' — ')
+      if (error.code === 'PGRST202' || message.toLowerCase().includes('schema cache')) {
+        throw new Error('Stock deletion needs the Supabase migration 20261001_0030_hard_delete_inventory_item.sql. Apply it to the connected database, then retry.')
+      }
+      throw new Error(message || 'Failed to delete inventory item')
+    }
   },
 
   /**

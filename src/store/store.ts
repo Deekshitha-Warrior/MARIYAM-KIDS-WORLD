@@ -587,8 +587,17 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   fetchSettings: async (branch) => {
     set({ loading: true })
     if (isSupabaseConfigured) {
-      const query = supabase.from('store_settings').select('*').limit(1)
-      const { data, error } = branch ? await query.eq('branch', branch).single() : await query.single()
+      // store_settings holds one row per POS counter, so every read must name a
+      // branch. Unscoped reads (public storefront, which has no branch context)
+      // intentionally resolve to POS 1 — the original shop — instead of grabbing
+      // an arbitrary row, which made .single() fail once row #2 existed.
+      const queryBranch: PosBranch = branch === 'pos2' ? 'pos2' : 'pos1'
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('*')
+        .eq('branch', queryBranch)
+        .limit(1)
+        .maybeSingle()
       if (!error && data) {
         const resolved: StoreSettings = {
           name: data.name,
@@ -599,7 +608,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
           businessType: data.business_type || '',
           instagramId: data.instagram_id || '',
           logoUrl: data.logo_url || null,
-          themeColor: data.theme_color || (branch === 'pos2' ? '#B8860B' : '#8B1A1A'),
+          themeColor: data.theme_color || (queryBranch === 'pos2' ? '#B8860B' : '#8B1A1A'),
           gstEnabled: data.gst_enabled
         }
         set((state) => ({

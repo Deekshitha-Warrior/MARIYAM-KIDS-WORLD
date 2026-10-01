@@ -618,11 +618,14 @@ export default function Pos(props: PosProps = {}) {
         }
 
         // 1. If item has a variant ID, update product_variants table
+        // Branch filter is kept even though ids are globally unique: it guarantees
+        // a POS 2 counter can never write to a POS 1 catalog row.
         if (item.variantId) {
           const { error: variantErr } = await supabase
             .from('product_variants')
             .update({ price: parsedPrice })
             .eq('id', item.variantId)
+            .eq('branch', branch)
           if (variantErr) throw variantErr
         } else {
           // 2. Otherwise update standard products table
@@ -632,6 +635,7 @@ export default function Pos(props: PosProps = {}) {
               .from('products')
               .update({ price: parsedPrice })
               .eq('id', realDbId)
+              .eq('branch', branch)
             if (prodErr) throw prodErr
           }
         }
@@ -1880,7 +1884,7 @@ export default function Pos(props: PosProps = {}) {
                   disabled={saving || items.length === 0}
                   aria-label="Save as Deposit Order"
                   title={items.length === 0 ? 'Add an item before creating a deposit order' : 'Continue to enter deposit and delivery details'}
-                  className="inline-flex min-h-[44px] w-full min-w-0 items-center justify-center rounded-xl border-2 border-[#7A1220] bg-[#7A1220] px-2 py-3 text-center text-[12px] font-black leading-tight tracking-wide !text-white transition-colors hover:bg-[#5f0e19] hover:!text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:!text-gray-600 disabled:opacity-100"
+                  className="inline-flex min-h-[44px] w-full min-w-0 items-center justify-center rounded-xl border-2 border-[#7A1220] bg-[#7A1220] px-2 py-3 text-center text-[12px] font-black leading-tight tracking-wide !text-[#D4AF37] transition-colors hover:bg-[#5f0e19] hover:!text-[#D4AF37] disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:!text-[#D4AF37] disabled:opacity-100"
                 >
                   <span className="block whitespace-normal !text-inherit">Save as Deposit Order</span>
                 </button>
