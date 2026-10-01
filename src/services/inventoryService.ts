@@ -239,8 +239,8 @@ export const inventoryService = {
   /**
    * Fetch movement audit ledger logs.
    */
-  async fetchMovements(params?: {
-    branch?: PosBranch
+  async fetchMovements(params: {
+    branch: PosBranch
     product_id?: number
     variant_id?: string | null
     movement_type?: string
@@ -259,9 +259,7 @@ export const inventoryService = {
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
-    if (params?.branch) {
-      query = query.eq('branch', params.branch)
-    }
+    query = query.eq('branch', params.branch)
 
     if (params?.product_id) {
       query = query.eq('product_id', params.product_id)
@@ -309,12 +307,22 @@ export const inventoryService = {
    * Aggregate stock movements math for Analytics & Reports.
    */
   async fetchInventoryAnalytics(branch: PosBranch, startDate?: string, endDate?: string): Promise<InventoryAnalyticsSummary> {
-    const { movements } = await this.fetchMovements({
-      branch,
-      start_date: startDate,
-      end_date: endDate,
-      limit: 1000,
-    })
+    const movements: InventoryMovement[] = []
+    const pageSize = 1000
+    let offset = 0
+    let total = 0
+    do {
+      const page = await this.fetchMovements({
+        branch,
+        start_date: startDate,
+        end_date: endDate,
+        limit: pageSize,
+        offset,
+      })
+      movements.push(...page.movements)
+      total = page.total
+      offset += page.movements.length
+    } while (offset < total && offset > 0)
 
     let incomingStock = 0
     let unitsSold = 0

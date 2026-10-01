@@ -449,7 +449,7 @@ export default function Dashboard() {
       const mappedOrders = (oRes.data || []).map(r => toDashboardOrder(r as Record<string, unknown>))
       setCats((cRes.data || []) as Category[])
       setOrders(mappedOrders)
-      setSearchResults(mappedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request').slice(0, 100))
+      setSearchResults(mappedOrders.filter(o => !['online_request', 'advance_order'].includes(normalizeOrderType(o.order_type))).slice(0, 100))
       setCoupons((couponRes.data || []) as DashboardCoupon[])
       setExpenses(expList || [])
 
@@ -525,17 +525,18 @@ export default function Dashboard() {
     // WhatsApp = online_request type (all statuses, no revenue)
     const waOrders = dated.filter(o => normalizeOrderType(o.order_type) === 'online_request')
 
-    // Billable = completed and NOT online_request
-    const billableCompleted = completedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request')
+    // Only sales and fully completed advance orders contribute to revenue.
+    const billableCompleted = completedOrders.filter(o => ['pos_sale', 'manual_sale', 'advance_order'].includes(normalizeOrderType(o.order_type)))
+    const completedSalesBills = billableCompleted.filter(o => ['pos_sale', 'manual_sale'].includes(normalizeOrderType(o.order_type)))
     // The trend charts are fixed calendar views. The period selector filters
     // KPIs/tables, but must not change the year/week bars underneath them.
     const allBillableCompleted = orders
       .filter(o => normalizeStatus(o.status) !== 'cancelled')
       .filter(o => isCompletedStatus(o.status))
-      .filter(o => normalizeOrderType(o.order_type) !== 'online_request')
+      .filter(o => ['pos_sale', 'manual_sale', 'advance_order'].includes(normalizeOrderType(o.order_type)))
     const offlinePOS  = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) !== 'online')
     const advanceOrders = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'advance_order')
-    const onlinePOS   = billableCompleted.filter(o => normalizeOrderMode(o.order_mode) === 'online')
+    const onlinePOS   = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) === 'online')
     const manualSales = billableCompleted.filter(o => normalizeOrderType(o.order_type) === 'manual_sale')
 
     // Revenue (WhatsApp never included) - directly calculates from completed bills
@@ -597,8 +598,8 @@ export default function Dashboard() {
     const todayBills = todayOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
 
     // Today's channel breakdown
-    const todayOffline = todayOrders.filter(o => normalizeOrderMode(o.order_mode) === 'offline' && normalizeOrderType(o.order_type) !== 'manual_sale')
-    const todayOnline = todayOrders.filter(o => normalizeOrderMode(o.order_mode) === 'online')
+    const todayOffline = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) !== 'online')
+    const todayOnline = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'pos_sale' && normalizeOrderMode(o.order_mode) === 'online')
     const todayManual = todayOrders.filter(o => normalizeOrderType(o.order_type) === 'manual_sale')
     const todayOfflineRevenue = todayOffline.reduce((s, o) => s + getOrderTotal(o), 0)
     const todayOnlineRevenue = todayOnline.reduce((s, o) => s + getOrderTotal(o), 0)
@@ -726,7 +727,7 @@ export default function Dashboard() {
     const statusDistribution = [
       { name: 'WA Requests', value: waOrders.length, color: '#3b82f6' },
       { name: 'POS Pending', value: pendingOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request').length, color: '#f59e0b' },
-      { name: 'Completed',   value: billableCompleted.length, color: '#10b981' },
+      { name: 'Completed',   value: completedSalesBills.length, color: '#10b981' },
     ]
     const channelDistribution = [
       { name: 'Offline Bills', value: posRevenue, color: '#f97316' },
@@ -840,7 +841,7 @@ export default function Dashboard() {
       pendingOrders: pendingOrders.length,
       onlineRequests: waRequests,
       onlineRequestOrders: waOrders,
-      completedOrders: billableCompleted.length,
+      completedOrders: completedSalesBills.length,
       posRevenue,
       advanceRevenue,
       advanceOrderCount: advanceOrders.length,
@@ -878,6 +879,7 @@ export default function Dashboard() {
   // Bill-type & Payment-method filtered results for Order Management table (client-side, instant)
   const filteredSearchResults = useMemo(() => {
     return searchResults.filter(o => {
+      if (normalizeOrderType(o.order_type) === 'advance_order') return false
       const createdDate = toLocalDateKey(o.created_at)
       if (search.dateFrom && createdDate < search.dateFrom) return false
       if (search.dateTo && createdDate > search.dateTo) return false
@@ -1242,6 +1244,7 @@ export default function Dashboard() {
       let q = supabase.from('orders')
         .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, remarks, reference_number, branch')
         .neq('order_type', 'online_request')
+        .neq('order_type', 'advance_order')
         .eq('branch', branch)
         .order('created_at', { ascending: false })
         .limit(hasQuery ? 1000 : 500)
@@ -1344,7 +1347,7 @@ export default function Dashboard() {
       // Fallback: if query returned no results from Supabase, search in pre-loaded orders
       if (hasQuery && results.length === 0 && orders.length > 0) {
         const localMatches = orders.filter(o => {
-          if (normalizeOrderType(o.order_type) === 'online_request') return false
+          if (['online_request', 'advance_order'].includes(normalizeOrderType(o.order_type))) return false
           return matchOrder(o)
         })
         if (localMatches.length > 0) {
@@ -2094,7 +2097,7 @@ export default function Dashboard() {
                   <div className="bg-[#F9FAFB] p-5 rounded-xl">
                     <p className="text-[11px] uppercase tracking-wider font-bold text-[#374151] mb-1">Avg Order Value</p>
                     <p className="text-[24px] font-black text-[#111111]">
-                      {formatCurrency(analytics.totalCompletedRevenue / (searchResults.filter(o => isCompletedStatus(o.status)).length || 1))}
+                      {formatCurrency(analytics.averageRevenuePerBill)}
                     </p>
                   </div>
                 </div>
@@ -2565,7 +2568,7 @@ export default function Dashboard() {
                   {[
                     {
                       label: 'Total Revenue',
-                      helper: 'POS + manual sales combined',
+                      helper: 'Completed POS, manual, and fully paid advance orders',
                       value: formatCurrency(analytics.totalCompletedRevenue),
                       icon: <RMIcon size={16} />,
                       color: 'text-emerald-500',
@@ -2623,7 +2626,7 @@ export default function Dashboard() {
                     },
                     {
                       label: 'Total Items Sold',
-                      helper: 'From completed bills',
+                      helper: 'Items on completed POS, manual, and advance invoices',
                       value: String(Math.round(analytics.totalProductsSold)),
                       icon: <Box size={16} />,
                       color: 'text-purple-500',
@@ -2631,7 +2634,7 @@ export default function Dashboard() {
                     },
                     {
                       label: 'Average Revenue Per Bill',
-                      helper: 'Average per bill',
+                      helper: 'Revenue per completed invoice, including advances',
                       value: formatCurrency(analytics.averageRevenuePerBill),
                       icon: <RMIcon size={16} />,
                       color: 'text-emerald-500',

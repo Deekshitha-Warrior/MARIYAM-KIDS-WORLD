@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { Link } from 'react-router-dom'
 import {
   Boxes,
-  CreditCard,
   Download,
   Grid2X2,
   LayoutDashboard,
@@ -65,6 +64,10 @@ type BillingOrder = {
   address: string
   created_at: string
   total: number
+  subtotal: number
+  shipping: number
+  total_gst: number
+  manual_discount_amount: number
   status: string
   order_mode: string
   order_type: string
@@ -163,6 +166,19 @@ const parseOrderItems = (items: unknown): Record<string, unknown>[] => {
   return []
 }
 
+const getBillingOrderTotal = (order: BillingOrder): number => {
+  const storedTotal = toNumber(order.total, 0)
+  if (storedTotal > 0) return storedTotal
+  const itemSubtotal = parseOrderItems(order.items).reduce((sum, item) => {
+    const lineTotal = toNumber(item.line_total ?? item.lineTotal, 0)
+    if (lineTotal > 0) return sum + lineTotal
+    return sum + toNumber(item.base_price ?? item.basePrice ?? item.price, 0) * Math.max(1, toNumber(item.quantity ?? item.qty, 1))
+  }, 0)
+  const subtotal = itemSubtotal || toNumber(order.subtotal, 0)
+  return Math.max(0, subtotal + toNumber(order.shipping ?? order.delivery_charge, 0) + toNumber(order.total_gst, 0)
+    - toNumber(order.discount_amount, 0) - toNumber(order.manual_discount_amount, 0))
+}
+
 const exportCSV = (orders: BillingOrder[]) => {
   const header = ['Invoice No', 'Customer', 'Phone', 'Bill Type', 'Coupon', 'Discount', 'Delivery', 'Total', 'Date', 'Status']
   const rows = orders.map((order) => {
@@ -188,7 +204,7 @@ const exportCSV = (orders: BillingOrder[]) => {
       order.coupon_code || '',
       toNumber(order.discount_amount, 0).toFixed(2),
       toNumber(order.delivery_charge, 0).toFixed(2),
-      toNumber(order.total, 0).toFixed(2),
+      getBillingOrderTotal(order).toFixed(2),
       dateStr,
       order.status,
     ]
@@ -285,6 +301,10 @@ export default function BillingAnalytics() {
     address: String(row.address || ''),
     created_at: String(row.created_at || ''),
     total: toNumber(row.total, 0),
+    subtotal: toNumber(row.subtotal, 0),
+    shipping: toNumber(row.shipping ?? row.delivery_charge, 0),
+    total_gst: toNumber(row.total_gst ?? row.gst_amount, 0),
+    manual_discount_amount: toNumber(row.manual_discount_amount, 0),
     status: String(row.status || 'pending'),
     order_mode: normalizeOrderMode(row.order_mode),
     order_type: normalizeOrderType(row.order_type),
@@ -317,7 +337,7 @@ export default function BillingAnalytics() {
       const [ordersRes, advanceRows, expenseRows] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, payment_mode, payment_method, items, coupon_code, discount_amount, delivery_charge')
+          .select('id, invoice_no, customer_name, phone, address, created_at, subtotal, shipping, total, total_gst, gst_amount, manual_discount_amount, status, order_mode, order_type, payment_mode, payment_method, items, coupon_code, discount_amount, delivery_charge')
           .eq('branch', branch)
           .order('created_at', { ascending: false })
           .limit(1000),
@@ -375,6 +395,7 @@ export default function BillingAnalytics() {
     const nonCancelled = dated.filter((order) => normalizeStatus(order.status) !== 'cancelled')
     const completedOrders = nonCancelled.filter((order) => isCompletedStatus(order.status))
     const billableCompleted = completedOrders.filter((order) => ['pos_sale', 'manual_sale', 'advance_order'].includes(normalizeOrderType(order.order_type)))
+    const completedSalesBills = completedOrders.filter((order) => ['pos_sale', 'manual_sale'].includes(normalizeOrderType(order.order_type)))
 
     const offlinePOS = billableCompleted.filter(
       (order) => normalizeOrderType(order.order_type) === 'pos_sale' && normalizeOrderMode(order.order_mode) !== 'online',
@@ -387,29 +408,38 @@ export default function BillingAnalytics() {
     )
     const manualSales = billableCompleted.filter((order) => normalizeOrderType(order.order_type) === 'manual_sale')
 
-    const completedRevenue = billableCompleted.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
-    const posRevenue = offlinePOS.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
-    const advanceRevenue = advanceOrders.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
-    const onlinePosRevenue = onlinePOS.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
-    const manualRevenue = manualSales.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
+    const completedRevenue = billableCompleted.reduce((sum, order) => sum + getBillingOrderTotal(order), 0)
+    const posRevenue = offlinePOS.reduce((sum, order) => sum + getBillingOrderTotal(order), 0)
+    const advanceRevenue = advanceOrders.reduce((sum, order) => sum + getBillingOrderTotal(order), 0)
+    const onlinePosRevenue = onlinePOS.reduce((sum, order) => sum + getBillingOrderTotal(order), 0)
+    const manualRevenue = manualSales.reduce((sum, order) => sum + getBillingOrderTotal(order), 0)
 
     const todayKey = toLocalDateKey(new Date())
     const todaySales = billableCompleted
       .filter((order) => toLocalDateKey(order.created_at) === todayKey)
-      .reduce((sum, order) => sum + toNumber(order.total, 0), 0)
+      .reduce((sum, order) => sum + getBillingOrderTotal(order), 0)
 
-    const selectedRevenue = billableCompleted.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
+    const selectedRevenue = completedRevenue
 
     const completedIds = new Set(billableCompleted.map((order) => order.id))
-    const completedItems = orderItems.length > 0
-      ? orderItems.filter((item) => completedIds.has(item.order_id))
-      : billableCompleted.flatMap((order) => parseOrderItems(order.items).map((row) => ({
-          order_id: order.id,
-          product_name: String((row as Record<string, unknown>).product_name || (row as Record<string, unknown>).name || 'Product'),
-          quantity: toNumber((row as Record<string, unknown>).quantity ?? (row as Record<string, unknown>).qty, 0),
-          line_total: toNumber((row as Record<string, unknown>).line_total ?? (row as Record<string, unknown>).lineTotal, 0),
-          is_manual: (row as Record<string, unknown>).is_manual === true || (row as Record<string, unknown>).source === 'manual',
-        })))
+    const itemsByOrder = new Map<string, BillingOrderItem[]>()
+    orderItems.forEach((item) => {
+      if (!completedIds.has(item.order_id)) return
+      const rows = itemsByOrder.get(item.order_id) || []
+      rows.push(item)
+      itemsByOrder.set(item.order_id, rows)
+    })
+    const completedItems = billableCompleted.flatMap((order) => {
+      const savedRows = itemsByOrder.get(order.id)
+      if (savedRows?.length) return savedRows
+      return parseOrderItems(order.items).map((row) => ({
+        order_id: order.id,
+        product_name: String(row.product_name || row.name || 'Product'),
+        quantity: toNumber(row.quantity ?? row.qty, 0),
+        line_total: toNumber(row.line_total ?? row.lineTotal, 0),
+        is_manual: row.is_manual === true || row.source === 'manual',
+      }))
+    })
 
     const productMap = new Map<string, ProductSummary>()
     const productOrders = new Map<string, Set<string>>()
@@ -462,7 +492,7 @@ export default function BillingAnalytics() {
     const monthlyRevenueMap = new Map<string, number>()
     billableCompleted.forEach((order) => {
       const key = toLocalDateKey(order.created_at).slice(0, 7)
-      monthlyRevenueMap.set(key, (monthlyRevenueMap.get(key) || 0) + toNumber(order.total, 0))
+      monthlyRevenueMap.set(key, (monthlyRevenueMap.get(key) || 0) + getBillingOrderTotal(order))
     })
     const monthlyTrend = Array.from({ length: 6 }, (_, index) => {
       const today = new Date()
@@ -478,7 +508,7 @@ export default function BillingAnalytics() {
     const weeklyRevenueMap = new Map<string, number>()
     billableCompleted.forEach((order) => {
       const key = toLocalDateKey(order.created_at)
-      weeklyRevenueMap.set(key, (weeklyRevenueMap.get(key) || 0) + toNumber(order.total, 0))
+      weeklyRevenueMap.set(key, (weeklyRevenueMap.get(key) || 0) + getBillingOrderTotal(order))
     })
     const weekAnchor = new Date(`${analyticsDateTo || analyticsDateFrom || toLocalDateKey(new Date())}T00:00:00`)
     const weekStart = startOfWeekMonday(weekAnchor)
@@ -506,7 +536,7 @@ export default function BillingAnalytics() {
     return {
       totalCompletedRevenue: completedRevenue,
       todaySales,
-      completedOrders: billableCompleted.length,
+      completedOrders: completedSalesBills.length,
       offlineBillCount: offlinePOS.length,
       onlineBillCount: onlinePOS.length,
       posRevenue,
@@ -569,25 +599,20 @@ export default function BillingAnalytics() {
   const depositTotal = depositOrders.reduce((sum, order) => sum + toNumber(order.deposit_amount, 0), 0)
   const completedAdvanceOrders = advanceOrders.filter(order => order.status === 'completed' && isInSelectedPeriod(order.completed_at || order.created_at))
   const completedAdvanceTotal = completedAdvanceOrders.reduce((sum, order) => sum + toNumber(order.total_amount, 0), 0)
-  const creditOrders = orders.filter(order => isInSelectedPeriod(order.created_at) && isCompletedStatus(order.status) && order.payment_mode.toLowerCase().includes('credit'))
-  const creditTotal = creditOrders.reduce((sum, order) => sum + toNumber(order.total, 0), 0)
   const netProfit = analytics.totalCompletedRevenue - expenseTotal
   const summaryCards = [
-    { label: 'Total Revenue', helper: 'Completed POS and manual sales', value: formatCurrency(analytics.totalCompletedRevenue), icon: <RMIcon size={18} />, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+    { label: 'Total Revenue', helper: 'Completed POS, manual, and fully paid advance orders', value: formatCurrency(analytics.totalCompletedRevenue), icon: <RMIcon size={18} />, color: 'text-emerald-700', bg: 'bg-emerald-50' },
     { label: netProfit < 0 ? 'Net Loss' : 'Net Profit', helper: `Revenue (${formatCurrency(analytics.totalCompletedRevenue)}) − Expenses (${formatCurrency(expenseTotal)})`, value: formatCurrency(Math.abs(netProfit)), icon: netProfit < 0 ? <TrendingDown size={18} /> : <TrendingUp size={18} />, color: netProfit < 0 ? 'text-rose-600' : 'text-emerald-700', bg: netProfit < 0 ? 'bg-rose-50' : 'bg-emerald-50' },
     { label: 'Total Expenses', helper: 'Expenses in selected period', value: formatCurrency(expenseTotal), icon: <Receipt size={18} />, color: 'text-amber-700', bg: 'bg-amber-50' },
-    { label: "Today's Sales", helper: 'Completed POS and manual sales today', value: formatCurrency(analytics.todaySales), icon: <TrendingUp size={18} />, color: 'text-blue-700', bg: 'bg-blue-50' },
     { label: 'Offline Revenue', helper: 'Completed walk-in POS sales', value: formatCurrency(analytics.posRevenue), icon: <RMIcon size={18} />, color: 'text-cyan-700', bg: 'bg-cyan-50' },
-    { label: 'Online Revenue', helper: 'Completed online POS sales', value: formatCurrency(analytics.onlinePosRevenue), icon: <RMIcon size={18} />, color: 'text-sky-700', bg: 'bg-sky-50' },
-    { label: 'Completed Bills', helper: 'Completed POS and manual bills', value: analytics.completedOrders, icon: <Trophy size={18} />, color: 'text-green-700', bg: 'bg-green-50' },
+    { label: 'Completed Bills', helper: 'Completed POS and manual bills; advances shown separately', value: analytics.completedOrders, icon: <Trophy size={18} />, color: 'text-green-700', bg: 'bg-green-50' },
     { label: 'Total Offline Bills', helper: 'Walk-in POS orders', value: analytics.offlineBillCount, icon: <Grid2X2 size={18} />, color: 'text-rose-700', bg: 'bg-rose-50' },
     { label: 'Total Online Bills', helper: 'Completed online POS orders', value: analytics.onlineBillCount, icon: <Package size={18} />, color: 'text-blue-700', bg: 'bg-blue-50' },
-    { label: 'Total Items Sold', helper: 'Items on completed POS and manual bills', value: Math.round(analytics.totalProductsSold), icon: <Boxes size={18} />, color: 'text-indigo-700', bg: 'bg-indigo-50' },
-    { label: 'Average Revenue Per Bill', helper: 'Revenue divided by completed POS and manual bills', value: formatCurrency(analytics.averageRevenuePerBill), icon: <RMIcon size={18} />, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+    { label: 'Total Items Sold', helper: 'Items on completed POS, manual, and advance invoices', value: Math.round(analytics.totalProductsSold), icon: <Boxes size={18} />, color: 'text-indigo-700', bg: 'bg-indigo-50' },
+    { label: 'Average Revenue Per Bill', helper: 'Revenue per completed invoice, including advances', value: formatCurrency(analytics.averageRevenuePerBill), icon: <RMIcon size={18} />, color: 'text-emerald-700', bg: 'bg-emerald-50' },
     { label: 'Top Product', helper: 'Most sold item in selected period', value: analytics.bestProduct, icon: <Trophy size={18} />, color: 'text-pink-700', bg: 'bg-pink-50' },
     { label: 'Completed Advance Orders', helper: `${completedAdvanceOrders.length} orders completed`, value: formatCurrency(completedAdvanceTotal), icon: <Package size={18} />, color: 'text-violet-700', bg: 'bg-violet-50' },
     { label: 'Advance Deposits Received', helper: `${depositOrders.length} non-cancelled advance orders`, value: formatCurrency(depositTotal), icon: <Wallet size={18} />, color: 'text-sky-700', bg: 'bg-sky-50' },
-    { label: 'Credit Bills Received', helper: `${creditOrders.length} settled credit bills`, value: formatCurrency(creditTotal), icon: <CreditCard size={18} />, color: 'text-rose-700', bg: 'bg-rose-50' },
   ]
 
   if (authLoading || loading) {
@@ -848,7 +873,7 @@ export default function BillingAnalytics() {
                         <td className="px-3 py-3">{order.coupon_code ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{order.coupon_code}</span> : <span className="text-[#9BAB9A]">—</span>}</td>
                         <td className="px-3 py-3">{order.discount_amount > 0 ? <span className="font-bold text-green-700">-{formatCurrency(order.discount_amount)}</span> : <span className="text-[#9BAB9A]">—</span>}</td>
                         <td className="px-3 py-3">{order.delivery_charge > 0 ? <span className="font-bold">{formatCurrency(order.delivery_charge)}</span> : <span className="text-[#9BAB9A]">—</span>}</td>
-                        <td className="whitespace-nowrap px-3 py-3 font-bold">{formatCurrency(toNumber(order.total, 0))}</td>
+                        <td className="whitespace-nowrap px-3 py-3 font-bold">{formatCurrency(getBillingOrderTotal(order))}</td>
                         <td className="whitespace-nowrap px-3 py-3 text-[#374151]">{new Date(order.created_at).toLocaleDateString('en-IN')}</td>
                         <td className="px-3 py-3">
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${normalizeStatus(order.status) === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
