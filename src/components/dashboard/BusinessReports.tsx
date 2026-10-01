@@ -3,20 +3,12 @@ import { FileText, Calendar, Download, Loader2 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import { branchLabel, branchShortLabel } from '../../lib/branchTheme'
 import type { PosBranch } from '../../store/store'
+import { buildCsv, downloadCsvFile } from '../../lib/csv'
 
 const BRANCHES: PosBranch[] = ['pos1', 'pos2']
 
 function downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
-  const csv = [header, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\n')
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadCsvFile(filename, buildCsv(header, rows))
 }
 
 export default function BusinessReports() {

@@ -17,6 +17,7 @@ import {
 } from '../../services/inventoryService'
 import { useAdminAuthStore, resolveBranch } from '../../store/store'
 import { getPeriodBounds } from '../../lib/dateRanges'
+import { buildCsv, downloadCsvFile } from '../../lib/csv'
 
 export const InventoryAnalyticsView: React.FC = () => {
   const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
@@ -108,11 +109,11 @@ export const InventoryAnalyticsView: React.FC = () => {
 
         return [
           it.product_id,
-          `"${(it.name || '').replace(/"/g, '""')}"`,
-          `"${(it.name_ta || '').replace(/"/g, '""')}"`,
+          (it.name || ''),
+          (it.name_ta || ''),
           it.variant_id || '',
-          `"${(it.variant_name || '').replace(/"/g, '""')}"`,
-          `"${(it.category || 'General').replace(/"/g, '""')}"`,
+          (it.variant_name || ''),
+          (it.category || 'General'),
           it.barcode || '',
           stock,
           costPrice,
@@ -124,17 +125,8 @@ export const InventoryAnalyticsView: React.FC = () => {
         ]
       })
 
-      const csvContent =
-        'data:text/csv;charset=utf-8,\uFEFF' +
-        [headers.join(','), ...rows.map((e: (string | number)[]) => e.join(','))].join('\n')
-
-      const encodedUri = encodeURI(csvContent)
-      const link = document.createElement('a')
-      link.setAttribute('href', encodedUri)
-      link.setAttribute('download', `YG_Inventory_Snapshot_${new Date().toISOString().slice(0, 10)}.csv`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      const csv = buildCsv(headers, rows)
+      downloadCsvFile(`YG_Inventory_Snapshot_${new Date().toISOString().slice(0, 10)}.csv`, csv)
     } catch (err) {
       console.error('Failed to export inventory snapshot:', err)
     } finally {
@@ -160,27 +152,18 @@ export const InventoryAnalyticsView: React.FC = () => {
     const rows = filteredMovements.map((m) => [
       new Date(m.created_at).toLocaleString(),
       m.movement_type,
-      `"${(m.product?.name || 'Unknown').replace(/"/g, '""')}"`,
-      `"${(m.variant?.variant_name || '').replace(/"/g, '""')}"`,
+      (m.product?.name || 'Unknown'),
+      (m.variant?.variant_name || ''),
       m.barcode_id || '',
       m.quantity_delta,
       m.quantity_before,
       m.quantity_after,
-      `"${(m.created_by_name || '').replace(/"/g, '""')}"`,
-      `"${(m.note || '').replace(/"/g, '""')}"`,
+      (m.created_by_name || ''),
+      (m.note || ''),
     ])
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
-
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `YG_Inventory_Movements_${range}_${Date.now()}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const csv = buildCsv(headers, rows)
+    downloadCsvFile(`YG_Inventory_Movements_${range}_${Date.now()}.csv`, csv)
   }
 
   const getMovementBadge = (type: InventoryMovement['movement_type']) => {

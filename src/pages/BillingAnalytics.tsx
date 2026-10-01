@@ -52,6 +52,7 @@ import { formatCurrency, normalizeOrderMode, toNumber } from '../lib/retail'
 import { formatPhoneForCSV, formatPhoneForDisplay } from '../lib/phone'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
 import { getPeriodRange } from '../lib/dateRanges'
+import { buildCsv, downloadCsvFile } from '../lib/csv'
 import { expenseService, type ExpenseRecord } from '../services/expenseService'
 import { listAdvanceOrders, type AdvanceOrder } from '../services/advanceOrderService'
 import { branchShortLabel } from '../lib/branchTheme'
@@ -210,17 +211,8 @@ const exportCSV = (orders: BillingOrder[]) => {
     ]
   })
 
-  const csv = [header, ...rows]
-    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
-    .join('\n')
-
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `billing_analytics_${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  const csv = buildCsv(header, rows)
+  downloadCsvFile(`billing_analytics_${new Date().toISOString().slice(0, 10)}.csv`, csv)
 }
 
 function StatCard({

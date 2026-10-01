@@ -72,6 +72,7 @@ import { exportAnalyticsToCSV, exportAnalyticsToPDF } from '../services/analytic
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
 import { branchShortLabel } from '../lib/branchTheme'
 import { getPeriodRange, toLocalDateKey } from '../lib/dateRanges'
+import { buildCsv, downloadCsvFile } from '../lib/csv'
 import {
   ResponsiveContainer,
   XAxis,
@@ -172,14 +173,8 @@ const exportCSV = (orders: DashboardOrder[]) => {
       o.status,
     ]
   })
-  const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `orders_${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  const csv = buildCsv(header, rows)
+  downloadCsvFile(`orders_${new Date().toISOString().slice(0, 10)}.csv`, csv)
 }
 
 const UNIT_TYPE_OPTIONS: { value: UnitType; label: string; hint: string }[] = [

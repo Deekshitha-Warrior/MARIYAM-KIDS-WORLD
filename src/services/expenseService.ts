@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { PosBranch } from '../store/store'
 import { getPeriodRange } from '../lib/dateRanges'
+import { buildCsv, downloadCsvFile } from '../lib/csv'
 
 export interface ExpenseRecord {
   id: string
@@ -506,25 +507,12 @@ export function exportExpensesToCSV(expenses: ExpenseRecord[]): void {
   const headers = ['Date', 'Category', 'Description', 'Amount (INR)', 'Payment Mode', 'Recorded By']
   const rows = expenses.map((e) => [
     String(e?.expense_date || ''),
-    `"${String(e?.category_name || 'Uncategorized').replace(/"/g, '""')}"`,
-    `"${String(e?.description ?? '').replace(/"/g, '""')}"`,
+    String(e?.category_name || 'Uncategorized'),
+    String(e?.description ?? ''),
     Number(e?.amount || 0).toFixed(2),
-    `"${String(e?.payment_mode || 'Cash').replace(/"/g, '""')}"`,
-    `"${String(e?.recorded_by_name || 'Staff').replace(/"/g, '""')}"`,
+    String(e?.payment_mode || 'Cash'),
+    String(e?.recorded_by_name || 'Staff'),
   ])
 
-  const csvContent =
-    '\uFEFF' +
-    [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n')
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', `YG-Expenses-${new Date().toISOString().slice(0, 10)}.csv`)
-  link.style.display = 'none'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadCsvFile(`YG-Expenses-${new Date().toISOString().slice(0, 10)}.csv`, buildCsv(headers, rows))
 }
