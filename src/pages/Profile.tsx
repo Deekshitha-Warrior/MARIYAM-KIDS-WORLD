@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/store'
 import { useLangStore } from '../store/langStore'
 import { Package, User, LogOut, ChevronDown, ChevronUp, ShoppingBag, Settings, Edit2, Check, X, Camera } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
-import { formatCurrency, formatQuantityDisplay, normalizeStructuredOrderItem } from '../lib/retail'
+import { formatCurrency, formatQuantityValue, normalizeUnitLabel, normalizeStructuredOrderItem } from '../lib/retail'
 import { isValidPhone } from '../lib/phone'
 
 
@@ -489,7 +489,7 @@ export default function Profile() {
                                     return (
                                       <tr key={i}>
                                         <td className="py-2 font-medium text-textMain">{pName}</td>
-                                          <td className="py-2 text-center text-textMuted">{formatQuantityDisplay(item.quantity, item.unit, item.unit_type)}</td>
+                                          <td className="py-2 text-center text-textMuted">{formatQuantityValue(item.quantity)}</td>
                                           <td className="py-2 text-right font-bold text-textMain">{formatCurrency(item.line_total)}</td>
                                       </tr>
                                     )
@@ -501,7 +501,7 @@ export default function Profile() {
                               <div className="mt-3 space-y-1">
                                 {(o.items || []).map((item, i: number) => (
                                   <p key={`meta-${i}`} className="text-[11px] text-textMuted">
-                                    {(lang === 'ta' && item.tamil_name ? item.tamil_name : item.name)}: {item.unit} • {formatCurrency(item.base_price)}
+                                    {(lang === 'ta' && item.tamil_name ? item.tamil_name : item.name)}: {normalizeUnitLabel(item.unit, item.unit_type)} • {formatCurrency(item.base_price)}
                                   </p>
                                 ))}
                               </div>

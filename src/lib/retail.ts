@@ -345,6 +345,11 @@ export const formatCompactQuantity = (quantity: number, unitLabel: string) => {
   return `${q} ${unit}`
 }
 
+// Quantity without the unit suffix, for contexts that already display the
+// unit separately (e.g. the invoice ITEM/SKU column prints "m · ₹100.00",
+// so repeating "5 m" in the QTY column is redundant).
+export const formatQuantityValue = (quantity: number) => formatNumber(quantity)
+
 export const formatQuantityDisplay = (
   quantity: number,
   unitLabel: string,

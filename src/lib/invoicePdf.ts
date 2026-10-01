@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { BRAND_EN } from './brand'
-import { formatCurrency, formatQuantityDisplay, normalizeStructuredOrderItem, formatInvoiceNo } from './retail'
+import { formatCurrency, formatQuantityValue, normalizeStructuredOrderItem, normalizeUnitLabel, formatInvoiceNo } from './retail'
 import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import type { PosBranch } from '../store/store'
 import { getBranchProfile } from './branchProfile'
@@ -132,16 +132,21 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
     doc.setTextColor(ink)
     doc.text(String(index + 1), left + 3, y)
     doc.text(nameLines, left + 12, y)
+    // Unit belongs with the item description (the QTY column stays a bare
+    // number), matching the on-screen invoice's "m · ₹100.00" sub-line.
+    const subY = y + nameLines.length * 4
+    const unitLabel = normalizeUnitLabel(item.unit, item.unit_type)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(muted)
-    doc.text(`${formatQuantityDisplay(item.quantity, item.unit, item.unit_type)}`, 139, y, { align: 'center' })
+    doc.text(`${unitLabel} · ${money(item.base_price)}`, left + 12, subY)
+    doc.text(`${formatQuantityValue(item.quantity)}`, 139, y, { align: 'center' })
     doc.text(money(item.base_price), 164, y, { align: 'right' })
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8)
     doc.setTextColor(ink)
     doc.text(money(item.line_total), right - 3, y, { align: 'right' })
-    y += Math.max(10, nameLines.length * 4 + 4)
+    y += Math.max(14, (nameLines.length + 1) * 4 + 4)
     doc.setDrawColor('#e8eaed')
     doc.line(left, y - 3, right, y - 3)
   })

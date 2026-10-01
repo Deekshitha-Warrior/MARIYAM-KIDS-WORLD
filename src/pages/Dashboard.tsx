@@ -314,7 +314,7 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([])
 
   // Order Management bill type filter
-  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual'>('all')
+  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual' | 'advance'>('all')
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'cash' | 'qr' | 'card' | 'split'>('all')
 
   // Users tab
@@ -449,7 +449,7 @@ export default function Dashboard() {
       const mappedOrders = (oRes.data || []).map(r => toDashboardOrder(r as Record<string, unknown>))
       setCats((cRes.data || []) as Category[])
       setOrders(mappedOrders)
-      setSearchResults(mappedOrders.filter(o => !['online_request', 'advance_order'].includes(normalizeOrderType(o.order_type))).slice(0, 100))
+      setSearchResults(mappedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request').slice(0, 100))
       setCoupons((couponRes.data || []) as DashboardCoupon[])
       setExpenses(expList || [])
 
@@ -879,12 +879,16 @@ export default function Dashboard() {
   // Bill-type & Payment-method filtered results for Order Management table (client-side, instant)
   const filteredSearchResults = useMemo(() => {
     return searchResults.filter(o => {
-      if (normalizeOrderType(o.order_type) === 'advance_order') return false
+      // Completed advance orders are real revenue bills (complete_advance_order_v2
+      // writes them into `orders`), so they belong here. Only website requests,
+      // which are still unfulfilled enquiries, stay out of the bill ledger.
+      if (normalizeOrderType(o.order_type) === 'online_request') return false
       const createdDate = toLocalDateKey(o.created_at)
       if (search.dateFrom && createdDate < search.dateFrom) return false
       if (search.dateTo && createdDate > search.dateTo) return false
       const type = normalizeOrderType(o.order_type)
       const mode = normalizeOrderMode(o.order_mode)
+      if (billTypeFilter === 'advance' && type !== 'advance_order') return false
       if (billTypeFilter === 'manual' && type !== 'manual_sale') return false
       if (billTypeFilter === 'offline' && !(type === 'pos_sale' && mode !== 'online')) return false
       if (billTypeFilter === 'online' && !(type === 'pos_sale' && mode === 'online')) return false
@@ -1230,7 +1234,7 @@ export default function Dashboard() {
     return count
   }, [billTypeFilter, datePreset, search])
 
-  // Order search - POS bills only (online_request excluded)
+  // Order search - all settled bills (online_request excluded; advance_order included)
   const runSearch = async (e?: FormEvent) => {
     e?.preventDefault()
     setSearchLoading(true)
@@ -1244,7 +1248,6 @@ export default function Dashboard() {
       let q = supabase.from('orders')
         .select('id, invoice_no, customer_name, phone, address, created_at, total, status, order_mode, order_type, items, coupon_code, discount_amount, manual_discount_amount, delivery_charge, total_gst, gst_amount, payment_mode, payment_method, remarks, reference_number, branch')
         .neq('order_type', 'online_request')
-        .neq('order_type', 'advance_order')
         .eq('branch', branch)
         .order('created_at', { ascending: false })
         .limit(hasQuery ? 1000 : 500)
@@ -1294,7 +1297,8 @@ export default function Dashboard() {
       if (search.dateFrom) q = q.gte('created_at', new Date(`${search.dateFrom}T00:00:00`).toISOString())
       if (search.dateTo)   q = q.lte('created_at', new Date(`${search.dateTo}T23:59:59.999`).toISOString())
 
-      if (billTypeFilter === 'manual')       q = q.eq('order_type', 'manual_sale')
+      if (billTypeFilter === 'advance')    q = q.eq('order_type', 'advance_order')
+      else if (billTypeFilter === 'manual')       q = q.eq('order_type', 'manual_sale')
       else if (billTypeFilter === 'offline') q = q.eq('order_type', 'pos_sale').eq('order_mode', 'offline')
       else if (billTypeFilter === 'online')  q = q.eq('order_type', 'pos_sale').eq('order_mode', 'online')
 
@@ -1347,7 +1351,7 @@ export default function Dashboard() {
       // Fallback: if query returned no results from Supabase, search in pre-loaded orders
       if (hasQuery && results.length === 0 && orders.length > 0) {
         const localMatches = orders.filter(o => {
-          if (['online_request', 'advance_order'].includes(normalizeOrderType(o.order_type))) return false
+          if (normalizeOrderType(o.order_type) === 'online_request') return false
           return matchOrder(o)
         })
         if (localMatches.length > 0) {
@@ -3270,7 +3274,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.24em] text-[#10B981]">{l('Billing history', 'பில் வரலாறு')}</p>
-                <h2 className="mt-1 text-xl font-black text-[#111111]">{l('Order Management', 'ஆர்டர் மேலாண்மை')} <span className="text-[11px] font-semibold text-[#374151]">({l('POS Bills only', 'POS பில்கள் மட்டுமே')})</span></h2>
+                <h2 className="mt-1 text-xl font-black text-[#111111]">{l('Order Management', 'ஆர்டர் மேலாண்மை')} <span className="text-[11px] font-semibold text-[#374151]">({l('POS + Advance Bills', 'POS பில்கள் மட்டுமே')})</span></h2>
               </div>
               <div className="flex gap-2">
                 <Link to="/pos" className="inline-flex items-center gap-2 rounded-xl bg-[#111111] px-4 py-2 text-[13px] font-bold text-white shadow-sm hover:bg-[#1f281d]">
@@ -3333,6 +3337,7 @@ export default function Dashboard() {
                         <option value="offline">{l('Offline POS', 'ஆஃப்லைன் POS')}</option>
                         <option value="online">{l('Online', 'ஆன்லைன்')}</option>
                         <option value="manual">{l('Manual', 'கைமுறை')}</option>
+                        <option value="advance">{l('Advance Orders', 'மன்ப்ரகீகளை')}</option>
                       </select>
                       <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>

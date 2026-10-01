@@ -4,6 +4,11 @@ import { X, Calendar, Tag, AlertCircle, Edit2 } from 'lucide-react'
 import { expenseService, type ExpenseCategory, type ExpenseRecord } from '../../services/expenseService'
 import type { PosBranch } from '../../store/store'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
+import { toLocalDateStr } from '../../lib/dateRanges'
+
+// Local calendar date, NOT new Date().toISOString() — the latter is UTC and
+// would pre-fill yesterday between 00:00 and 05:30 IST.
+const todayLocal = () => toLocalDateStr(new Date())
 
 interface RecordExpenseModalProps {
   isOpen: boolean
@@ -22,7 +27,7 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
   expenseToEdit,
   branch,
 }) => {
-  const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [expenseDate, setExpenseDate] = useState(todayLocal)
   const [categoryId, setCategoryId] = useState<number | string>(() => categories[0]?.id || '')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
@@ -38,7 +43,7 @@ export const RecordExpenseModal: React.FC<RecordExpenseModalProps> = ({
         setAmount(String(expenseToEdit.amount))
         setDescription(expenseToEdit.description || '')
       } else {
-        setExpenseDate(new Date().toISOString().slice(0, 10))
+        setExpenseDate(todayLocal())
         setCategoryId(categories[0]?.id || '')
         setAmount('')
         setDescription('')
