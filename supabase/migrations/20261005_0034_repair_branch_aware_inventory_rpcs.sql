@@ -1,101 +1,74 @@
 -- ====================================================================
--- Migration 0012: Barcode Management & Inventory Movement Ledger Addon
+-- Migration 0034: Repair branch-aware inventory/barcode RPCs
+--
+-- Root cause
+-- ----------
+-- Migration 0012 was executed AFTER 0020 on this database (the same
+-- re-run that previously caused the 42P10 abort on 0013 stopped at
+-- 0013, but on an earlier pass 0012 was replayed on top of 0020).
+--
+-- 0012 uses CREATE OR REPLACE for functions that 0020 had already
+-- redefined with an EXTRA TRAILING PARAMETER:
+--
+--   generate_barcode_value(text)             <- 0012
+--   generate_barcode_value(text, text)       <- 0020  (p_branch DEFAULT 'pos1')
+--
+-- Because the signatures differ, CREATE OR REPLACE does NOT replace the
+-- existing function -- Postgres treats it as a NEW overload. Both now
+-- coexist, and the default value on 0020's p_branch makes the 1-arg call
+-- ambiguous:
+--
+--   ERROR 42725: function public.generate_barcode_value(text) is not unique
+--
+-- The same replay silently rolled BACK the branch-awareness that 0020
+-- added inside the function BODIES (create_barcode_and_receive_stock,
+-- adjust_inventory_stock and complete_pos_sale_with_inventory lost their
+-- v_branch handling and their p_branch parameter), because those bodies
+-- are replaced in place under the SAME signature.
+--
+-- Effect: "Generate & Print" fails for every SKU, and POS checkout /
+-- stock receipts lose per-branch isolation.
+--
+-- Fix
+-- ---
+-- 1. Drop the stale 1-argument overload created by 0012.
+-- 2. Re-assert the canonical branch-aware definitions, taken verbatim
+--    from 0020 (barcode + stock RPCs) and 0026 (POS sale, which is the
+--    0020 function plus the NULL-remarks COALESCE fix).
+--
+-- Idempotent: safe to re-run.
 -- ====================================================================
 
 BEGIN;
 
--- 1. Sequences for Barcode Generation
-CREATE SEQUENCE IF NOT EXISTS public.barcode_product_seq START WITH 10000001;
-CREATE SEQUENCE IF NOT EXISTS public.barcode_variant_seq START WITH 10000001;
+-- 1. Remove the ambiguous 1-argument overload left behind by 0012.
+DROP FUNCTION IF EXISTS public.generate_barcode_value(TEXT);
 
--- 2. Canonical Barcode Registry
-CREATE TABLE IF NOT EXISTS public.barcode_registry (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  barcode_value TEXT NOT NULL UNIQUE,
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('product', 'variant')),
-  product_id BIGINT NOT NULL REFERENCES public.products(id) ON DELETE RESTRICT,
-  variant_id UUID REFERENCES public.product_variants(id) ON DELETE RESTRICT,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_by_name TEXT NOT NULL DEFAULT '',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT chk_barcode_entity_target CHECK (
-    (entity_type = 'product' AND variant_id IS NULL) OR
-    (entity_type = 'variant' AND variant_id IS NOT NULL)
-  )
-);
+-- 2. Re-assert canonical branch-aware definitions.
 
--- 3. Inventory Movement Ledger
-CREATE TABLE IF NOT EXISTS public.inventory_movements (
-  id BIGSERIAL PRIMARY KEY,
-  product_id BIGINT REFERENCES public.products(id) ON DELETE SET NULL,
-  variant_id UUID REFERENCES public.product_variants(id) ON DELETE SET NULL,
-  barcode_id UUID REFERENCES public.barcode_registry(id) ON DELETE SET NULL,
-  movement_type TEXT NOT NULL CHECK (
-    movement_type IN ('INITIAL_BARCODE_STOCK', 'RESTOCK', 'SALE', 'RETURN', 'DAMAGE', 'CORRECTION', 'VOID')
-  ),
-  quantity_delta NUMERIC NOT NULL,
-  quantity_before NUMERIC NOT NULL,
-  quantity_after NUMERIC NOT NULL,
-  unit_cost NUMERIC DEFAULT NULL,
-  reference_type TEXT DEFAULT NULL, -- 'order', 'adjustment', 'barcode_receipt'
-  reference_id TEXT DEFAULT NULL,   -- order_id or invoice_no
-  note TEXT DEFAULT '',
-  created_by_name TEXT NOT NULL DEFAULT '',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- 4. Indexes for Rapid POS Lookup & Audit Reports
-CREATE INDEX IF NOT EXISTS idx_barcode_registry_val ON public.barcode_registry(barcode_value);
-CREATE INDEX IF NOT EXISTS idx_barcode_registry_prod ON public.barcode_registry(product_id);
-CREATE INDEX IF NOT EXISTS idx_barcode_registry_var ON public.barcode_registry(variant_id) WHERE variant_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_inv_movements_prod ON public.inventory_movements(product_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_inv_movements_var ON public.inventory_movements(variant_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_inv_movements_type ON public.inventory_movements(movement_type, created_at DESC);
-
--- 5. Enable RLS and Policies
-ALTER TABLE public.barcode_registry ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.inventory_movements ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS barcode_registry_all ON public.barcode_registry;
-CREATE POLICY barcode_registry_all ON public.barcode_registry FOR ALL USING (TRUE) WITH CHECK (TRUE);
-
-DROP POLICY IF EXISTS inventory_movements_all ON public.inventory_movements;
-CREATE POLICY inventory_movements_all ON public.inventory_movements FOR ALL USING (TRUE) WITH CHECK (TRUE);
-
--- 6. Helper Function: Generate Unique Barcode String
---
--- Re-run safety: 0020 replaces this with a branch-aware two-argument
--- version generate_barcode_value(TEXT, TEXT). If this file is ever run
--- again AFTER 0020, a plain CREATE OR REPLACE would register a SECOND
--- overload instead of replacing the existing one (signatures differ), and
--- because 0020's p_branch has a DEFAULT, every one-argument call becomes
--- ambiguous:
---     ERROR 42725: function public.generate_barcode_value(text) is not unique
--- which breaks "Generate & Print" for every SKU. So only create this
--- legacy single-argument form when the branch-aware one is absent.
-DO $$
+-- generate_barcode_value: branch-aware (from 0020)
+CREATE OR REPLACE FUNCTION public.generate_barcode_value(p_entity_type TEXT, p_branch TEXT DEFAULT 'pos1')
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
 BEGIN
-  IF to_regprocedure('public.generate_barcode_value(TEXT,TEXT)') IS NULL THEN
-    EXECUTE $fn$
-      CREATE FUNCTION public.generate_barcode_value(p_entity_type TEXT)
-      RETURNS TEXT
-      LANGUAGE plpgsql
-      AS $body$
-      BEGIN
-        IF p_entity_type = 'variant' THEN
-          RETURN 'PBV' || LPAD(nextval('public.barcode_variant_seq')::TEXT, 8, '0');
-        ELSE
-          RETURN 'PBP' || LPAD(nextval('public.barcode_product_seq')::TEXT, 8, '0');
-        END IF;
-      END;
-      $body$;
-    $fn$;
+  IF p_branch = 'pos2' THEN
+    IF p_entity_type = 'variant' THEN
+      RETURN 'P2V' || LPAD(nextval('public.barcode_variant_seq_pos2')::TEXT, 8, '0');
+    ELSE
+      RETURN 'P2P' || LPAD(nextval('public.barcode_product_seq_pos2')::TEXT, 8, '0');
+    END IF;
+  ELSE
+    -- POS 1: unchanged from before the branch split.
+    IF p_entity_type = 'variant' THEN
+      RETURN 'PBV' || LPAD(nextval('public.barcode_variant_seq')::TEXT, 8, '0');
+    ELSE
+      RETURN 'PBP' || LPAD(nextval('public.barcode_product_seq')::TEXT, 8, '0');
+    END IF;
   END IF;
 END;
 $$;
 
--- 7. Transactional RPC: Create Barcode & Receive Stock (With Barcode Reuse on Restock)
 CREATE OR REPLACE FUNCTION public.create_barcode_and_receive_stock(
   p_product_id BIGINT,
   p_variant_id UUID DEFAULT NULL,
@@ -120,13 +93,14 @@ DECLARE
   v_qty_after NUMERIC := 0;
   v_prod_name TEXT;
   v_var_name TEXT := '';
+  v_branch TEXT;
 BEGIN
   IF p_quantity_received < 0 THEN
     RAISE EXCEPTION 'Quantity received cannot be negative';
   END IF;
 
-  -- 1. Check Parent Product Exists
-  SELECT name INTO v_prod_name FROM public.products WHERE id = p_product_id;
+  -- 1. Check Parent Product Exists (and capture its branch)
+  SELECT name, branch INTO v_prod_name, v_branch FROM public.products WHERE id = p_product_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Product with ID % not found', p_product_id;
   END IF;
@@ -170,13 +144,13 @@ BEGIN
   ELSE
     v_is_new_barcode := TRUE;
     v_movement_type := 'INITIAL_BARCODE_STOCK';
-    v_barcode_value := COALESCE(NULLIF(UPPER(BTRIM(p_custom_barcode)), ''), public.generate_barcode_value(v_entity_type));
+    v_barcode_value := COALESCE(NULLIF(UPPER(BTRIM(p_custom_barcode)), ''), public.generate_barcode_value(v_entity_type, v_branch));
 
     INSERT INTO public.barcode_registry (
-      barcode_value, entity_type, product_id, variant_id, is_active, created_by_name
+      barcode_value, entity_type, product_id, variant_id, is_active, created_by_name, branch
     )
     VALUES (
-      v_barcode_value, v_entity_type, p_product_id, p_variant_id, TRUE, COALESCE(p_created_by_name, '')
+      v_barcode_value, v_entity_type, p_product_id, p_variant_id, TRUE, COALESCE(p_created_by_name, ''), v_branch
     )
     RETURNING id INTO v_barcode_id;
   END IF;
@@ -200,7 +174,7 @@ BEGIN
       UPDATE public.product_variants
       SET stock = v_qty_after, updated_at = NOW()
       WHERE id = p_variant_id;
-  
+
       -- Refresh parent aggregate stock cache
       UPDATE public.products
       SET stock_quantity = (
@@ -229,13 +203,13 @@ BEGIN
     INSERT INTO public.inventory_movements (
       product_id, variant_id, barcode_id, movement_type,
       quantity_delta, quantity_before, quantity_after,
-      unit_cost, reference_type, reference_id, note, created_by_name
+      unit_cost, reference_type, reference_id, note, created_by_name, branch
     )
     VALUES (
       p_product_id, p_variant_id, v_barcode_id, v_movement_type,
       p_quantity_received, v_qty_before, v_qty_after,
       p_unit_cost, 'barcode_receipt', v_barcode_value,
-      COALESCE(p_note, ''), COALESCE(p_created_by_name, '')
+      COALESCE(p_note, ''), COALESCE(p_created_by_name, ''), v_branch
     );
   END IF;
 
@@ -256,7 +230,6 @@ BEGIN
 END;
 $$;
 
--- 8. Transactional RPC: Adjust Stock (Restock, Damage, Correction, Return)
 CREATE OR REPLACE FUNCTION public.adjust_inventory_stock(
   p_product_id BIGINT,
   p_variant_id UUID DEFAULT NULL,
@@ -274,6 +247,7 @@ DECLARE
   v_qty_before NUMERIC := 0;
   v_delta NUMERIC := 0;
   v_barcode_id UUID;
+  v_branch TEXT;
 BEGIN
   IF p_new_quantity < 0 THEN
     RAISE EXCEPTION 'Stock quantity cannot be negative';
@@ -285,9 +259,9 @@ BEGIN
       RAISE EXCEPTION 'Variant does not belong to specified Product';
     END IF;
 
-    SELECT stock INTO v_qty_before FROM public.product_variants WHERE id = p_variant_id FOR UPDATE;
+    SELECT stock, branch INTO v_qty_before, v_branch FROM public.product_variants WHERE id = p_variant_id FOR UPDATE;
     SELECT id INTO v_barcode_id FROM public.barcode_registry WHERE variant_id = p_variant_id AND is_active = TRUE LIMIT 1;
-    
+
     v_delta := p_new_quantity - v_qty_before;
 
     UPDATE public.product_variants
@@ -301,7 +275,7 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_product_id;
   ELSE
-    SELECT stock_quantity INTO v_qty_before FROM public.products WHERE id = p_product_id FOR UPDATE;
+    SELECT stock_quantity, branch INTO v_qty_before, v_branch FROM public.products WHERE id = p_product_id FOR UPDATE;
     SELECT id INTO v_barcode_id FROM public.barcode_registry WHERE product_id = p_product_id AND variant_id IS NULL AND is_active = TRUE LIMIT 1;
 
     v_delta := p_new_quantity - v_qty_before;
@@ -317,12 +291,12 @@ BEGIN
   INSERT INTO public.inventory_movements (
     product_id, variant_id, barcode_id, movement_type,
     quantity_delta, quantity_before, quantity_after,
-    reference_type, note, created_by_name
+    reference_type, note, created_by_name, branch
   )
   VALUES (
     p_product_id, p_variant_id, v_barcode_id, p_reason,
     v_delta, v_qty_before, p_new_quantity,
-    'adjustment', COALESCE(p_note, ''), COALESCE(p_created_by_name, '')
+    'adjustment', COALESCE(p_note, ''), COALESCE(p_created_by_name, ''), v_branch
   );
 
   RETURN jsonb_build_object(
@@ -335,7 +309,7 @@ BEGIN
 END;
 $$;
 
--- 9. Transactional RPC: Complete POS Sale with Inventory Pre-Validation & Movement Ledger
+-- complete_pos_sale_with_inventory: branch-aware + NULL-safe (from 0026)
 CREATE OR REPLACE FUNCTION public.complete_pos_sale_with_inventory(
   p_customer_name TEXT,
   p_phone TEXT,
@@ -358,7 +332,8 @@ CREATE OR REPLACE FUNCTION public.complete_pos_sale_with_inventory(
   p_gst_enabled BOOLEAN DEFAULT FALSE,
   p_remarks TEXT DEFAULT NULL,
   p_reference_number TEXT DEFAULT NULL,
-  p_billing_date TIMESTAMPTZ DEFAULT NULL
+  p_billing_date TIMESTAMPTZ DEFAULT NULL,
+  p_branch TEXT DEFAULT 'pos1'
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -394,12 +369,13 @@ DECLARE
   v_current_stock NUMERIC;
   v_barcode_id UUID;
   v_created_at TIMESTAMPTZ := COALESCE(p_billing_date, NOW());
+  v_branch TEXT := CASE WHEN p_branch = 'pos2' THEN 'pos2' ELSE 'pos1' END;
 BEGIN
   IF p_items IS NULL OR jsonb_array_length(p_items) = 0 THEN
     RAISE EXCEPTION 'Order items cannot be empty';
   END IF;
 
-  -- 1. Atomic Pre-Validation of Available Stock for All Items
+  -- 1. Atomic Pre-Validation of Available Stock for All Items (branch-scoped)
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
     v_product_id := NULLIF(v_item ->> 'product_id', '')::BIGINT;
@@ -410,12 +386,12 @@ BEGIN
 
     IF NOT v_is_manual AND v_quantity > 0 THEN
       IF v_variant_id IS NOT NULL THEN
-        SELECT stock INTO v_current_stock FROM public.product_variants WHERE id = v_variant_id FOR UPDATE;
+        SELECT stock INTO v_current_stock FROM public.product_variants WHERE id = v_variant_id AND branch = v_branch FOR UPDATE;
         IF v_current_stock IS NULL OR v_current_stock < v_quantity THEN
           RAISE EXCEPTION 'Insufficient stock for % (Available: %, Requested: %)', v_product_name, COALESCE(v_current_stock, 0), v_quantity;
         END IF;
       ELSIF v_product_id IS NOT NULL THEN
-        SELECT stock_quantity INTO v_current_stock FROM public.products WHERE id = v_product_id FOR UPDATE;
+        SELECT stock_quantity INTO v_current_stock FROM public.products WHERE id = v_product_id AND branch = v_branch FOR UPDATE;
         IF v_current_stock IS NULL OR v_current_stock < v_quantity THEN
           RAISE EXCEPTION 'Insufficient stock for % (Available: %, Requested: %)', v_product_name, COALESCE(v_current_stock, 0), v_quantity;
         END IF;
@@ -423,8 +399,8 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 2. Calculate Subtotal & Generate Invoice Number
-  v_invoice_no := public.get_next_invoice_no();
+  -- 2. Calculate Subtotal & Generate Invoice Number (from this branch's sequence)
+  v_invoice_no := public.get_next_invoice_no(v_branch);
 
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
@@ -449,7 +425,7 @@ BEGIN
     manual_discount_type, manual_discount_value, coupon_code,
     coupon_percentage, total_gst, gst_amount, gst_enabled,
     payment_method, payment_mode, split_details, remarks,
-    reference_number, billing_date, created_at, updated_at
+    reference_number, billing_date, branch, created_at, updated_at
   )
   VALUES (
     v_invoice_no, v_user_id, COALESCE(NULLIF(BTRIM(p_customer_name), ''), 'Customer'),
@@ -462,12 +438,12 @@ BEGIN
     COALESCE(p_coupon_percentage, 0), COALESCE(p_total_gst, 0),
     COALESCE(p_total_gst, 0), COALESCE(p_gst_enabled, FALSE),
     COALESCE(p_payment_method, 'cash'), COALESCE(p_payment_method, 'cash'),
-    COALESCE(p_split_details, '{}'::JSONB), p_remarks,
-    p_reference_number, p_billing_date, v_created_at, NOW()
+    COALESCE(p_split_details, '{}'::JSONB), COALESCE(p_remarks, ''),
+    COALESCE(p_reference_number, ''), p_billing_date, v_branch, v_created_at, NOW()
   )
   RETURNING id INTO v_order_id;
 
-  -- 4. Insert Order Items, Deduct Stock & Record SALE Movements
+  -- 4. Insert Order Items, Deduct Stock (branch-scoped) & Record SALE Movements
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
   LOOP
     v_product_id := NULLIF(v_item ->> 'product_id', '')::BIGINT;
@@ -505,59 +481,59 @@ BEGIN
       v_source, v_note, v_category, v_created_at
     );
 
-    -- Deduct Stock and Insert SALE Movement
+    -- Deduct Stock and Insert SALE Movement (branch-scoped)
     IF NOT v_is_manual AND v_quantity > 0 THEN
       IF v_variant_id IS NOT NULL THEN
-        SELECT stock INTO v_current_stock FROM public.product_variants WHERE id = v_variant_id;
+        SELECT stock INTO v_current_stock FROM public.product_variants WHERE id = v_variant_id AND branch = v_branch;
         SELECT id INTO v_barcode_id FROM public.barcode_registry WHERE variant_id = v_variant_id AND is_active = TRUE LIMIT 1;
 
         UPDATE public.product_variants
         SET stock = GREATEST(0, stock - v_quantity), updated_at = NOW()
-        WHERE id = v_variant_id;
+        WHERE id = v_variant_id AND branch = v_branch;
 
         -- Parent aggregate update
         UPDATE public.products
         SET stock_quantity = (SELECT COALESCE(SUM(stock), 0) FROM public.product_variants WHERE product_id = v_product_id AND is_active = TRUE),
             stock = FLOOR((SELECT COALESCE(SUM(stock), 0) FROM public.product_variants WHERE product_id = v_product_id AND is_active = TRUE))::INTEGER,
             updated_at = NOW()
-        WHERE id = v_product_id;
+        WHERE id = v_product_id AND branch = v_branch;
 
         INSERT INTO public.inventory_movements (
           product_id, variant_id, barcode_id, movement_type,
           quantity_delta, quantity_before, quantity_after,
-          reference_type, reference_id, note
+          reference_type, reference_id, note, branch
         )
         VALUES (
           v_product_id, v_variant_id, v_barcode_id, 'SALE',
           -v_quantity, v_current_stock, GREATEST(0, v_current_stock - v_quantity),
-          'order', v_invoice_no, 'POS Sale checkout'
+          'order', v_invoice_no, 'POS Sale checkout', v_branch
         );
 
       ELSIF v_product_id IS NOT NULL THEN
-        SELECT stock_quantity INTO v_current_stock FROM public.products WHERE id = v_product_id;
+        SELECT stock_quantity INTO v_current_stock FROM public.products WHERE id = v_product_id AND branch = v_branch;
         SELECT id INTO v_barcode_id FROM public.barcode_registry WHERE product_id = v_product_id AND variant_id IS NULL AND is_active = TRUE LIMIT 1;
 
         UPDATE public.products
         SET stock_quantity = GREATEST(0, stock_quantity - v_quantity),
             stock = GREATEST(0, stock - FLOOR(v_quantity)::INTEGER),
             updated_at = NOW()
-        WHERE id = v_product_id;
+        WHERE id = v_product_id AND branch = v_branch;
 
         INSERT INTO public.inventory_movements (
           product_id, variant_id, barcode_id, movement_type,
           quantity_delta, quantity_before, quantity_after,
-          reference_type, reference_id, note
+          reference_type, reference_id, note, branch
         )
         VALUES (
           v_product_id, NULL, v_barcode_id, 'SALE',
           -v_quantity, v_current_stock, GREATEST(0, v_current_stock - v_quantity),
-          'order', v_invoice_no, 'POS Sale checkout'
+          'order', v_invoice_no, 'POS Sale checkout', v_branch
         );
       END IF;
     END IF;
   END LOOP;
 
-  -- 5. Increment Coupon Usage Count
+  -- 5. Increment Coupon Usage Count (coupons remain shared across branches)
   IF p_coupon_code IS NOT NULL AND BTRIM(p_coupon_code) <> '' THEN
     UPDATE public.coupons
     SET usage_count = usage_count + 1, updated_at = NOW()
@@ -572,26 +548,7 @@ BEGIN
 END;
 $$;
 
--- 10. Store Settings: historical CLAD seed - now GUARDED -------------------
--- The CLAD / cladclothing26@gmail.com identity below is a retired brand.
--- It was replaced by the rebrand migrations (0016, 0017, 0021) and repaired
--- for databases that missed them by 20261004_0033. The statement is kept
--- only so a brand-new install reproduces the original history, so it now
--- matches the untouched 0001 defaults and skips any row that already holds
--- a real (or repaired) profile.
--- WHY THE GUARD: with a bare "WHERE id = 1" this block ran on every re-run
--- and pushed the retired CLAD header back over the live YG ENTERPRISES
--- POS 1 profile (Store Settings -> Shop Profile and every POS 1 invoice /
--- receipt / barcode label), undoing 0016 / 0017 / 0021 / 0033.
-UPDATE public.store_settings
-SET name = 'CLAD',
-    owner_name = 'Rubi krishna',
-    phone = '+91 7010312145',
-    email = 'cladclothing26@gmail.com',
-    address = 'Manapparai, Trichy, Tamil Nadu - 621 306',
-    updated_at = NOW()
-WHERE id = 1
-  AND LOWER(BTRIM(COALESCE(name, ''))) = 'yg enterprises'
-  AND COALESCE(email, '') = 'mypurpleboutique05@gmail.com';
 
 COMMIT;
+
+NOTIFY pgrst, 'reload schema';
