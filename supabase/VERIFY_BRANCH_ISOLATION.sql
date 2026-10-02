@@ -108,6 +108,34 @@ q_pos2_invoice_in_pos1_range AS (
   FROM public.orders
   WHERE branch = 'pos2'
     AND (CASE WHEN invoice_no ~ '^[0-9]+$' THEN invoice_no::BIGINT END) < 50000000
+),
+
+-- Checkout routines must only count a coupon use against the selling
+-- counter's coupon (0034 once silently undid this; see 0039).
+q_checkout_coupon_unscoped AS (
+  SELECT COUNT(*)::BIGINT AS n
+  FROM pg_proc p
+  JOIN pg_namespace ns ON ns.oid = p.pronamespace
+  WHERE ns.nspname = 'public'
+    AND p.prokind = 'f'
+    AND p.prosrc ILIKE '%UPDATE public.coupons%'
+    AND p.prosrc ILIKE '%v_branch%'
+    AND p.prosrc ~ 'WHERE UPPER\(BTRIM\(code\)\) = UPPER\(BTRIM\(p_coupon_code\)\)(?! AND branch = v_branch)'
+),
+-- Barcodes and category names must be unique per counter, not globally,
+-- or one counter's entry blocks or overwrites the other's.
+q_global_unique_across_counters AS (
+  SELECT COUNT(*)::BIGINT AS n
+  FROM pg_index i
+  JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
+  WHERE i.indisunique
+    AND NOT i.indisprimary
+    AND i.indnatts = 1
+    AND i.indexprs IS NULL
+    AND (
+      (i.indrelid = 'public.barcode_registry'::regclass AND a.attname = 'barcode_value')
+      OR (i.indrelid = 'public.categories'::regclass AND a.attname = 'name_en')
+    )
 )
 
 SELECT * FROM (
@@ -127,6 +155,8 @@ SELECT * FROM (
   UNION ALL SELECT 14, 'Invoices: duplicate invoice numbers',                        q_duplicate_invoice_no.n,                         'invoices / bills'            FROM q_duplicate_invoice_no
   UNION ALL SELECT 15, 'Invoices: POS 2 invoice number inside POS 1 number range',   q_pos2_invoice_in_pos1_range.n,                   'invoices / bills'            FROM q_pos2_invoice_in_pos1_range
   UNION ALL SELECT 16, 'Store settings: legacy seed identity still in use',          q_settings_legacy_identity.n,                     'invoices / receipts'         FROM q_settings_legacy_identity
+  UNION ALL SELECT 17, 'Coupons: checkout counting a use on both counters'' coupon', q_checkout_coupon_unscoped.n,                     'coupons'                     FROM q_checkout_coupon_unscoped
+  UNION ALL SELECT 18, 'Barcodes / categories: unique across both counters',        q_global_unique_across_counters.n,                'barcodes / categories'       FROM q_global_unique_across_counters
 ) checks
 ORDER BY ord;
 

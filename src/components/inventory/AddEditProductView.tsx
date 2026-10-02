@@ -364,7 +364,7 @@ export const AddEditProductView: React.FC<{
                 is_active: true,
                 branch,
               },
-              { onConflict: 'barcode_value' }
+              { onConflict: 'branch,barcode_value' }
             )
           }
 
@@ -522,7 +522,7 @@ export const AddEditProductView: React.FC<{
                 is_active: true,
                 branch,
               },
-              { onConflict: 'barcode_value' }
+              { onConflict: 'branch,barcode_value' }
             )
           }
 
@@ -611,7 +611,7 @@ export const AddEditProductView: React.FC<{
                   is_active: true,
                   branch,
                 },
-                { onConflict: 'barcode_value' }
+                { onConflict: 'branch,barcode_value' }
               )
             }
 

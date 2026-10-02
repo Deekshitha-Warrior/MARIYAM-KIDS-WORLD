@@ -44,10 +44,13 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260716_0002_purple_boutique_catalog'
 )
-ON CONFLICT (name_en) DO UPDATE SET
-  is_active = TRUE,
-  sort_order = EXCLUDED.sort_order,
-  updated_at = NOW();
+-- A name guard, not ON CONFLICT (name_en): migration 0039 makes category
+-- names unique per POS branch, so a replay of this file after 0039 would
+-- otherwise fail with 42P10 (no matching unique constraint).
+AND NOT EXISTS (
+  SELECT 1 FROM public.categories c
+  WHERE LOWER(BTRIM(c.name_en)) = LOWER(BTRIM(v.name_en))
+);
 
 WITH catalog(category_name, product_name, sort_order) AS (
   VALUES

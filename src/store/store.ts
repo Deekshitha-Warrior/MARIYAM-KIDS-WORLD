@@ -113,6 +113,8 @@ interface ProductState {
   lastFetch: number
   lastFetchScope: string | null
   fetchProducts: (branch?: PosBranch, force?: boolean) => Promise<void>
+  /** Re-fetches whichever branch's catalog is currently loaded. */
+  refreshProducts: () => Promise<void>
 }
 
 interface CartState {
@@ -382,7 +384,11 @@ export const useProductStore = create<ProductState>((set, get) => ({
       return
     }
 
-    set({ loading: true, error: null })
+    // Switching branch drops the previous branch's catalog immediately, so it
+    // can't be shown (or billed) under the new branch while the fetch is in flight.
+    set(scope === get().lastFetchScope
+      ? { loading: true, error: null }
+      : { loading: true, error: null, products: [], lastFetch: 0, lastFetchScope: scope })
     try {
       const [{ data, error }, { data: categoryData }] = await Promise.all([
         fetchAllProducts(branch),
@@ -406,7 +412,12 @@ export const useProductStore = create<ProductState>((set, get) => ({
         loading: false,
       })
     }
-  }
+  },
+  refreshProducts: () => {
+    const scope = get().lastFetchScope
+    if (!scope) return Promise.resolve()
+    return get().fetchProducts(scope === 'pos1' || scope === 'pos2' ? scope : undefined, true)
+  },
 }))
 
 // --- Cart Store ---

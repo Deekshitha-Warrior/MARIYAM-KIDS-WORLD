@@ -1,7 +1,7 @@
 import './index.css'
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { useAuthStore, useProductStore, useVariantStore, useAdminAuthStore, useSettingsStore } from './store/store'
+import { useAuthStore, useProductStore, useVariantStore, useAdminAuthStore, useSettingsStore, resolveBranch } from './store/store'
 import { BRAND_EN } from './lib/brand'
 import { clearLocalOrders } from './lib/ordersFallback'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -92,6 +92,7 @@ function AppShell() {
   const location = useLocation()
   const initialize = useAuthStore((state) => state.initialize)
   const fetchProducts = useProductStore((state) => state.fetchProducts)
+  const refreshProducts = useProductStore((state) => state.refreshProducts)
   const fetchVariants = useVariantStore((state) => state.fetchVariants)
   const { isLoggedIn, role, activeBranch, branch: staffBranch } = useAdminAuthStore()
   const fetchSettings = useSettingsStore((state) => state.fetchSettings)
@@ -137,10 +138,17 @@ function AppShell() {
     return () => subscription.unsubscribe()
   }, [initialize])
 
-  useEffect(() => {
-    void fetchProducts()
-    void fetchVariants()
+  // The product/variant stores are shared by every page, and every page shows a
+  // single POS branch, so they must only ever hold one branch's catalog.
+  const catalogBranch = hasStaffOrAdminAccess ? resolveBranch(activeBranch) : null
 
+  useEffect(() => {
+    if (!catalogBranch) return
+    void fetchProducts(catalogBranch)
+    void fetchVariants(catalogBranch)
+  }, [catalogBranch, fetchProducts, fetchVariants])
+
+  useEffect(() => {
     if (!isSupabaseConfigured) {
       return
     }
@@ -148,14 +156,14 @@ function AppShell() {
     const productChannel = supabase
       .channel('admin-products-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        void fetchProducts()
+        void refreshProducts()
       })
       .subscribe()
 
     return () => {
       void supabase.removeChannel(productChannel)
     }
-  }, [fetchProducts, fetchVariants])
+  }, [refreshProducts])
 
   return (
     <div className="ios-app-shell w-full max-w-[100vw] bg-bgMain print:block print:h-auto print:overflow-visible">

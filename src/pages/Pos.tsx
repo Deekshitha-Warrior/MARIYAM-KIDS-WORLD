@@ -686,6 +686,21 @@ export default function Pos(props: PosProps = {}) {
     searchRef.current?.focus()
   }
 
+  // A bill is built from one branch's catalog, stock and coupons. If the admin
+  // switches branch mid-bill, it must not be saved under the other branch.
+  const billBranchRef = useRef(branch)
+  useEffect(() => {
+    if (billBranchRef.current === branch) return
+    billBranchRef.current = branch
+    clearAll()
+    setDepositOpen(false)
+    setDepositCreated(null)
+    setVariantPickerProduct(null)
+    setCatalogOpen(false)
+    setAddUnregisteredOpen(false)
+    setPriceEditModal({ isOpen: false, item: null, newPrice: '', isSubmitting: false, error: '' })
+  }, [branch])
+
   const applyCoupon = async (overrideCode?: string) => {
     const code = (typeof overrideCode === 'string' ? overrideCode : couponInput).trim().toUpperCase()
     if (!code) { setCouponError('Enter a coupon code'); return }
