@@ -8,6 +8,7 @@ import {
   BRAND_PRIMARY_PHONE_DISPLAY,
   getInstagramUrls,
 } from './brand'
+import { cleanIdentityField } from './identity'
 
 export interface BranchProfile {
   name: string
@@ -39,10 +40,10 @@ export function getBranchProfile(branch?: string | null): BranchProfile {
   const b = toBranch(branch)
   const s = useSettingsStore.getState().settingsByBranch[b]
   return {
-    name: s?.name?.trim() || BRAND_EN,
-    address: s?.address?.trim() || BRAND_ADDRESS,
-    phone: s?.phone?.trim() || BRAND_PRIMARY_PHONE_DISPLAY,
-    email: s?.email?.trim() || BRAND_EMAIL,
+    name: cleanIdentityField(s?.name) || BRAND_EN,
+    address: cleanIdentityField(s?.address) || BRAND_ADDRESS,
+    phone: cleanIdentityField(s?.phone) || BRAND_PRIMARY_PHONE_DISPLAY,
+    email: cleanIdentityField(s?.email) || BRAND_EMAIL,
     logo: s?.logoUrl || (b === 'pos2' ? BRAND_LOGO_POS2 : BRAND_LOGO_POS1),
     instagramUrls: instagramUrlsFromIds(s?.instagramId) || getInstagramUrls(b),
   }

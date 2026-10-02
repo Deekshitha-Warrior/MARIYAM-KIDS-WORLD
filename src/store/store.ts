@@ -4,7 +4,8 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { supabase } from '../lib/supabase'
 import { fetchAllCategories, fetchAllProducts } from '../services/productService'
 import { fetchAllVariants, type ProductVariant } from '../services/variantService'
-import { BRAND_ADDRESS, BRAND_EN, BRAND_PHONE_DISPLAY } from '../lib/brand'
+import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, BRAND_OWNER_NAME, BRAND_PHONE_DISPLAY } from '../lib/brand'
+import { cleanIdentityField } from '../lib/identity'
 import {
   calculateLineTotal,
   normalizeSelectedQuantity,
@@ -599,12 +600,21 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
         .limit(1)
         .maybeSingle()
       if (!error && data) {
+        // Legacy placeholder identities (CLAD / Chaji / Purple Boutique) seeded by
+        // very early migrations are replaced with the YG Enterprises brand
+        // constants, so a stale store_settings row can never leak onto an
+        // invoice, receipt, WhatsApp message or the admin UI.
+        const name = cleanIdentityField(data.name) || BRAND_EN
+        const ownerName = cleanIdentityField(data.owner_name) || BRAND_OWNER_NAME
+        const phone = cleanIdentityField(data.phone) || BRAND_PHONE_DISPLAY
+        const email = cleanIdentityField(data.email) || BRAND_EMAIL
+        const address = cleanIdentityField(data.address) || BRAND_ADDRESS
         const resolved: StoreSettings = {
-          name: data.name,
-          ownerName: data.owner_name,
-          phone: data.phone,
-          email: data.email || '',
-          address: data.address,
+          name,
+          ownerName,
+          phone,
+          email,
+          address,
           businessType: data.business_type || '',
           instagramId: data.instagram_id || '',
           logoUrl: data.logo_url || null,
@@ -622,9 +632,9 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     // Fallback/Demo settings
     const fallback: StoreSettings = {
       name: BRAND_EN,
-      ownerName: BRAND_EN,
+      ownerName: BRAND_OWNER_NAME,
       phone: BRAND_PHONE_DISPLAY,
-      email: '',
+      email: BRAND_EMAIL,
       address: BRAND_ADDRESS,
       businessType: '',
       instagramId: '',
