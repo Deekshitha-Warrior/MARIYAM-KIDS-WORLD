@@ -1,12 +1,21 @@
--- ====================================================================
+﻿-- ====================================================================
 -- COMBINED MIGRATION: run this single file in the Supabase SQL Editor
+-- !! FOR A BRAND-NEW, EMPTY DATABASE ONLY. !!
+-- This file REPLAYS the entire history from 0001. Running it against a
+-- database that is already populated will re-execute old seeds and
+-- re-apply historical UPDATEs. In particular, 0024's catalog section
+-- carries an unconditional DELETE scoped to POS 2 - the seed_ledger
+-- guards added in 0036 stop that from firing on a re-run, but only once
+-- 0036 has been applied. On a live database, apply the individual
+-- migrations/supabase/migrations/*.sql you actually need instead.
+--
 -- Contains the ENTIRE migration history for this project, in filename
 -- order, from the base schema through the POS1/POS2 branch split,
 -- CHAJI data cleanup, starter catalog seed, staff attendance, the POS1/POS2
 -- branch-isolation hardening and the POS 1 store-identity repair.
 --
 -- Use this if your Supabase project is EMPTY (no `products`/`orders`
--- tables yet) — running only the later branch-split files will fail
+-- tables yet) â€” running only the later branch-split files will fail
 -- with "relation ... does not exist" otherwise, since they only ALTER
 -- tables that the base schema (section 1) creates.
 --
@@ -18,7 +27,7 @@
 -- ====================================================================
 
 -- ============================================================
--- SECTION 1 / 32 — 20260716_0001_purple_boutique_schema.sql
+-- SECTION 1 / 32 â€” 20260716_0001_purple_boutique_schema.sql
 -- ============================================================
 
 -- YG Enterprises billing schema.
@@ -576,16 +585,55 @@ END;
 $$;
 
 -- ============================================================
--- SECTION 2 / 32 — 20260716_0002_purple_boutique_catalog.sql
+-- SECTION 2 / 32 â€” 20260716_0002_purple_boutique_catalog.sql
 -- ============================================================
 
 -- YG Enterprises initial catalog. Existing matching products are preserved.
+--
+-- ============================================================================
+-- IDEMPOTENCE / DELETION SAFETY  (see migration 0036)
+-- ============================================================================
+-- An earlier version guarded the product insert with a NAME-based
+-- `WHERE NOT EXISTS (SELECT 1 FROM products WHERE <same name>)` check.
+-- That guard is name-based, not run-based: once an operator DELETES a
+-- seeded product the row is gone, the NOT EXISTS check passes again, and
+-- re-running this file silently RE-CREATED the deleted product at its
+-- placeholder price and 999 opening stock. Deleting a catalog item was
+-- therefore not durable.
+--
+-- Every statement below is now additionally gated on public.seed_ledger, a
+-- run-once marker table created by migration 0036. Once this seed has run
+-- once, re-running the file is a complete no-op no matter what has since
+-- been deleted, so operator deletions stay permanent.
+--
+-- On a brand-new database public.seed_ledger does not exist yet (0036 has
+-- not run), so the DO block below creates it empty, the marker row is absent,
+-- and all guards evaluate to TRUE -- the seed runs normally.
+-- ============================================================================
+
+-- Marker row for THIS seed. The plpgsql DO block only creates the table
+-- when it is missing (fresh-database bootstrap) and never inserts the
+-- marker itself, so the guards below decide whether the seed runs.
+DO $$
+BEGIN
+  IF to_regclass('public.seed_ledger') IS NULL THEN
+    CREATE TABLE public.seed_ledger (
+      seed_key   TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  END IF;
+END $$;
 
 INSERT INTO public.categories (name_en, name_ta, is_active, sort_order)
-VALUES
-  ('Tailoring', '', TRUE, 1),
-  ('Jewellery & Accessories', '', TRUE, 2),
-  ('Posstore', '', TRUE, 3)
+SELECT v.name_en, v.name_ta, TRUE, v.sort_order
+FROM (VALUES
+  ('Tailoring', '', 1),
+  ('Jewellery & Accessories', '', 2),
+  ('Posstore', '', 3)
+) AS v(name_en, name_ta, sort_order)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260716_0002_purple_boutique_catalog'
+)
 ON CONFLICT (name_en) DO UPDATE SET
   is_active = TRUE,
   sort_order = EXCLUDED.sort_order,
@@ -650,6 +698,9 @@ WHERE NOT EXISTS (
   FROM public.products p
   WHERE p.category_id = resolved.category_id
     AND LOWER(BTRIM(p.name)) = LOWER(BTRIM(resolved.product_name))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260716_0002_purple_boutique_catalog'
 );
 
 UPDATE public.products p
@@ -658,7 +709,10 @@ SET is_active = TRUE,
     updated_at = NOW()
 FROM public.categories c
 WHERE p.category_id = c.id
-  AND c.name_en IN ('Tailoring', 'Jewellery & Accessories', 'Posstore');
+  AND c.name_en IN ('Tailoring', 'Jewellery & Accessories', 'Posstore')
+  AND NOT EXISTS (
+    SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260716_0002_purple_boutique_catalog'
+  );
 
 WITH catalog(category_name, product_name, sort_order) AS (
   VALUES
@@ -691,10 +745,21 @@ SET name = catalog.product_name,
 FROM catalog
 JOIN public.categories c ON LOWER(c.name_en) = LOWER(catalog.category_name)
 WHERE p.category_id = c.id
-  AND LOWER(BTRIM(p.name)) = LOWER(BTRIM(catalog.product_name));
+  AND LOWER(BTRIM(p.name)) = LOWER(BTRIM(catalog.product_name))
+  AND NOT EXISTS (
+    SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260716_0002_purple_boutique_catalog'
+  );
+
+-- Mark this seed as applied. From now on every guard above is a no-op, so a
+-- future re-run can never resurrect a product an operator has deleted.
+INSERT INTO public.seed_ledger (seed_key)
+VALUES ('20260716_0002_purple_boutique_catalog')
+ON CONFLICT (seed_key) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- SECTION 3 / 32 — 20260716_0003_order_rpc_compatibility.sql
+-- SECTION 3 / 32 â€” 20260716_0003_order_rpc_compatibility.sql
 -- ============================================================
 
 -- Align the live legacy billing schema with the current YG Enterprises RPC payload.
@@ -939,7 +1004,7 @@ COMMIT;
 
 
 -- ============================================================
--- SECTION 4 / 32 — 20260719_0004_advance_orders.sql
+-- SECTION 4 / 32 â€” 20260719_0004_advance_orders.sql
 -- ============================================================
 
 begin;
@@ -1121,7 +1186,7 @@ notify pgrst, 'reload schema';
 commit;
 
 -- ============================================================
--- SECTION 5 / 32 — 20260722_0005_eight_digit_invoice_numbers.sql
+-- SECTION 5 / 32 â€” 20260722_0005_eight_digit_invoice_numbers.sql
 -- ============================================================
 
 -- Migration: 8-digit Invoice Number Generation
@@ -1140,7 +1205,7 @@ AS $$
 $$;
 
 -- ============================================================
--- SECTION 6 / 32 — 20260724_0006_fix_complete_advance_order.sql
+-- SECTION 6 / 32 â€” 20260724_0006_fix_complete_advance_order.sql
 -- ============================================================
 
 -- Migration: Fix complete_advance_order RPC
@@ -1186,7 +1251,7 @@ BEGIN
   -- Generate invoice number using the existing 8-digit sequence
   v_invoice := LPAD(nextval('public.invoice_number_seq')::TEXT, 8, '0');
 
-  -- Build items JSONB — prefer products array, fall back to single product
+  -- Build items JSONB â€” prefer products array, fall back to single product
   v_items := CASE
     WHEN jsonb_typeof(v_advance.products) = 'array' AND jsonb_array_length(v_advance.products) > 0
       THEN v_advance.products
@@ -1276,7 +1341,7 @@ GRANT EXECUTE ON FUNCTION public.complete_advance_order(uuid, text, text)
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- SECTION 7 / 32 — 20260724_0008_fix_public_invoice_rpc.sql
+-- SECTION 7 / 32 â€” 20260724_0008_fix_public_invoice_rpc.sql
 -- ============================================================
 
 -- Migration: Fix missing get_public_invoice_by_number RPC
@@ -1299,7 +1364,7 @@ GRANT EXECUTE ON FUNCTION public.get_public_invoice_by_number(TEXT) TO anon, aut
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- SECTION 8 / 32 — 20260724_0009_create_invoices_bucket.sql
+-- SECTION 8 / 32 â€” 20260724_0009_create_invoices_bucket.sql
 -- ============================================================
 
 -- Migration: Create invoices storage bucket
@@ -1319,7 +1384,7 @@ DROP POLICY IF EXISTS invoices_portal_update ON storage.objects;
 CREATE POLICY invoices_portal_update ON storage.objects FOR UPDATE TO anon, authenticated USING (bucket_id = 'invoices') WITH CHECK (bucket_id = 'invoices');
 
 -- ============================================================
--- SECTION 9 / 32 — 20260726_0007_update_complete_advance_order_discount.sql
+-- SECTION 9 / 32 â€” 20260726_0007_update_complete_advance_order_discount.sql
 -- ============================================================
 
 -- Migration: Update complete_advance_order to handle final amount, discounts, and coupons
@@ -1467,7 +1532,7 @@ GRANT EXECUTE ON FUNCTION public.complete_advance_order_v2(uuid, text, numeric, 
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- SECTION 10 / 32 — 20260728_0010_final_audit_fixes.sql
+-- SECTION 10 / 32 â€” 20260728_0010_final_audit_fixes.sql
 -- ============================================================
 
 -- ============================================================
@@ -1593,7 +1658,7 @@ CREATE POLICY "Users can update own profile"
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- SECTION 11 / 32 — 20260808_0011_billing_date_and_order_fields.sql
+-- SECTION 11 / 32 â€” 20260808_0011_billing_date_and_order_fields.sql
 -- ============================================================
 
 -- ============================================================
@@ -1628,7 +1693,7 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ============================================================
--- SECTION 12 / 32 — 20260901_0012_inventory_barcode_addon.sql
+-- SECTION 12 / 32 â€” 20260901_0012_inventory_barcode_addon.sql
 -- ============================================================
 
 -- ====================================================================
@@ -2230,7 +2295,7 @@ WHERE id = 1
 COMMIT;
 
 -- ============================================================
--- SECTION 13 / 32 — 20260903_0013_expense_tracker_addon.sql
+-- SECTION 13 / 32 â€” 20260903_0013_expense_tracker_addon.sql
 -- ============================================================
 
 -- ====================================================================
@@ -2339,7 +2404,7 @@ $$;
 COMMIT;
 
 -- ============================================================
--- SECTION 14 / 32 — 20260904_0015_unregistered_category.sql
+-- SECTION 14 / 32 â€” 20260904_0015_unregistered_category.sql
 -- ============================================================
 
 -- ============================================================================
@@ -2355,12 +2420,12 @@ BEGIN
     WHERE LOWER(name_en) = 'unregistered'
   ) THEN
     INSERT INTO public.categories (name_en, name_ta, is_active, sort_order)
-    VALUES ('Unregistered', 'பதிவுசெய்யப்படாதது', TRUE, 999);
+    VALUES ('Unregistered', 'à®ªà®¤à®¿à®µà¯à®šà¯†à®¯à¯à®¯à®ªà¯à®ªà®Ÿà®¾à®¤à®¤à¯', TRUE, 999);
   END IF;
 END $$;
 
 -- ============================================================
--- SECTION 15 / 32 — 20260911_0016_rebrand_to_chaji_mens_wear.sql
+-- SECTION 15 / 32 â€” 20260911_0016_rebrand_to_chaji_mens_wear.sql
 -- ============================================================
 
 -- Migration: 20260911_0016_rebrand_to_chaji_mens_wear.sql
@@ -2419,7 +2484,7 @@ CREATE POLICY branding_portal_update ON storage.objects
 COMMIT;
 
 -- ============================================================
--- SECTION 16 / 32 — 20260912_0017_update_store_address.sql
+-- SECTION 16 / 32 â€” 20260912_0017_update_store_address.sql
 -- ============================================================
 
 -- Migration: 20260912_0017_update_store_address.sql
@@ -2442,7 +2507,7 @@ WHERE id = 1
 COMMIT;
 
 -- ============================================================
--- SECTION 17 / 32 — 20260917_0001_fix_soft_delete_unique_constraints.sql
+-- SECTION 17 / 32 â€” 20260917_0001_fix_soft_delete_unique_constraints.sql
 -- ============================================================
 
 -- Fix for products unique constraint
@@ -2458,7 +2523,7 @@ CREATE UNIQUE INDEX product_variants_product_name_unique
   WHERE is_active = true;
 
 -- ============================================================
--- SECTION 18 / 32 — 20260918_0018_advance_order_self_heal.sql
+-- SECTION 18 / 32 â€” 20260918_0018_advance_order_self_heal.sql
 -- ============================================================
 
 -- ============================================================
@@ -2673,7 +2738,7 @@ GRANT EXECUTE ON FUNCTION public.update_advance_order_status(uuid, text, text) T
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- SECTION 19 / 32 — 20260918_0019_robust_public_invoice_lookup.sql
+-- SECTION 19 / 32 â€” 20260918_0019_robust_public_invoice_lookup.sql
 -- ============================================================
 
 -- Migration: 20260918_0019_robust_public_invoice_lookup.sql
@@ -2716,7 +2781,7 @@ GRANT EXECUTE ON FUNCTION public.get_public_invoice_by_number(TEXT) TO anon, aut
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- SECTION 20 / 32 — 20260924_0020_split_pos_branches.sql
+-- SECTION 20 / 32 â€” 20260924_0020_split_pos_branches.sql
 -- ============================================================
 
 -- ====================================================================
@@ -3331,7 +3396,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.create_advance_order(text,text,text,text,text,text,numeric,numeric,date,text,text,text,jsonb,text) TO anon, authenticated;
 
 -- Redefine the (self-healing) completion RPC to derive branch from the advance
--- order itself — safer than trusting a client-supplied branch — and to pull
+-- order itself â€” safer than trusting a client-supplied branch â€” and to pull
 -- the invoice number from that branch's sequence via get_next_invoice_no()
 -- instead of hitting the old shared invoice_number_seq directly (which would
 -- otherwise collide with regular POS sales once branches have separate sequences).
@@ -3482,7 +3547,7 @@ GRANT EXECUTE ON FUNCTION public.complete_advance_order_v2(uuid, text, numeric, 
 -- barcode_product_seq/barcode_variant_seq) so nothing about barcodes you've
 -- already generated or printed changes. POS 2 gets its own fresh sequences
 -- and a distinct 'P2P'/'P2V' prefix, so a scanned code instantly tells you
--- which branch it belongs to. Existing barcode_registry rows are untouched —
+-- which branch it belongs to. Existing barcode_registry rows are untouched â€”
 -- this only changes what NEW barcodes look like going forward.
 
 CREATE SEQUENCE IF NOT EXISTS public.barcode_product_seq_pos2 START WITH 10000001;
@@ -3760,7 +3825,7 @@ $$;
 COMMIT;
 
 -- ============================================================
--- SECTION 21 / 32 — 20260925_0021_cleanup_legacy_chaji_data.sql
+-- SECTION 21 / 32 â€” 20260925_0021_cleanup_legacy_chaji_data.sql
 -- ============================================================
 
 -- ====================================================================
@@ -3768,7 +3833,7 @@ COMMIT;
 -- new YG Enterprises branch catalogs (migration 0022).
 --
 -- Scope, deliberately conservative:
---  - Clears the old product/variant/barcode/category catalog (all of it —
+--  - Clears the old product/variant/barcode/category catalog (all of it â€”
 --    every row currently in these tables predates the YG rebrand and is
 --    CHAJI menswear stock).
 --  - Resets the store_settings row (name/owner/phone/email/address) to
@@ -3776,7 +3841,7 @@ COMMIT;
 --  - Empties the unused 'branding' storage bucket created for CHAJI.
 --
 -- Deliberately NOT touched: `orders` / `order_items` (real historical
--- sales/financial records survive regardless of brand — order_items
+-- sales/financial records survive regardless of brand â€” order_items
 -- already stores product_name redundantly, and orders.product_id uses
 -- ON DELETE SET NULL, so deleting the old catalog does not corrupt past
 -- receipts) and `coupons` (not brand-specific).
@@ -3816,7 +3881,7 @@ WHERE id = 1
       );
 
 -- 3. NOTE: any leftover files in the 'branding' storage bucket (created for
--- CHAJI in migration 0016) are intentionally left alone here — Supabase
+-- CHAJI in migration 0016) are intentionally left alone here â€” Supabase
 -- blocks direct `DELETE FROM storage.objects` with a protective trigger
 -- ("Direct deletion from storage tables is not allowed"). Nothing in this
 -- app reads from that bucket, so stray files there are harmless; clear them
@@ -3826,7 +3891,7 @@ WHERE id = 1
 COMMIT;
 
 -- ============================================================
--- SECTION 22 / 32 — 20260925_0022_seed_branch_starter_catalog.sql
+-- SECTION 22 / 32 â€” 20260925_0022_seed_branch_starter_catalog.sql
 -- ============================================================
 
 -- ====================================================================
@@ -3854,10 +3919,13 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.categories c
   WHERE c.branch = v.branch AND LOWER(BTRIM(c.name_en)) = LOWER(BTRIM(v.name_en))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260925_0022_seed_branch_starter_catalog'
 );
 
 -- 2. Products ---------------------------------------------------------------
--- unit_type 'unit' / unit_label 'piece' — simple non-variant starter items.
+-- unit_type 'unit' / unit_label 'piece' â€” simple non-variant starter items.
 -- Prices are placeholders; edit them freely from Inventory once seeded.
 
 INSERT INTO public.products (
@@ -3872,7 +3940,7 @@ SELECT
   'unit', 'piece', 'piece', 1,
   v.stock, v.stock, 5, TRUE, v.sort_order
 FROM (VALUES
-  -- POS 1 · Jute & Wedding Bags / Wedding Cards -----------------------
+  -- POS 1 Â· Jute & Wedding Bags / Wedding Cards -----------------------
   ('Plain Jute Shopping Bag',          'Jute Bags',     'pos1', 150::numeric,  80::numeric, 180::numeric, 40::numeric, 1),
   ('Printed Jute Tote Bag',            'Jute Bags',     'pos1', 220::numeric, 120::numeric, 260::numeric, 30::numeric, 2),
   ('Floral Jute Tote Bag',             'Jute Bags',     'pos1', 250::numeric, 140::numeric, 300::numeric, 30::numeric, 3),
@@ -3884,7 +3952,7 @@ FROM (VALUES
   ('Floral Wedding Card with Envelope',   'Wedding Cards', 'pos1', 35::numeric, 18::numeric,  42::numeric, 150::numeric, 2),
   ('Premium Laser-Cut Wedding Card',      'Wedding Cards', 'pos1', 65::numeric, 35::numeric,  75::numeric, 100::numeric, 3),
 
-  -- POS 2 · Dresses / Ethnic Wear / Kids Wear -------------------------
+  -- POS 2 Â· Dresses / Ethnic Wear / Kids Wear -------------------------
   ('Floral Print Cotton Dress',        'Dresses',       'pos2', 799::numeric,  450::numeric,  999::numeric, 30::numeric, 1),
   ('A-Line Party Dress',               'Dresses',       'pos2', 1199::numeric, 700::numeric, 1499::numeric, 20::numeric, 2),
   ('Casual Maxi Dress',                'Dresses',       'pos2', 899::numeric,  520::numeric, 1099::numeric, 25::numeric, 3),
@@ -3897,12 +3965,23 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.products p
   WHERE p.branch = v.branch AND LOWER(BTRIM(p.name)) = LOWER(BTRIM(v.name))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260925_0022_seed_branch_starter_catalog'
 );
+
+-- Mark this seed as applied so a re-run can never recreate a product that an
+-- operator has since deleted (see migration 0036).
+INSERT INTO public.seed_ledger (seed_key)
+VALUES ('20260925_0022_seed_branch_starter_catalog')
+ON CONFLICT (seed_key) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 
 -- ============================================================
--- SECTION 23 / 32 — 20260926_0023_branch_settings_and_attendance.sql
+-- SECTION 23 / 32 â€” 20260926_0023_branch_settings_and_attendance.sql
 -- ============================================================
 
 -- ====================================================================
@@ -4037,7 +4116,7 @@ GRANT EXECUTE ON FUNCTION public.punch_attendance(UUID, TEXT) TO anon, authentic
 COMMIT;
 
 -- ============================================================
--- SECTION 24 / 32 — 20260927_0024_pos2_fireworks_catalog.sql
+-- SECTION 24 / 32 â€” 20260927_0024_pos2_fireworks_catalog.sql
 -- ============================================================
 
 -- ====================================================================
@@ -4054,14 +4133,40 @@ COMMIT;
 
 BEGIN;
 
+-- Bootstrap the ledger table if missing (migration 0036 not yet applied).
+DO $$
+BEGIN
+  IF to_regclass('public.seed_ledger') IS NULL THEN
+    CREATE TABLE public.seed_ledger (
+      seed_key   TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  END IF;
+END $$;
+
 -- 1. Clear POS 2's old clothing catalog only (respecting FK delete order:
 -- barcode_registry -> RESTRICT on product_id/variant_id, so it must go
 -- first; product_variants and inventory_movements reference products
 -- with CASCADE / SET NULL respectively).
-DELETE FROM public.barcode_registry WHERE branch = 'pos2';
-DELETE FROM public.product_variants WHERE branch = 'pos2';
-DELETE FROM public.products WHERE branch = 'pos2';
-DELETE FROM public.categories WHERE branch = 'pos2';
+--
+-- DELETION SAFETY: the statements below are unconditional DELETEs scoped to
+-- POS 2. Once this seed has been applied, re-running the file must not wipe
+-- the live POS 2 catalog that an operator has since built or edited, so the
+-- whole block is gated on the seed_ledger marker (see migration 0036).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.seed_ledger
+    WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
+  ) THEN
+    RETURN;
+  END IF;
+
+  DELETE FROM public.barcode_registry WHERE branch = 'pos2';
+  DELETE FROM public.product_variants WHERE branch = 'pos2';
+  DELETE FROM public.products WHERE branch = 'pos2';
+  DELETE FROM public.categories WHERE branch = 'pos2';
+END $$;
 
 -- 2. Seed POS 2's fireworks & crackers categories --------------------------
 
@@ -4076,6 +4181,9 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.categories c
   WHERE c.branch = v.branch AND LOWER(BTRIM(c.name_en)) = LOWER(BTRIM(v.name_en))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
 );
 
 -- 3. Seed POS 2's fireworks & crackers products -----------------------------
@@ -4109,17 +4217,38 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.products p
   WHERE p.branch = v.branch AND LOWER(BTRIM(p.name)) = LOWER(BTRIM(v.name))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
 );
 
 -- 4. Record each branch's actual business line in Store Settings
 -- (Store Settings > Shop Profile > Business Type).
-UPDATE public.store_settings SET business_type = 'Wedding Cards, Bags & Jute Bag Manufacturing', updated_at = NOW() WHERE branch = 'pos1';
-UPDATE public.store_settings SET business_type = 'Fireworks & Crackers', updated_at = NOW() WHERE branch = 'pos2';
+-- Gated on the same marker so a re-run never re-applies the placeholder
+-- business type over a value the operator has since edited.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.seed_ledger
+    WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
+  ) THEN
+    UPDATE public.store_settings SET business_type = 'Wedding Cards, Bags & Jute Bag Manufacturing', updated_at = NOW() WHERE branch = 'pos1';
+    UPDATE public.store_settings SET business_type = 'Fireworks & Crackers', updated_at = NOW() WHERE branch = 'pos2';
+  END IF;
+END $$;
+
+-- Mark this seed as applied. Every guard above is a no-op from here on, so a
+-- future re-run can neither resurrect a deleted product nor wipe POS 2.
+INSERT INTO public.seed_ledger (seed_key)
+VALUES ('20260927_0024_pos2_fireworks_catalog')
+ON CONFLICT (seed_key) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;
 
 -- ============================================================
--- SECTION 25 / 32 — 20260928_0025_portal_credentials.sql
+-- SECTION 25 / 32 â€” 20260928_0025_portal_credentials.sql
 -- ============================================================
 
 -- ====================================================================
@@ -4166,7 +4295,7 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ============================================================
--- SECTION 26 / 32 — 20260929_0026_fix_null_remarks_checkout_error.sql
+-- SECTION 26 / 32 â€” 20260929_0026_fix_null_remarks_checkout_error.sql
 -- ============================================================
 
 -- ====================================================================
@@ -4430,7 +4559,7 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ============================================================
--- SECTION 27 / 32 — 20260930_0027_split_expenses_by_branch.sql
+-- SECTION 27 / 32 â€” 20260930_0027_split_expenses_by_branch.sql
 -- ============================================================
 
 -- ====================================================================
@@ -4511,7 +4640,7 @@ NOTIFY pgrst, 'reload schema';
 COMMIT;
 
 -- ============================================================
--- SECTION 28 / 32 — 20260930_0029_isolate_coupons_and_expense_categories.sql
+-- SECTION 28 / 32 â€” 20260930_0029_isolate_coupons_and_expense_categories.sql
 -- ============================================================
 
 BEGIN;
@@ -4553,7 +4682,7 @@ END $$;
 COMMIT;
 
 -- ============================================================
--- SECTION 29 / 32 — 20261001_0030_hard_delete_inventory_item.sql
+-- SECTION 29 / 32 â€” 20261001_0030_hard_delete_inventory_item.sql
 -- ============================================================
 
 BEGIN;
@@ -4597,7 +4726,7 @@ GRANT EXECUTE ON FUNCTION public.delete_inventory_item(bigint, uuid, text) TO an
 COMMIT;
 
 -- ============================================================
--- SECTION 30 / 32 — 20261002_0031_cascade_delete_inventory_movements.sql
+-- SECTION 30 / 32 â€” 20261002_0031_cascade_delete_inventory_movements.sql
 -- ============================================================
 
 BEGIN;
@@ -4652,7 +4781,7 @@ FOR EACH ROW EXECUTE FUNCTION public.delete_movements_for_product();
 COMMIT;
 
 -- ============================================================
--- SECTION 31 / 32 — 20261003_0032_branch_isolation_integrity.sql
+-- SECTION 31 / 32 â€” 20261003_0032_branch_isolation_integrity.sql
 -- ============================================================
 
 BEGIN;
@@ -4796,14 +4925,14 @@ FOR EACH ROW EXECUTE FUNCTION public.enforce_inventory_movement_branch();
 COMMIT;
 
 -- ============================================================
--- SECTION 32 / 32 — 20261004_0033_repair_pos1_store_identity.sql
+-- SECTION 32 / 32 â€” 20261004_0033_repair_pos1_store_identity.sql
 -- ============================================================
 
 -- The POS 1 store_settings row still held the very first seed values
 -- ("CLAD" / cladclothing26@gmail.com / Manapparai), which is why every
 -- POS 1 invoice printed a CLAD header directly under the YG Enterprises
 -- logo. Only rows still sitting on those legacy placeholders are
--- rewritten, so an identity already customised in Admin → Store Settings
+-- rewritten, so an identity already customised in Admin â†’ Store Settings
 -- is never overwritten.
 
 BEGIN;
@@ -5379,6 +5508,324 @@ BEGIN
 END;
 $$;
 
+
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SECTION 35 / 35 â€” 20261007_0037_force_yg_store_identity.sql
+-- ============================================================
+
+-- Migration 0033 repaired only rows still matching the exact 0012 CLAD seed.
+-- Rows on any other legacy identity (Purple Boutique / Chaji Mens Wear) or
+-- partially edited CLAD rows survived it, so "View Invoice" on both counters
+-- kept printing CLAD / Chaji details under the YG Enterprises logo. This
+-- rewrites the identity columns of every store_settings row sitting on ANY
+-- known legacy placeholder. Theme, logo, business type and Instagram handle
+-- are left untouched, and a genuinely customised profile matches no marker.
+
+BEGIN;
+
+UPDATE public.store_settings
+SET name       = 'YG ENTERPRISES',
+    owner_name = 'M. Gurumoorthy',
+    phone      = '+91 98844 10700, +91 97878 08090',
+    email      = 'ygenterprises2000@gmail.com',
+    address    = '#189, N.S.C. Bose Road, (Opp. Bus Depot, Hotel Sankar Cafe Building), Chennai - 600 001',
+    updated_at = NOW()
+-- 'yg enterprises' is deliberately NOT matched: it is the current brand name, so
+-- matching on it would let a re-run reset a phone/address the owner has already
+-- customised. Only unambiguous legacy markers are matched.
+WHERE LOWER(BTRIM(COALESCE(name,       ''))) IN ('clad', 'chaji', 'chaji mens wear', 'purple boutique')
+   OR LOWER(BTRIM(COALESCE(owner_name, ''))) IN ('clad', 'rubi krishna', 'chandru ajitha')
+   OR LOWER(BTRIM(COALESCE(email,      ''))) IN (
+        'cladclothing26@gmail.com',
+        'chandrums1552004@gmail.com',
+        'mypurpleboutique05@gmail.com'
+      )
+   OR COALESCE(phone, '') LIKE '%7010312145%'
+   OR COALESCE(phone, '') LIKE '%8925094465%'
+   OR COALESCE(phone, '') LIKE '%9344159498%'
+   OR COALESCE(phone, '') LIKE '%11-3312 7107%'
+   OR LOWER(COALESCE(address, '')) LIKE '%manapparai%'
+   OR LOWER(COALESCE(address, '')) LIKE '%tamarind suite%'
+   OR LOWER(COALESCE(address, '')) LIKE '%cyberjaya%';
+
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- SECTION 36 / 36 -- 20261008_0038_advance_order_branch_isolation.sql
+-- ============================================================
+
+-- ===================================================================
+-- Migration 0038: Keep completed advance-order bills on their own POS
+-- ===================================================================
+--
+-- SYMPTOM
+-- Completing an advance order on POS 2 (Fireworks) makes the finished
+-- bill appear in POS 1's (Jute Management) Order Management list.
+--
+-- ROOT CAUSE
+-- complete_advance_order_v2() has been redefined three times, and the
+-- pre-branch version from 0018 is still the one live on this database:
+--
+--   0007 / 0018 -> INSERT INTO public.orders (... payment_method)
+--                     -- no `branch` column at all
+--   0020         -> INSERT INTO public.orders (..., branch, ...)
+--                     v_branch := CASE WHEN v_advance.branch = 'pos2'
+--                                       THEN 'pos2' ELSE 'pos1' END
+--
+-- The 0018 body omits `branch`, so the INSERT falls back to the column
+-- DEFAULT 'pos1' declared by 0020. Every completed advance order is
+-- therefore booked into POS 1's ledger no matter which counter it was
+-- raised on.
+--
+-- The 0018 body is also doubly wrong for POS 2: it pulls the invoice
+-- number from the retired shared invoice_number_seq rather than from
+-- get_next_invoice_no(v_branch), so the two counters' numbering no
+-- longer stay in their own 8-digit ranges.
+--
+-- WHAT
+-- 1. Re-deploy the branch-aware 0020 body, so `orders.branch` is copied
+--    from the advance order's own branch and the invoice number comes
+--    from that counter's sequence.
+-- 2. Backfill any bill already mis-filed into the wrong counter, using
+--    advance_orders.completed_order_id as the authoritative link.
+-- 3. Backfill a branch on any advance order left without one.
+--
+-- SAFE / IDEMPOTENT: re-running re-deploys the same function and the
+-- backfill matches nothing once the rows are correct.
+-- ===================================================================
+
+BEGIN;
+
+-- 1. Re-deploy the branch-aware completion RPC ------------------------
+
+DROP FUNCTION IF EXISTS public.complete_advance_order_v2(uuid, text, numeric, text, numeric, numeric, text);
+
+CREATE OR REPLACE FUNCTION public.complete_advance_order_v2(
+  p_order_id uuid,
+  p_payment_method text,
+  p_final_amount numeric,
+  p_coupon_code text DEFAULT NULL,
+  p_coupon_percentage numeric DEFAULT 0,
+  p_manual_discount numeric DEFAULT 0,
+  p_remarks text DEFAULT ''
+)
+RETURNS TABLE(order_id uuid, invoice_no text, completed_at timestamptz)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_advance        public.advance_orders;
+  v_order_id       uuid := gen_random_uuid();
+  v_invoice        text;
+  v_now            timestamptz := now();
+  v_items          jsonb;
+  v_item           jsonb;
+  v_total_discount numeric := 0;
+  v_branch         text;
+BEGIN
+  IF lower(coalesce(p_payment_method, '')) NOT IN ('cash', 'upi', 'card') THEN
+    RAISE EXCEPTION 'Select a valid payment method';
+  END IF;
+
+  SELECT * INTO v_advance FROM public.advance_orders WHERE id = p_order_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Advance order not found';
+  END IF;
+
+  -- The advance order's own branch is the single source of truth. It is
+  -- deliberately NOT taken from the client: a caller in the wrong branch
+  -- context can then no longer cross-book the completed bill.
+  v_branch := CASE WHEN v_advance.branch = 'pos2' THEN 'pos2' ELSE 'pos1' END;
+
+  IF v_advance.status = 'cancelled' THEN
+    RAISE EXCEPTION 'A cancelled order cannot be completed';
+  END IF;
+
+  IF v_advance.completed_order_id IS NOT NULL OR v_advance.invoice_number IS NOT NULL THEN
+    IF v_advance.status != 'completed' THEN
+      UPDATE public.advance_orders
+      SET status = 'completed',
+          updated_at = v_now
+      WHERE id = p_order_id;
+    END IF;
+
+    RETURN QUERY SELECT
+      coalesce(v_advance.completed_order_id, gen_random_uuid()),
+      coalesce(v_advance.invoice_number, 'INV00000000'),
+      coalesce(v_advance.completed_at, v_now);
+    RETURN;
+  END IF;
+
+  v_total_discount := p_manual_discount + (v_advance.remaining_balance - p_manual_discount - p_final_amount);
+  IF v_total_discount < 0 THEN
+    v_total_discount := 0;
+  END IF;
+
+  -- Invoice number from THIS counter's sequence, so the two POS stay in
+  -- their own disjoint 8-digit ranges.
+  v_invoice := public.get_next_invoice_no(v_branch);
+
+  v_items := CASE
+    WHEN jsonb_typeof(v_advance.products) = 'array' AND jsonb_array_length(v_advance.products) > 0
+      THEN v_advance.products
+    ELSE jsonb_build_array(
+      jsonb_build_object(
+        'name',        v_advance.product_name,
+        'category',    v_advance.category,
+        'description', v_advance.description,
+        'quantity',    1,
+        'base_price',  v_advance.total_amount,
+        'line_total',  v_advance.total_amount,
+        'unit',        'piece',
+        'unit_type',   'unit',
+        'source',      'advance_order'
+      )
+    )
+  END;
+
+  INSERT INTO public.orders (
+    id, invoice_no, customer_name, phone, address, user_id,
+    items, subtotal, total, status, order_mode, order_type,
+    shipping, delivery_charge, discount_amount, manual_discount_amount,
+    coupon_code, coupon_percentage, manual_discount_type, manual_discount_value,
+    payment_mode, payment_method, branch, created_at, updated_at
+  ) VALUES (
+    v_order_id, v_invoice,
+    v_advance.customer_name, v_advance.phone, v_advance.address, auth.uid(),
+    v_items, v_advance.total_amount, greatest(0, v_advance.total_amount - v_total_discount),
+    'completed', 'offline', 'advance_order',
+    0, 0, v_total_discount, p_manual_discount,
+    p_coupon_code, p_coupon_percentage, 'flat', p_manual_discount,
+    lower(p_payment_method), lower(p_payment_method), v_branch,
+    v_now, v_now
+  );
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(v_items) LOOP
+    INSERT INTO public.order_items (
+      order_id, product_name, name, quantity, unit, unit_type,
+      base_price, line_total, is_manual
+    ) VALUES (
+      v_order_id,
+      coalesce(nullif(trim(v_item->>'name'), ''), 'Product'),
+      coalesce(nullif(trim(v_item->>'name'), ''), 'Product'),
+      greatest(coalesce((v_item->>'quantity')::numeric, 1), 0),
+      coalesce(nullif(v_item->>'unit', ''), 'piece'),
+      coalesce(nullif(v_item->>'unit_type', ''), 'unit'),
+      greatest(coalesce((v_item->>'base_price')::numeric, 0), 0),
+      greatest(coalesce((v_item->>'line_total')::numeric, 0), 0),
+      false
+    );
+  END LOOP;
+
+  INSERT INTO public.advance_order_payments (
+    advance_order_id, payment_type, amount, payment_method, remarks, received_by, received_at
+  ) VALUES (
+    p_order_id, 'remaining', p_final_amount,
+    lower(p_payment_method), coalesce(p_remarks, ''), auth.uid(), v_now
+  );
+
+  UPDATE public.advance_orders SET
+    status               = 'completed',
+    completed_at         = v_now,
+    completed_order_id   = v_order_id,
+    invoice_number       = v_invoice,
+    final_payment_method = lower(p_payment_method),
+    remarks              = CASE WHEN trim(coalesce(p_remarks, '')) = '' THEN remarks ELSE p_remarks END,
+    updated_at           = v_now
+  WHERE id = p_order_id;
+
+  INSERT INTO public.advance_order_timeline (
+    advance_order_id, event_type, label, remarks, created_by, created_at
+  ) VALUES
+    (p_order_id, 'remaining_payment_received', 'Remaining Payment Received', coalesce(p_remarks, ''), auth.uid(), v_now),
+    (p_order_id, 'invoice_generated',          'Invoice Generated',          v_invoice,               auth.uid(), v_now);
+
+  RETURN QUERY SELECT v_order_id, v_invoice, v_now;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.complete_advance_order_v2(uuid, text, numeric, text, numeric, numeric, text) TO public, anon, authenticated;
+
+-- 2. Backfill bills already filed under the wrong counter --------------
+-- advance_orders.completed_order_id points at the orders row the RPC
+-- created, so it is the reliable join key. Only order_type =
+-- 'advance_order' is touched, so ordinary POS sales are never moved.
+
+UPDATE public.orders o
+SET branch = a.branch,
+    updated_at = NOW()
+FROM public.advance_orders a
+WHERE a.completed_order_id = o.id
+  AND o.order_type = 'advance_order'
+  AND a.branch IS DISTINCT FROM o.branch;
+
+-- 3. Backfill a branch on any advance order left without one ----------
+-- The column has been NOT NULL DEFAULT 'pos1' since 0020, so this can
+-- only affect rows added before the column existed.
+
+UPDATE public.advance_orders
+SET branch = 'pos1', updated_at = NOW()
+WHERE branch IS NULL OR branch NOT IN ('pos1', 'pos2');
+
+COMMIT;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SECTION 37 / 37 -- 20261006_0036_seed_ledger.sql
+-- ============================================================
+
+-- ====================================================================
+-- Migration 0036: Seed ledger so catalog seeds stop resurrecting deletes
+-- ====================================================================
+-- Problem
+-- -------
+-- The catalog seed migrations (0002, 0022, 0024) guarded their inserts
+-- with `WHERE NOT EXISTS (SELECT 1 FROM products WHERE <same name>)`.
+-- That guard is name-based, not run-based: once an operator DELETES a
+-- seeded product, the row is gone, the NOT EXISTS check passes again,
+-- and the next re-run of those files silently RE-CREATED the deleted
+-- product at its placeholder price/stock. Deleting a catalog item was
+-- therefore not durable.
+--
+-- Fix
+-- ---
+-- Introduce public.seed_ledger, a tiny run-once marker table. Each
+-- catalog seed now checks the ledger and returns early when its key is
+-- already recorded, so a re-run is a no-op no matter what the operator
+-- has since deleted. The per-row NOT EXISTS guards are kept as a
+-- belt-and-braces duplicate check for genuinely fresh databases.
+--
+-- This migration also BACKFILLS the ledger so that re-running the old
+-- seed files against an already-seeded database cannot resurrect the
+-- test catalog that was just cleared.
+-- ====================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS public.seed_ledger (
+  seed_key      TEXT PRIMARY KEY,
+  applied_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.seed_ledger IS
+  'Run-once markers for catalog seed migrations. Prevents re-running a seed from recreating products an operator has deleted.';
+
+-- Backfill: mark the three catalog seeds as already applied so replaying
+-- 0002 / 0022 / 0024 on this database can no longer recreate seeded rows.
+INSERT INTO public.seed_ledger (seed_key) VALUES
+  ('20260716_0002_purple_boutique_catalog'),
+  ('20260925_0022_seed_branch_starter_catalog'),
+  ('20260927_0024_pos2_fireworks_catalog')
+ON CONFLICT (seed_key) DO NOTHING;
 
 COMMIT;
 
