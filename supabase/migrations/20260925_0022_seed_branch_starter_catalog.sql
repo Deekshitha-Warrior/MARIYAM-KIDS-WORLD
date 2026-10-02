@@ -23,6 +23,9 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.categories c
   WHERE c.branch = v.branch AND LOWER(BTRIM(c.name_en)) = LOWER(BTRIM(v.name_en))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260925_0022_seed_branch_starter_catalog'
 );
 
 -- 2. Products ---------------------------------------------------------------
@@ -66,6 +69,17 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.products p
   WHERE p.branch = v.branch AND LOWER(BTRIM(p.name)) = LOWER(BTRIM(v.name))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260925_0022_seed_branch_starter_catalog'
 );
+
+-- Mark this seed as applied so a re-run can never recreate a product that an
+-- operator has since deleted (see migration 0036).
+INSERT INTO public.seed_ledger (seed_key)
+VALUES ('20260925_0022_seed_branch_starter_catalog')
+ON CONFLICT (seed_key) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;

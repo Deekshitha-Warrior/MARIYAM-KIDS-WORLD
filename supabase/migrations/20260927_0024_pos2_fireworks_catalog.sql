@@ -12,14 +12,40 @@
 
 BEGIN;
 
+-- Bootstrap the ledger table if missing (migration 0036 not yet applied).
+DO $$
+BEGIN
+  IF to_regclass('public.seed_ledger') IS NULL THEN
+    CREATE TABLE public.seed_ledger (
+      seed_key   TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  END IF;
+END $$;
+
 -- 1. Clear POS 2's old clothing catalog only (respecting FK delete order:
 -- barcode_registry -> RESTRICT on product_id/variant_id, so it must go
 -- first; product_variants and inventory_movements reference products
 -- with CASCADE / SET NULL respectively).
-DELETE FROM public.barcode_registry WHERE branch = 'pos2';
-DELETE FROM public.product_variants WHERE branch = 'pos2';
-DELETE FROM public.products WHERE branch = 'pos2';
-DELETE FROM public.categories WHERE branch = 'pos2';
+--
+-- DELETION SAFETY: the statements below are unconditional DELETEs scoped to
+-- POS 2. Once this seed has been applied, re-running the file must not wipe
+-- the live POS 2 catalog that an operator has since built or edited, so the
+-- whole block is gated on the seed_ledger marker (see migration 0036).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.seed_ledger
+    WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
+  ) THEN
+    RETURN;
+  END IF;
+
+  DELETE FROM public.barcode_registry WHERE branch = 'pos2';
+  DELETE FROM public.product_variants WHERE branch = 'pos2';
+  DELETE FROM public.products WHERE branch = 'pos2';
+  DELETE FROM public.categories WHERE branch = 'pos2';
+END $$;
 
 -- 2. Seed POS 2's fireworks & crackers categories --------------------------
 
@@ -34,6 +60,9 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.categories c
   WHERE c.branch = v.branch AND LOWER(BTRIM(c.name_en)) = LOWER(BTRIM(v.name_en))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
 );
 
 -- 3. Seed POS 2's fireworks & crackers products -----------------------------
@@ -67,11 +96,32 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.products p
   WHERE p.branch = v.branch AND LOWER(BTRIM(p.name)) = LOWER(BTRIM(v.name))
+)
+AND NOT EXISTS (
+  SELECT 1 FROM public.seed_ledger WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
 );
 
 -- 4. Record each branch's actual business line in Store Settings
 -- (Store Settings > Shop Profile > Business Type).
-UPDATE public.store_settings SET business_type = 'Wedding Cards, Bags & Jute Bag Manufacturing', updated_at = NOW() WHERE branch = 'pos1';
-UPDATE public.store_settings SET business_type = 'Fireworks & Crackers', updated_at = NOW() WHERE branch = 'pos2';
+-- Gated on the same marker so a re-run never re-applies the placeholder
+-- business type over a value the operator has since edited.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.seed_ledger
+    WHERE seed_key = '20260927_0024_pos2_fireworks_catalog'
+  ) THEN
+    UPDATE public.store_settings SET business_type = 'Wedding Cards, Bags & Jute Bag Manufacturing', updated_at = NOW() WHERE branch = 'pos1';
+    UPDATE public.store_settings SET business_type = 'Fireworks & Crackers', updated_at = NOW() WHERE branch = 'pos2';
+  END IF;
+END $$;
+
+-- Mark this seed as applied. Every guard above is a no-op from here on, so a
+-- future re-run can neither resurrect a deleted product nor wipe POS 2.
+INSERT INTO public.seed_ledger (seed_key)
+VALUES ('20260927_0024_pos2_fireworks_catalog')
+ON CONFLICT (seed_key) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;
