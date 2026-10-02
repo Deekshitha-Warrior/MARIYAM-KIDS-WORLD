@@ -40,6 +40,9 @@ export const InventoryTable: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'in_stock' | 'low' | 'out'>('all')
+// Result of the last delete, so a permanent delete is visibly confirmed
+  // rather than looking like a no-op that silently reverts.
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Modals state
   const [showReceiveModal, setShowReceiveModal] = useState(false)
@@ -94,9 +97,12 @@ export const InventoryTable: React.FC = () => {
       await inventoryService.deleteInventoryItem(item.product_id, item.variant_id, branch)
       await fetchProducts(branch, true)
       await loadData()
+      setNotice({ type: 'success', text: `"${itemLabel}" deleted. It will not come back on refresh.` })
     } catch (err) {
       console.error('Failed to delete inventory item:', err)
-      alert(err instanceof Error ? err.message : 'Failed to delete item')
+      const message = err instanceof Error ? err.message : 'Failed to delete item'
+      setNotice({ type: 'error', text: message })
+      alert(message)
       setLoading(false)
     }
   }
@@ -298,6 +304,27 @@ export const InventoryTable: React.FC = () => {
               </div>
             </div>
           </div>
+{/* Delete result: confirmation that a hard delete actually stuck */}
+          {notice && (
+            <div
+              role="status"
+              className={`rounded-2xl border px-4 py-3 text-sm font-semibold flex items-start gap-2 ${
+                notice.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}
+            >
+              <span className="flex-1">{notice.text}</span>
+              <button
+                type="button"
+                onClick={() => setNotice(null)}
+                className="text-current opacity-60 hover:opacity-100 font-black px-1 cursor-pointer"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {/* Toolbar & Filter Chips */}
           <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
