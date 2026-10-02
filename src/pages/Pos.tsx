@@ -1354,9 +1354,9 @@ export default function Pos(props: PosProps = {}) {
                 <button
                   type="button"
                   onClick={() => setCatalogOpen(true)}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg bg-[#7A1220] text-[#D4AF37] hover:bg-[#1A1A1A] border border-[#D4AF37] shadow-xs transition-all shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg bg-[#7A1220] text-white hover:bg-[#1A1A1A] border border-[#D4AF37] shadow-xs transition-all shrink-0 cursor-pointer"
                 >
-                  <Search className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <Search className="w-3.5 h-3.5 text-white" />
                   <span className="tracking-wide">Search Catalog</span>
                 </button>
 
@@ -1757,7 +1757,7 @@ export default function Pos(props: PosProps = {}) {
                       onClick={() => setPaymentType(mode)}
                       className={`py-2 rounded-xl text-[11px] font-black uppercase tracking-wide border-2 transition-colors ${
                         paymentType === mode
-                          ? 'bg-[#7A1220] text-[#D4AF37] border-[#7A1220]'
+                          ? 'bg-[#7A1220] text-white border-[#7A1220]'
                           : 'bg-white text-[#374151] border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -1884,7 +1884,7 @@ export default function Pos(props: PosProps = {}) {
                   disabled={saving || items.length === 0}
                   aria-label="Save as Deposit Order"
                   title={items.length === 0 ? 'Add an item before creating a deposit order' : 'Continue to enter deposit and delivery details'}
-                  className="inline-flex min-h-[44px] w-full min-w-0 items-center justify-center rounded-xl border-2 border-[#7A1220] bg-[#7A1220] px-2 py-3 text-center text-[12px] font-black leading-tight tracking-wide !text-[#D4AF37] transition-colors hover:bg-[#5f0e19] hover:!text-[#D4AF37] disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:!text-[#D4AF37] disabled:opacity-100"
+                  className="inline-flex min-h-[44px] w-full min-w-0 items-center justify-center rounded-xl border-2 border-[#7A1220] bg-[#7A1220] px-2 py-3 text-center text-[12px] font-black leading-tight tracking-wide !text-white transition-colors hover:bg-[#5f0e19] hover:!text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:!text-gray-400 disabled:opacity-100"
                 >
                   <span className="block whitespace-normal !text-inherit">Save as Deposit Order</span>
                 </button>
