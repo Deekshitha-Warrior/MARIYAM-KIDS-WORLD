@@ -1884,7 +1884,7 @@ export default function Pos(props: PosProps = {}) {
                   disabled={saving || items.length === 0}
                   aria-label="Save as Deposit Order"
                   title={items.length === 0 ? 'Add an item before creating a deposit order' : 'Continue to enter deposit and delivery details'}
-                  className="inline-flex min-h-[44px] w-full min-w-0 items-center justify-center rounded-xl border-2 border-[#7A1220] bg-[#7A1220] px-2 py-3 text-center text-[12px] font-black leading-tight tracking-wide !text-white transition-colors hover:bg-[#5f0e19] hover:!text-white disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:!text-gray-400 disabled:opacity-100"
+                  className="inline-flex min-h-[44px] w-full min-w-0 items-center justify-center rounded-xl border-2 border-[#111111] bg-white px-2 py-3 text-center text-[13px] font-black uppercase leading-tight tracking-wider !text-[#111111] transition-colors hover:bg-gray-50 hover:!text-[#111111] disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:!text-gray-400 disabled:opacity-100"
                 >
                   <span className="block whitespace-normal !text-inherit">Save as Deposit Order</span>
                 </button>
