@@ -791,6 +791,7 @@ export default function Pos(props: PosProps = {}) {
           description: item.note || '', quantity: item.qty, unit: item.selectedUnit, unit_type: item.unitType,
           base_quantity: item.baseQuantity, base_price: Number(item.basePrice) || 0, line_total: lineTotal,
           source: 'advance_order', note: item.note || null,
+          is_manual: item.source === 'manual' || item.category === 'Unregistered',
         }
       })
       const created = await createAdvanceOrder({
