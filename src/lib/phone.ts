@@ -32,11 +32,27 @@ export function getSubscriberDigits(input: string): string | null {
   return normalized ? normalized.slice(2) : null
 }
 
-/** Display valid Indian mobile numbers with the country code kept separate. */
+/** Display valid Indian mobile numbers with the country code kept separate (+91 XXXXXXXXXX).
+ * Handles multiple numbers separated by comma, slash, or pipe. */
 export function formatPhoneForDisplay(input?: string | null): string {
   if (!input) return ''
-  const normalized = normalizePhone(String(input))
-  return normalized ? `+${normalized.slice(0, 2)} ${normalized.slice(2)}` : String(input).trim()
+  const str = String(input).trim()
+  if (/[,/|]/.test(str)) {
+    const formattedParts = str
+      .split(/[,/|]+/)
+      .map((part) => {
+        const p = part.trim()
+        if (!p) return ''
+        const norm = normalizePhone(p)
+        return norm ? `+${norm.slice(0, 2)} ${norm.slice(2)}` : p
+      })
+      .filter(Boolean)
+    if (formattedParts.length > 0) {
+      return formattedParts.join(' | ')
+    }
+  }
+  const normalized = normalizePhone(str)
+  return normalized ? `+${normalized.slice(0, 2)} ${normalized.slice(2)}` : str
 }
 
 export function normalizePhoneForWhatsApp(input: string): string {

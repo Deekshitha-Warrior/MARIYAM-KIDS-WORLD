@@ -6,7 +6,7 @@ interface CenexaFooterProps {
 }
 
 /**
- * Universal Footer for all YG Enterprises pages.
+ * Universal Footer for all MARIYAM KIDS WORLD pages.
  * Displays "Powered by Cenexa Systems © 2026" pinned at the bottom of the screen,
  * staying stationary while the page content scrolls behind it.
  */

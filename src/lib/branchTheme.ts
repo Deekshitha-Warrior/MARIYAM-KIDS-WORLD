@@ -5,16 +5,16 @@ import { BRAND_LOGO_POS1, BRAND_LOGO_POS2 } from './brand'
 /** User-facing branch name, themed to what that branch actually sells
  * (not a generic "POS 1"/"POS 2") — keep this the single source of truth
  * for the branch name shown anywhere in the UI. */
-export const branchLabel = (branch: PosBranch) => (branch === 'pos2' ? 'Fireworks & Crackers POS' : 'Jute & Wedding POS')
+export const branchLabel = (branch: PosBranch) => (branch === 'pos2' ? 'Taj Textiles POS' : 'Mariyam Kids World POS')
 
 /** Short chip/badge form of branchLabel for tight spaces (nav pills, badges). */
-export const branchShortLabel = (branch: PosBranch) => (branch === 'pos2' ? 'Fireworks POS' : 'Jute & Wedding POS')
+export const branchShortLabel = (branch: PosBranch) => (branch === 'pos2' ? 'Taj Textiles' : 'Kids World POS')
 
 /** What this branch actually sells, for taglines/subtitles (matches the
  * wording baked into each branch's own logo art and Store Settings
  * business_type). */
 export const branchSubtitle = (branch: PosBranch) =>
-  branch === 'pos2' ? 'Fireworks & Crackers' : 'Wedding Card, Wedding Bag and Jute Bag Manufacturing'
+  branch === 'pos2' ? 'Textiles & Garments' : 'Kids Wear, Toys & Kids Accessories'
 
 /** Combined tagline for admin/global contexts that span both branches
  * (e.g. the Admin Orchestrator login tab) — showing only one branch's
@@ -25,13 +25,13 @@ export const branchLogo = (branch: PosBranch) =>
   useSettingsStore.getState().settingsByBranch[branch]?.logoUrl || (branch === 'pos2' ? BRAND_LOGO_POS2 : BRAND_LOGO_POS1)
 
 export const posAccent = (branch: PosBranch) => branch === 'pos2'
-  ? { bg: 'bg-posTwo', bgLight: 'bg-posTwo-light', text: 'text-posTwo-dark', border: 'border-posTwo', hex: '#B8860B' }
-  : { bg: 'bg-posOne', bgLight: 'bg-posOne-light', text: 'text-posOne-dark', border: 'border-posOne', hex: '#8B1A1A' }
+  ? { bg: 'bg-posTwo', bgLight: 'bg-posTwo-light', text: 'text-posTwo-dark', border: 'border-posTwo', hex: '#2563EB' }
+  : { bg: 'bg-posOne', bgLight: 'bg-posOne-light', text: 'text-posOne-dark', border: 'border-posOne', hex: '#EC4899' }
 
-export const DEFAULT_BRANCH_COLOR: Record<PosBranch, string> = { pos1: '#8B1A1A', pos2: '#B8860B' }
-export const DEFAULT_ADMIN_COLOR = '#7A1220'
+export const DEFAULT_BRANCH_COLOR: Record<PosBranch, string> = { pos1: '#EC4899', pos2: '#2563EB' }
+export const DEFAULT_ADMIN_COLOR = '#EC4899'
 
-const ADMIN_THEME_STORAGE_KEY = 'yg_admin_theme_color'
+const ADMIN_THEME_STORAGE_KEY = 'mkw_admin_theme_color'
 
 export function getAdminThemeColor(): string {
   try {
@@ -89,9 +89,9 @@ export function applyActiveTheme(
     activeColor = getAdminThemeColor()
   }
 
-  const primaryDark = shadeHex(activeColor, 0.28)
-  const primaryLight = tintHex(activeColor, 0.90)
-  const primaryBorder = mixHex(activeColor, '#D4AF37', 0.35)
+  const primaryDark = shadeHex(activeColor, 0.25)
+  const primaryLight = tintHex(activeColor, 0.92)
+  const primaryBorder = tintHex(activeColor, 0.65)
 
   root.style.setProperty('--theme-primary', activeColor)
   root.style.setProperty('--theme-primary-dark', primaryDark)

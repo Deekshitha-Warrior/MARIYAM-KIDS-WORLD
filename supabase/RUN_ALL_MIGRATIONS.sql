@@ -1,4 +1,4 @@
-﻿-- ====================================================================
+-- ====================================================================
 -- COMBINED MIGRATION: run this single file in the Supabase SQL Editor
 -- !! FOR A BRAND-NEW, EMPTY DATABASE ONLY. !!
 -- This file REPLAYS the entire history from 0001. Running it against a
@@ -4685,6 +4685,19 @@ END $$;
 COMMIT;
 
 -- ============================================================
+-- SECTION 28b -- 20261001_0028_add_website_url_to_store_settings.sql
+-- ============================================================
+
+BEGIN;
+
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS website_url TEXT NOT NULL DEFAULT 'https://ygenterprises.co.in';
+
+-- Update both store settings rows with the official website
+UPDATE public.store_settings SET website_url = 'https://ygenterprises.co.in' WHERE branch IN ('pos1', 'pos2');
+
+COMMIT;
+
+-- ============================================================
 -- SECTION 29 / 32 â€” 20261001_0030_hard_delete_inventory_item.sql
 -- ============================================================
 
@@ -7916,3 +7929,18 @@ COMMIT;
 SELECT
   (SELECT CASE WHEN is_called THEN last_value + 1 ELSE last_value END FROM public.invoice_number_seq_pos1) AS pos1_next_bill,
   (SELECT CASE WHEN is_called THEN last_value + 1 ELSE last_value END FROM public.invoice_number_seq_pos2) AS pos2_next_bill;
+
+-- ============================================================
+-- FINAL: Grant API access to public schema tables, routines and sequences
+-- ============================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+

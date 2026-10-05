@@ -100,7 +100,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
       </head>
       <body>
         <div class="text-center mb-2">
-          <img src="${logoSrc}" style="width: 64px; height: 64px; object-fit: contain; margin: 0 auto 8px auto; display: block;" alt="YG Logo" />
+          <img src="${logoSrc}" style="width: 64px; height: 64px; object-fit: contain; margin: 0 auto 8px auto; display: block;" alt="Mariyam Kids World Logo" />
           <div class="font-bold" style="font-size: 16px; letter-spacing: 2px;">${data.storeName || BRAND_EN}</div>
           <div style="font-size: 10px; margin-top: 2px;">${data.storeAddress || profile.address}</div>
           <div class="mt-1" style="font-size: 10px;">Ph: ${data.storePhone || profile.phone}</div>
@@ -187,7 +187,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
         </div>
 
         <div class="text-center mt-2" style="font-size: 11px;">
-          <div class="font-bold">Thank you for shopping at YG ENTERPRISES!</div>
+          <div class="font-bold">Thank you for shopping at MARIYAM KIDS WORLD!</div>
           ${instagramUrls ? `<div style="font-size: 10px; margin-top: 2px;">Follow us on Instagram:<br/>${instagramUrls.split('\n').join('<br/>')}</div>` : ''}
         </div>
       </body>

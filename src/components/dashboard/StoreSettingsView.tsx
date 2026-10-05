@@ -64,7 +64,7 @@ export default function StoreSettingsView() {
       setForm((prev) => ({
         ...prev,
         themeColor: adminColor,
-        name: 'YG ENTERPRISES (Admin Portal)',
+        name: 'MARIYAM KIDS WORLD (Admin Portal)',
       }))
       return
     }
@@ -208,8 +208,8 @@ export default function StoreSettingsView() {
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-red-500" />
-            POS 1 — Jute &amp; Wedding
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            POS 1 — Mariyam Kids World
           </button>
           <button
             type="button"
@@ -220,8 +220,8 @@ export default function StoreSettingsView() {
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            POS 2 — Fireworks &amp; Crackers
+            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            POS 2 — Taj Textiles
           </button>
           <button
             type="button"
@@ -364,7 +364,7 @@ export default function StoreSettingsView() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-wide text-gray-500 mb-1">Business Type</label>
-                  <input value={form.businessType} onChange={(e) => setForm((f) => ({ ...f, businessType: e.target.value }))} placeholder="e.g. Fireworks / Bags" className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-[#FBFAF6] text-sm font-bold outline-none focus:border-gray-400" />
+                  <input value={form.businessType} onChange={(e) => setForm((f) => ({ ...f, businessType: e.target.value }))} placeholder="e.g. Textiles / Kids Wear" className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-[#FBFAF6] text-sm font-bold outline-none focus:border-gray-400" />
                 </div>
               </div>
             </div>

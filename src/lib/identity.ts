@@ -2,7 +2,7 @@
  * Legacy placeholder identities that were seeded into `store_settings` by very
  * early migrations (Purple Boutique, CLAD, Chaji Mens Wear). They must never
  * reach a customer-facing surface (invoice header, thermal receipt, advance
- * receipt, WhatsApp message) — YG Enterprises branding is the only identity
+ * receipt, WhatsApp message) — MARIYAM KIDS WORLD branding is the only identity
  * this app ships.
  *
  * A field is treated as "empty" when it matches one of these markers, so the
@@ -26,6 +26,13 @@ const LEGACY_IDENTITY_MARKERS: RegExp[] = [
   /tamarind\s*suite/i,
   /cyberjaya/i,
   /\+?60\s*11[-\s]?3312\s*7107/,
+  /yg\s*enterprises/i,
+  /gurumoorthy/i,
+  /ygenterprises/i,
+  /98844\s*10700/,
+  /97878\s*08090/,
+  /n\.s\.c\.\s*bose/i,
+  /sankar\s*cafe/i,
 ]
 
 /** Returns '' when the value is blank or a known legacy placeholder. */

@@ -5,29 +5,28 @@
 @layer base {
   :root {
     /* Active dynamic theme variables — driven by current active branch / role */
-    --theme-primary: #7A1220;
-    --theme-primary-dark: #5C0D18;
-    --theme-primary-light: #FBF6E9;
-    --theme-primary-border: #E8D399;
+    --theme-primary: #EC4899;
+    --theme-primary-dark: #DB2777;
+    --theme-primary-light: #FDF2F8;
+    --theme-primary-border: #FBCFE8;
 
-    --brand-black: var(--theme-primary, #7A1220);
-    --brand-black-surface: var(--theme-primary-dark, #5C0D18);
-    --brand-gold: #D4AF37;
-    --brand-gold-hover: #C5A059;
-    --brand-gold-light: #FBF6E9;
-    --brand-gold-border: #E8D399;
-    --brand-surface: #FBFAF6;
-    --brand-text-dark: #111111;
+    --brand-black: var(--theme-primary, #EC4899);
+    --brand-black-surface: var(--theme-primary-dark, #DB2777);
+    --brand-gold: #F472B6;
+    --brand-gold-hover: #EC4899;
+    --brand-gold-light: #FDF2F8;
+    --brand-gold-border: #FBCFE8;
+    --brand-surface: #FFFFFF;
+    --brand-text-dark: #1F2937;
     --brand-text-muted: #6B7280;
 
-    /* Branch accent colors — overridden at runtime from each branch's
-       Store Settings > Appearance color (see src/App.tsx / src/lib/color.ts). */
-    --pos-one: #8B1A1A;
-    --pos-one-dark: #5C0D18;
-    --pos-one-light: #F7E8E8;
-    --pos-two: #B8860B;
-    --pos-two-dark: #8A6508;
-    --pos-two-light: #FBF3DE;
+    /* Branch accent colors */
+    --pos-one: #EC4899;
+    --pos-one-dark: #DB2777;
+    --pos-one-light: #FDF2F8;
+    --pos-two: #2563EB;
+    --pos-two-dark: #1D4ED8;
+    --pos-two-light: #EFF6FF;
   }
 
   /* Dynamic whole-theme color bindings so changing branch appearance colors
@@ -65,6 +64,31 @@
     border-color: var(--theme-primary) !important;
   }
 
+  /* Map old gold and cream elements to clean pink and white theme */
+  .bg-\[\#7A1220\] .text-\[\#D4AF37\],
+  .bg-brand-black .text-\[\#D4AF37\],
+  .bg-\[\#7A1220\] .border-\[\#D4AF37\],
+  .bg-brand-black .border-\[\#D4AF37\],
+  .bg-\[\#7A1220\] .text-\[\#B48811\] {
+    color: #FFFFFF !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+  }
+
+  .text-\[\#D4AF37\],
+  .text-\[\#B48811\] {
+    color: var(--theme-primary-dark) !important;
+  }
+
+  .border-\[\#D4AF37\],
+  .border-\[\#E8D399\] {
+    border-color: var(--theme-primary-border) !important;
+  }
+
+  .bg-\[\#FBFAF6\],
+  .bg-\[\#FFF9E6\] {
+    background-color: var(--theme-primary-light) !important;
+  }
+
   *, *::before, *::after {
     box-sizing: border-box;
     font-family: 'DM Sans', 'Outfit', 'Noto Sans Tamil', system-ui, -apple-system, sans-serif;
@@ -77,7 +101,7 @@
     padding: 0;
     height: 100%;
     height: 100dvh;
-    background-color: #7A1220;
+    background-color: #EC4899;
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     touch-action: manipulation;
@@ -120,10 +144,10 @@
     padding: 0;
     height: 100%;
     height: 100dvh;
-    background-color: #FBFAF6;
+    background-color: #FFFFFF;
     background-image:
-      radial-gradient(circle at top left, rgba(212, 175, 55, 0.06), transparent 34%),
-      radial-gradient(circle at top right, rgba(10, 10, 10, 0.04), transparent 28%);
+      radial-gradient(circle at top left, rgba(236, 72, 153, 0.05), transparent 34%),
+      radial-gradient(circle at top right, rgba(244, 114, 182, 0.04), transparent 28%);
     color: #111111;
     font-family: 'DM Sans', 'Outfit', 'Noto Sans Tamil', system-ui, -apple-system, sans-serif;
     font-optical-sizing: auto;
@@ -516,5 +540,23 @@ button, a[role="button"] {
   height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* 3D Flip Card Animation Utilities */
+.perspective-800 {
+  perspective: 800px;
+}
+.perspective-1000 {
+  perspective: 1000px;
+}
+.perspective-1200 {
+  perspective: 1200px;
+}
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 

@@ -13,7 +13,7 @@ export const galleryImages: GalleryImage[] = [
   {
     id: 1,
     title: 'Our Store',
-    description: 'YG ENTERPRISES in Sevoor, Arani',
+    description: 'MARIYAM KIDS WORLD in Old Pallavaram, Chennai',
     image: BASE + 'WhatsApp Image 2026-06-06 at 7.55.33 AM.jpeg',
     tags: ['store', 'front', 'heritage'],
   },

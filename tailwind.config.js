@@ -7,43 +7,41 @@ export default {
   theme: {
     extend: {
       colors: {
-        bgMain:    '#FBFAF6', // Warm cream surface
+        bgMain:    '#FFFFFF', // Clean white surface
         cardBg:    '#FFFFFF',
         brand: {
-          black:      '#7A1220', // Deep maroon/red — YG Enterprises primary
-          dark:       '#5C0D18', // Darker maroon
-          gold:       '#D4AF37',
-          goldHover:  '#C5A059',
-          goldLight:  '#FBF6E9',
-          goldBorder: '#E8D399',
+          black:      '#EC4899', // True vibrant Pink — Mariyam Kids World primary
+          dark:       '#DB2777', // Deep pink
+          gold:       '#F472B6', // Accent soft pink
+          goldHover:  '#EC4899',
+          goldLight:  '#FDF2F8', // Soft pink tint
+          goldBorder: '#FBCFE8', // Delicate pink border
         },
         gold: {
-          DEFAULT: '#D4AF37',
-          dark:    '#B48811',
-          light:   '#FBF6E9',
-          border:  '#E8D399',
+          DEFAULT: '#EC4899',
+          dark:    '#DB2777',
+          light:   '#FDF2F8',
+          border:  '#FBCFE8',
         },
         maroon: {
-          DEFAULT: '#8B1A1A',
-          dark:    '#5C0D18',
-          light:   '#F7E8E8',
+          DEFAULT: '#EC4899',
+          dark:    '#DB2777',
+          light:   '#FDF2F8',
         },
-        // Branch accents for POS 1 / POS 2 — resolved from CSS custom properties so
-        // each branch's Store Settings > Appearance color can override them at
-        // runtime (see src/index.css :root for defaults, src/App.tsx for the sync).
+        // Branch accents for POS 1 / POS 2
         posOne: {
-          DEFAULT: 'var(--pos-one, #8B1A1A)',
-          dark:    'var(--pos-one-dark, #5C0D18)',
-          light:   'var(--pos-one-light, #F7E8E8)',
+          DEFAULT: 'var(--pos-one, #EC4899)',
+          dark:    'var(--pos-one-dark, #DB2777)',
+          light:   'var(--pos-one-light, #FDF2F8)',
         },
         posTwo: {
-          DEFAULT: 'var(--pos-two, #B8860B)',
-          dark:    'var(--pos-two-dark, #8A6508)',
-          light:   'var(--pos-two-light, #FBF3DE)',
+          DEFAULT: 'var(--pos-two, #2563EB)',
+          dark:    'var(--pos-two-dark, #1D4ED8)',
+          light:   'var(--pos-two-light, #EFF6FF)',
         },
-        textMain:  '#1A0E0E',
+        textMain:  '#1F2937',
         textMuted: '#6B7280',
-        borderLight: '#E5E7EB', // Neutral clean border
+        borderLight: '#FCE7F3', // Soft pink-tinted neutral border
       },
       fontFamily: {
         sans:      ['"DM Sans"', '"Outfit"', '"Noto Sans Tamil"', 'system-ui', '-apple-system', 'sans-serif'],

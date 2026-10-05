@@ -6,6 +6,10 @@ import {
   BRAND_LOGO_POS1,
   BRAND_LOGO_POS2,
   BRAND_PRIMARY_PHONE_DISPLAY,
+  TAJ_BRAND_NAME,
+  TAJ_BRAND_ADDRESS,
+  TAJ_BRAND_PHONE_DISPLAY,
+  TAJ_BRAND_EMAIL,
   getInstagramUrls,
 } from './brand'
 import { cleanIdentityField } from './identity'
@@ -39,12 +43,22 @@ export function instagramUrlsFromIds(raw: string | null | undefined): string {
 export function getBranchProfile(branch?: string | null): BranchProfile {
   const b = toBranch(branch)
   const s = useSettingsStore.getState().settingsByBranch[b]
+  if (b === 'pos2') {
+    return {
+      name: cleanIdentityField(s?.name) || TAJ_BRAND_NAME,
+      address: cleanIdentityField(s?.address) || TAJ_BRAND_ADDRESS,
+      phone: cleanIdentityField(s?.phone) || TAJ_BRAND_PHONE_DISPLAY,
+      email: cleanIdentityField(s?.email) || TAJ_BRAND_EMAIL,
+      logo: s?.logoUrl || BRAND_LOGO_POS2,
+      instagramUrls: instagramUrlsFromIds(s?.instagramId) || '',
+    }
+  }
   return {
     name: cleanIdentityField(s?.name) || BRAND_EN,
     address: cleanIdentityField(s?.address) || BRAND_ADDRESS,
     phone: cleanIdentityField(s?.phone) || BRAND_PRIMARY_PHONE_DISPLAY,
     email: cleanIdentityField(s?.email) || BRAND_EMAIL,
-    logo: s?.logoUrl || (b === 'pos2' ? BRAND_LOGO_POS2 : BRAND_LOGO_POS1),
+    logo: s?.logoUrl || BRAND_LOGO_POS1,
     instagramUrls: instagramUrlsFromIds(s?.instagramId) || getInstagramUrls(b),
   }
 }

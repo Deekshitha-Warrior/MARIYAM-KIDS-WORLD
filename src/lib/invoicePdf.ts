@@ -40,45 +40,58 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   const pageWidth = 210
   const left = 16
   const right = 194
-  const primaryColor = '#D4AF37' // Flamingo Pink
+  const isPos2 = data.branch === 'pos2'
+  const primaryColor = isPos2 ? '#1D4ED8' : '#DB2777' // Royal Blue for Taj Textiles, Deep Pink for Mariyam
+  const borderColor = isPos2 ? '#60A5FA' : '#F472B6'
+  const boxFill = isPos2 ? '#EFF6FF' : '#FDF2F8'
+  const boxBorder = isPos2 ? '#BFDBFE' : '#FBCFE8'
+  const tableHeaderBg = isPos2 ? '#1D4ED8' : '#DB2777'
+  const tableRowLine = isPos2 ? '#DBEAFE' : '#FCE7F3'
   const ink = '#18202a'
   const muted = '#68717c'
   let y = 16
 
+  const profile = getBranchProfile(data.branch)
+
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
-  doc.setTextColor('#7A1220')
+  doc.setTextColor(primaryColor)
   doc.text('TAX INVOICE', left, y)
   doc.text(`Invoice: #${formattedNo}`, right, y, { align: 'right' })
-  y += 7
-  doc.setDrawColor('#D4AF37')
+  y += 6
+  doc.setDrawColor(borderColor)
   doc.setLineWidth(0.5)
   doc.line(left, y, right, y)
-  y += 10
+  y += 7
 
+  const logoSize = 25
+  const headerTop = y
   try {
-    doc.addImage(data.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1, 'PNG', left, y, 30, 30)
+    const logoData = isPos2 ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1
+    const format = logoData.startsWith('data:image/png') ? 'PNG' : 'JPEG'
+    doc.addImage(logoData, format, left, headerTop, logoSize, logoSize)
   } catch {
     doc.setTextColor(primaryColor)
     doc.setFontSize(16)
-    doc.text(BRAND_EN, left, y + 15)
+    doc.text(profile.name, left, headerTop + 15)
   }
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(13)
-  doc.setTextColor('#7A1220')
-  doc.text(BRAND_EN, left + 35, y + 10)
+  doc.setTextColor(primaryColor)
+  doc.text(profile.name, left + logoSize + 5, headerTop + 6)
   doc.setFontSize(8)
-  doc.setTextColor('#555')
+  doc.setTextColor('#555555')
   doc.setFont('helvetica', 'normal')
-  const profile = getBranchProfile(data.branch)
-  doc.text(profile.address, left + 35, y + 17, { maxWidth: 80 })
-  doc.text(`Phone: ${profile.phone}`, left + 35, y + 25)
-  doc.setTextColor('#7A1220')
+  doc.text(profile.address, left + logoSize + 5, headerTop + 13, { maxWidth: 80 })
+  doc.text(`Phone: ${formatPhoneForDisplay(profile.phone)}`, left + logoSize + 5, headerTop + 22)
+  doc.setTextColor(primaryColor)
   doc.setFont('helvetica', 'bold')
-  doc.text(`Date: ${new Date(data.date).toLocaleDateString('en-IN')}`, right - 2, y + 2, { align: 'right' })
+  doc.text(`Date: ${new Date(data.date).toLocaleDateString('en-IN')}`, right - 2, headerTop + 5, { align: 'right' })
   const paymentText = `Payment: ${data.paymentMode || 'POS'}`.replace(/[₹\u20b9]/g, 'Rs. ')
-  doc.text(paymentText, right - 2, y + 8, { align: 'right', maxWidth: 100 })
-  y += 28
+  doc.text(paymentText, right - 2, headerTop + 11, { align: 'right', maxWidth: 100 })
+  
+  // Advance y cleanly past the logo with 6mm margin to guarantee NO overlap with the BILL TO box
+  y = headerTop + logoSize + 6
 
   const customerName = String(data.customerName || 'Walk-in Customer').trim()
   const customerPhone = formatPhoneForDisplay(data.phone) || '—'
@@ -89,13 +102,13 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
     : []
   const customerBoxHeight = 19 + customerNameLines.length * 4 + customerAddressLines.length * 4
 
-  doc.setFillColor('#FBFAF6')
-  doc.setDrawColor('#D4AF37')
+  doc.setFillColor(boxFill)
+  doc.setDrawColor(boxBorder)
   doc.setLineWidth(0.5)
   doc.roundedRect(left, y, right - left, customerBoxHeight, 2, 2, 'FD')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
-  doc.setTextColor('#7A1220')
+  doc.setTextColor(primaryColor)
   doc.text('BILL TO', left + 5, y + 7)
   doc.setFontSize(10)
   doc.setTextColor(ink)
@@ -108,13 +121,13 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   if (customerAddressLines.length > 0) {
     doc.text(customerAddressLines, left + 5, phoneY + 5)
   }
-  y += customerBoxHeight + 9
+  y += customerBoxHeight + 8
 
-  doc.setFillColor('#7A1220')
+  doc.setFillColor(tableHeaderBg)
   doc.rect(left, y, right - left, 9, 'F')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
-  doc.setTextColor('#D4AF37')
+  doc.setTextColor('#FFFFFF')
   doc.text('#', left + 3, y + 6)
   doc.text('ITEM DESCRIPTION', left + 12, y + 6)
   doc.text('QTY', 139, y + 6, { align: 'center' })
@@ -132,8 +145,6 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
     doc.setTextColor(ink)
     doc.text(String(index + 1), left + 3, y)
     doc.text(nameLines, left + 12, y)
-    // Unit belongs with the item description (the QTY column stays a bare
-    // number), matching the on-screen invoice's "m · ₹100.00" sub-line.
     const subY = y + nameLines.length * 4
     const unitLabel = normalizeUnitLabel(item.unit, item.unit_type)
     doc.setFont('helvetica', 'normal')
@@ -147,41 +158,42 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
     doc.setTextColor(ink)
     doc.text(money(item.line_total), right - 3, y, { align: 'right' })
     y += Math.max(14, (nameLines.length + 1) * 4 + 4)
-    doc.setDrawColor('#e8eaed')
+    doc.setDrawColor(tableRowLine)
     doc.line(left, y - 3, right, y - 3)
   })
 
   y = Math.max(y + 6, 150)
   const rows: Array<[string, string, string, number]> = [['Subtotal', money(data.subtotal), ink, 9]]
-  if ((data.discountAmount || 0) > 0) rows.push([`Coupon${data.couponCode ? ` (${data.couponCode})` : ''}`, `-${money(data.discountAmount || 0)}`, '#D4AF37', 11])
-  if ((data.manualDiscountAmount || 0) > 0) rows.push(['Discount', `-${money(data.manualDiscountAmount || 0)}`, '#D4AF37', 9])
+  if ((data.discountAmount || 0) > 0) rows.push([`Coupon${data.couponCode ? ` (${data.couponCode})` : ''}`, `-${money(data.discountAmount || 0)}`, primaryColor, 11])
+  if ((data.manualDiscountAmount || 0) > 0) rows.push(['Discount', `-${money(data.manualDiscountAmount || 0)}`, primaryColor, 9])
   if ((data.gstAmount || 0) > 0) rows.push(['GST', money(data.gstAmount || 0), ink, 7])
   rows.push(['Delivery', (data.shipping || 0) > 0 ? money(data.shipping) : 'FREE', ink, 9])
   rows.forEach(([label, value, color, fontSize]) => {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(fontSize)
-    doc.setTextColor(color === '#D4AF37' ? '#D4AF37' : '#18202a')
+    doc.setTextColor(color === primaryColor ? primaryColor : '#18202a')
     doc.text(label, 142, y, { align: 'right' })
     doc.text(value, right - 3, y, { align: 'right' })
     y += 7
   })
-  doc.setDrawColor('#D4AF37')
+  doc.setDrawColor(borderColor)
   doc.setLineWidth(1)
   doc.line(left + 20, y - 3, right - 3, y - 3)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
-  doc.setTextColor('#7A1220')
+  doc.setTextColor(primaryColor)
   doc.text('TOTAL', 142, y + 6, { align: 'right' })
   doc.text(money(data.total), right - 3, y + 6, { align: 'right' })
 
   y = 275
-  doc.setDrawColor('#D4AF37')
+  doc.setDrawColor(borderColor)
   doc.setLineWidth(0.5)
   doc.line(left, y, right, y)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
-  doc.setTextColor('#7A1220')
-  doc.text('THANK YOU FOR SHOPPING WITH US', pageWidth / 2, y + 8, { align: 'center' })
+  doc.setTextColor(primaryColor)
+  const footerMessage = isPos2 ? 'THANK YOU FOR SHOPPING AT TAJ TEXTILES' : 'THANK YOU FOR SHOPPING WITH US'
+  doc.text(footerMessage, pageWidth / 2, y + 8, { align: 'center' })
   return doc.output('blob')
 }
 

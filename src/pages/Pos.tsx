@@ -1199,7 +1199,7 @@ export default function Pos(props: PosProps = {}) {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  POS 1 (Jute)
+                  POS 1 (Kids World)
                 </button>
                 <button
                   type="button"

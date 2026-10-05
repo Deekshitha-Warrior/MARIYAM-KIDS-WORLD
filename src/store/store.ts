@@ -4,7 +4,23 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { supabase } from '../lib/supabase'
 import { fetchAllCategories, fetchAllProducts } from '../services/productService'
 import { fetchAllVariants, type ProductVariant } from '../services/variantService'
-import { BRAND_ADDRESS, BRAND_EMAIL, BRAND_EN, BRAND_OWNER_NAME, BRAND_PHONE_DISPLAY } from '../lib/brand'
+import {
+  BRAND_ADDRESS,
+  BRAND_EMAIL,
+  BRAND_EN,
+  BRAND_OWNER_NAME,
+  BRAND_PHONE_DISPLAY,
+  BRAND_SUBTITLE,
+  BRAND_INSTAGRAM,
+  BRAND_LOGO_POS1,
+  TAJ_BRAND_NAME,
+  TAJ_BRAND_OWNER,
+  TAJ_BRAND_PHONE_DISPLAY,
+  TAJ_BRAND_EMAIL,
+  TAJ_BRAND_ADDRESS,
+  TAJ_BRAND_SUBTITLE,
+  TAJ_BRAND_LOGO,
+} from '../lib/brand'
 import { cleanIdentityField } from '../lib/identity'
 import {
   calculateLineTotal,
@@ -612,7 +628,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
         .maybeSingle()
       if (!error && data) {
         // Legacy placeholder identities (CLAD / Chaji / Purple Boutique) seeded by
-        // very early migrations are replaced with the YG Enterprises brand
+        // very early migrations are replaced with the MARIYAM KIDS WORLD brand
         // constants, so a stale store_settings row can never leak onto an
         // invoice, receipt, WhatsApp message or the admin UI.
         const name = cleanIdentityField(data.name) || BRAND_EN
@@ -641,16 +657,27 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
       }
     }
     // Fallback/Demo settings
-    const fallback: StoreSettings = {
+    const fallback: StoreSettings = branch === 'pos2' ? {
+      name: TAJ_BRAND_NAME,
+      ownerName: TAJ_BRAND_OWNER,
+      phone: TAJ_BRAND_PHONE_DISPLAY,
+      email: TAJ_BRAND_EMAIL,
+      address: TAJ_BRAND_ADDRESS,
+      businessType: TAJ_BRAND_SUBTITLE,
+      instagramId: '',
+      logoUrl: TAJ_BRAND_LOGO,
+      themeColor: '#2563EB',
+      gstEnabled: false
+    } : {
       name: BRAND_EN,
       ownerName: BRAND_OWNER_NAME,
       phone: BRAND_PHONE_DISPLAY,
       email: BRAND_EMAIL,
       address: BRAND_ADDRESS,
-      businessType: '',
-      instagramId: '',
-      logoUrl: null,
-      themeColor: branch === 'pos2' ? '#B8860B' : '#8B1A1A',
+      businessType: BRAND_SUBTITLE,
+      instagramId: BRAND_INSTAGRAM,
+      logoUrl: BRAND_LOGO_POS1,
+      themeColor: '#EC4899',
       gstEnabled: false
     }
     set((state) => ({
