@@ -182,7 +182,27 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
     const total = Number(form.totalAmount); const deposit = Number(form.depositAmount)
     if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(deposit) || deposit <= 0 || deposit >= total) { setError('Deposit must be greater than ₹0 and less than the total order amount.'); setSaving(false); return }
     try {
-      const created = await createAdvanceOrder({ ...form, totalAmount: total, depositAmount: deposit, referenceNumber: form.reference_number, createdByName: role || 'Staff', products: [{ name: form.productName, category: form.category, description: form.description, quantity: 1, base_price: total, line_total: total, unit: 'piece', unit_type: 'unit', source: 'advance_order' }], branch })
+      const matchedProd = products.find(p => p.name.trim().toLowerCase() === form.productName.trim().toLowerCase())
+      const created = await createAdvanceOrder({
+        ...form,
+        totalAmount: total,
+        depositAmount: deposit,
+        referenceNumber: form.reference_number,
+        createdByName: role || 'Staff',
+        products: [{
+          product_id: matchedProd?.id,
+          name: form.productName,
+          category: form.category || matchedProd?.category,
+          description: form.description,
+          quantity: 1,
+          base_price: total,
+          line_total: total,
+          unit: 'piece',
+          unit_type: 'unit',
+          source: 'advance_order'
+        }],
+        branch
+      })
       setOrders(current => [created, ...current]); setForm(initialForm); setCreateOpen(false); setNotice(`${created.deposit_id} created. Deposit is tracked separately and has not been added to revenue.`)
 
       // Redirect to WhatsApp with advance deposit receipt

@@ -229,6 +229,18 @@ export default function Pos(props: PosProps = {}) {
     return () => { void supabase.removeChannel(productChannel) }
   }, [fetchProducts, fetchVariants, branch])
 
+  // Prevent cross-branch cart collision when toggling between POS 1 and POS 2
+  useEffect(() => {
+    setItems([])
+    setCustomer({ name: '', phone: '', address: '' })
+    setAppliedCoupon(null)
+    setManualDiscountValue('')
+    setRemarks('')
+    setReferenceNumber('')
+    setBillingDate('')
+    setError('')
+  }, [branch])
+
   // ── Derived data ──────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const categories = useMemo(() => {
@@ -388,17 +400,17 @@ export default function Pos(props: PosProps = {}) {
     const targetId = scanned.variant_id ? scanned.variant_id : scanned.product_id
 
     setItems(cur => {
-      const ex = cur.find(i => (scanned.variant_id ? i.variantId === scanned.variant_id : i.id === scanned.product_id))
+      const ex = cur.find(i => (scanned.variant_id ? i.variantId === scanned.variant_id : (i.id === scanned.product_id && !i.variantId)))
       if (!ex) {
         const item = makePosItem({
           id: targetId,
-          name: scanned.product_name,
+          name: scanned.variant_name ? `${scanned.product_name} - ${scanned.variant_name}` : scanned.product_name,
           nameTa: scanned.name_ta || undefined,
           tamilName: scanned.name_ta || undefined,
           category: scanned.category || 'Apparel',
           remedy: [],
           price: scanned.price,
-          offerPrice: scanned.offer_price || null,
+          offerPrice: scanned.variant_id ? null : (scanned.offer_price || null),
           stock: scanned.stock,
           stockQuantity: scanned.stock,
           hasVariants: false,
@@ -421,12 +433,18 @@ export default function Pos(props: PosProps = {}) {
         item.variantId = scanned.variant_id || undefined
         item.variantName = scanned.variant_name || undefined
         item.parentProductId = String(scanned.product_id)
+        // Ensure variant's own price is strictly applied as basePrice and lineTotal
+        item.basePrice = scanned.price
+        item.lineTotal = calculateLineTotal(1, item.unitType, item.baseQuantity, scanned.price)
         return [...cur, item]
       }
 
       // Existing item: increment quantity by 1
       return cur.map(i => {
-        if ((scanned.variant_id && i.variantId === scanned.variant_id) || (!scanned.variant_id && i.id === scanned.product_id)) {
+        const match = scanned.variant_id
+          ? i.variantId === scanned.variant_id
+          : (i.id === scanned.product_id && !i.variantId)
+        if (match) {
           return recalc(i, i.qty + 1)
         }
         return i
@@ -449,7 +467,14 @@ export default function Pos(props: PosProps = {}) {
       const prod = record.product
       const varnt = record.variant
       const effectiveStock = varnt ? (Number(varnt.stock) || 0) : 999
-      const price = varnt?.price ? Number(varnt.price) : Number(prod.price)
+      
+      // Use variant price when variant is present, never fallback to base price
+      const variantPrice = varnt && varnt.price !== undefined && varnt.price !== null
+        ? Number(varnt.price)
+        : undefined
+      const price = (variantPrice !== undefined && !isNaN(variantPrice))
+        ? variantPrice
+        : Number(prod.price || 0)
 
       const payload: ScannedItemPayload = {
         product_id: record.product_id,
@@ -458,7 +483,8 @@ export default function Pos(props: PosProps = {}) {
         name_ta: prod.name_ta,
         variant_name: varnt?.variant_name,
         price: price,
-        offer_price: prod.offer_price ? Number(prod.offer_price) : undefined,
+        // Crucial: for variants, never inherit base product offer_price!
+        offer_price: varnt ? undefined : (prod.offer_price ? Number(prod.offer_price) : undefined),
         stock: effectiveStock,
         barcode: clean,
         image_url: prod.image_url,

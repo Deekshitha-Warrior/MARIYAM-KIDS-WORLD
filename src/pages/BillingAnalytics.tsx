@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Boxes,
@@ -257,7 +257,7 @@ export default function BillingAnalytics() {
   const [analyticsDatePreset, setAnalyticsDatePreset] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all')
   const [analyticsDateFrom, setAnalyticsDateFrom] = useState('')
   const [analyticsDateTo, setAnalyticsDateTo] = useState('')
-  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual'>('all')
+  const [billTypeFilter, setBillTypeFilter] = useState<'all' | 'offline' | 'online' | 'manual' | 'advance'>('all')
   const [billSearch, setBillSearch] = useState({
     invoiceNo: '',
     customerName: '',
@@ -374,10 +374,34 @@ export default function BillingAnalytics() {
     }
   }, [fetchProducts, branch])
 
+  const debouncedLoadRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    debouncedLoadRef.current = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { void loadData() }, 300)
+    }
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [loadData])
+
   useEffect(() => {
     if (!isAdmin) return
     void loadData()
-  }, [isAdmin, loadData])
+    if (!isSupabaseConfigured) return
+
+    const handleChange = () => debouncedLoadRef.current?.()
+    const ch = supabase.channel(`billing-analytics-live-${branch}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, handleChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, handleChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, handleChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, handleChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'advance_orders' }, handleChange)
+      .subscribe()
+
+    return () => { void supabase.removeChannel(ch) }
+  }, [isAdmin, branch, loadData])
 
   const analytics = useMemo<AnalyticsModel>(() => {
     let dated = orders
@@ -565,6 +589,7 @@ export default function BillingAnalytics() {
       const mode = normalizeOrderMode(order.order_mode)
       if (type === 'online_request') return false
 
+      if (billTypeFilter === 'advance' && type !== 'advance_order') return false
       if (billTypeFilter === 'manual' && type !== 'manual_sale') return false
       if (billTypeFilter === 'offline' && !(type === 'pos_sale' && mode !== 'online')) return false
       if (billTypeFilter === 'online' && !(type === 'pos_sale' && mode === 'online')) return false
@@ -767,6 +792,7 @@ export default function BillingAnalytics() {
                 { v: 'offline', label: l('Offline', 'ஆஃப்லைன்') },
                 { v: 'online', label: l('Online', 'ஆன்லைன்') },
                 { v: 'manual', label: l('Manual', 'கைமுறை') },
+                { v: 'advance', label: l('Advance', 'முன்பதிவு') },
               ] as const).map(({ v, label }) => (
                 <button
                   key={v}

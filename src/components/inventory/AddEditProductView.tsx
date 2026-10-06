@@ -710,9 +710,9 @@ export const AddEditProductView: React.FC<{
         </button>
       </div>
 
-      <div className="h-[calc(100vh-250px)] sm:h-[calc(100vh-220px)] min-h-[480px] flex flex-col lg:flex-row gap-5 overflow-hidden">
+      <div className="h-auto lg:h-[calc(100dvh-250px)] min-h-0 flex flex-col lg:flex-row gap-5 overflow-visible lg:overflow-hidden">
         {/* LEFT COLUMN: Products Browser List */}
-        <div className={`w-full lg:w-80 xl:w-96 flex-col bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm shrink-0 h-full min-h-0 ${
+        <div className={`w-full lg:w-80 xl:w-96 flex-col bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm shrink-0 h-[70vh] lg:h-full min-h-0 ${
           mobileView === 'list' ? 'flex' : 'hidden lg:flex'
         }`}>
           <div className="p-3.5 border-b border-gray-200 bg-[#FAFAFA] shrink-0">
@@ -819,7 +819,7 @@ export const AddEditProductView: React.FC<{
         </div>
 
         {/* RIGHT COLUMN: Product Authoring Form Workspace */}
-        <div className={`flex-1 flex-col bg-[#FBFAF6] border border-gray-200 rounded-2xl shadow-sm overflow-hidden h-full min-h-0 ${
+        <div className={`flex-1 flex-col bg-[#FBFAF6] border border-gray-200 rounded-2xl shadow-sm overflow-visible lg:overflow-hidden min-h-0 ${
           mobileView === 'form' ? 'flex' : 'hidden lg:flex'
         }`}>
           {/* Pinned Form Header */}
@@ -884,8 +884,8 @@ export const AddEditProductView: React.FC<{
           </div>
 
         {/* Scrollable Form Body with Pinned Bottom Action Bar */}
-        <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 min-h-0">
+        <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col min-h-0 overflow-visible lg:overflow-hidden">
+          <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-4 sm:p-6 space-y-4 min-h-0 overscroll-contain touch-pan-y pb-24 lg:pb-6">
             {/* Status Message */}
             {statusMessage && (
               <div
@@ -1317,8 +1317,8 @@ export const AddEditProductView: React.FC<{
             </div>
           </div>
 
-          {/* Pinned Bottom Actions */}
-          <div className="shrink-0 px-4 py-3 sm:px-6 sm:py-3.5 border-t border-gray-200 bg-white flex items-center justify-end gap-3">
+          {/* Pinned / Sticky Bottom Actions */}
+          <div className="sticky lg:static bottom-0 z-30 shrink-0 px-4 py-3 sm:px-6 sm:py-3.5 border-t border-gray-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_16px_rgba(0,0,0,0.06)] lg:shadow-none flex items-center justify-end gap-3 rounded-b-2xl">
             <button
               type="button"
               onClick={resetForm}

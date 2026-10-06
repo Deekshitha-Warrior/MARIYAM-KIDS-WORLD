@@ -444,7 +444,7 @@ export default function Dashboard() {
       const mappedOrders = (oRes.data || []).map(r => toDashboardOrder(r as Record<string, unknown>))
       setCats((cRes.data || []) as Category[])
       setOrders(mappedOrders)
-      setSearchResults(mappedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request').slice(0, 100))
+      setSearchResults(mappedOrders.filter(o => normalizeOrderType(o.order_type) !== 'online_request'))
       setCoupons((couponRes.data || []) as DashboardCoupon[])
       setExpenses(expList || [])
 
@@ -1173,15 +1173,16 @@ export default function Dashboard() {
     void loadData()
     if (!isSupabaseConfigured) return
     const handleChange = () => debouncedLoadRef.current?.()
-    const ch = supabase.channel('dashboard-live')
+    const ch = supabase.channel(`dashboard-live-${branch}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, handleChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, handleChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, handleChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, handleChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'coupons' }, handleChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'advance_orders' }, handleChange)
       .subscribe()
     return () => { void supabase.removeChannel(ch) }
-  }, [isAdmin, loadData])
+  }, [isAdmin, branch, loadData])
 
   useEffect(() => {
     if (tab === 'users') void loadUsers()
@@ -3368,7 +3369,7 @@ export default function Dashboard() {
                       <select
                         value={datePreset}
                         onChange={e => {
-                          const val = e.target.value as 'today' | 'week' | 'month' | 'custom' | ''
+                          const val = e.target.value as 'today' | 'week' | 'month' | 'year' | 'custom' | ''
                           if (!val) {
                             setDatePreset('')
                             setSearch(s => ({ ...s, dateFrom: '', dateTo: '' }))

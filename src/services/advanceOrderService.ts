@@ -113,12 +113,255 @@ const normalizeOrder = (row: Record<string, unknown>): AdvanceOrder => ({
 
 const rpcRow = (data: unknown) => (Array.isArray(data) ? data[0] : data) as Record<string, unknown>
 
+/**
+ * Deduct stock when an advance order is registered.
+ * Records inventory_movements log and marks items with is_manual: true so complete_advance_order_v2 does not double deduct.
+ */
+async function deductStockForAdvanceOrder(order: AdvanceOrder): Promise<void> {
+  if (!isSupabaseConfigured) return
+  try {
+    const branch = order.branch || 'pos1'
+    const items = order.products || []
+    const updatedProducts: Array<Record<string, unknown>> = []
+
+    for (const rawItem of items) {
+      const item = { ...rawItem }
+      const qty = Math.max(1, Number(item.quantity) || 1)
+      let resolvedProdId = item.product_id ? Number(item.product_id) : null
+      const resolvedVariantId = item.variant_id ? String(item.variant_id) : null
+
+      // If product_id not provided, try to match by product name in this branch
+      if (!resolvedProdId && item.name) {
+        const { data: matched } = await supabase
+          .from('products')
+          .select('id, name, stock_quantity')
+          .ilike('name', String(item.name).trim())
+          .eq('branch', branch)
+          .maybeSingle()
+        if (matched) {
+          resolvedProdId = Number(matched.id)
+        }
+      }
+
+      if (resolvedVariantId) {
+        const { data: varRow } = await supabase
+          .from('product_variants')
+          .select('id, product_id, stock')
+          .eq('id', resolvedVariantId)
+          .eq('branch', branch)
+          .maybeSingle()
+
+        if (varRow) {
+          const currentStock = Number(varRow.stock) || 0
+          const newStock = Math.max(0, currentStock - qty)
+          await supabase
+            .from('product_variants')
+            .update({ stock: newStock })
+            .eq('id', resolvedVariantId)
+
+          // Sync parent product stock
+          const { data: siblingVars } = await supabase
+            .from('product_variants')
+            .select('stock')
+            .eq('product_id', varRow.product_id)
+            .eq('branch', branch)
+
+          if (siblingVars) {
+            const totalStock = siblingVars.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+            await supabase
+              .from('products')
+              .update({ stock_quantity: totalStock })
+              .eq('id', varRow.product_id)
+          }
+
+          // Insert movement
+          await supabase.from('inventory_movements').insert({
+            product_id: varRow.product_id,
+            variant_id: resolvedVariantId,
+            movement_type: 'SALE',
+            quantity_delta: -qty,
+            quantity_before: currentStock,
+            quantity_after: newStock,
+            note: `Advance Order Reserved (${order.deposit_id})`,
+            created_by_name: order.created_by_name || 'Staff',
+            branch,
+          })
+
+          item.product_id = varRow.product_id
+          item.variant_id = resolvedVariantId
+          item._stock_deducted = true
+          item.is_manual = true // tells complete_advance_order_v2 not to double deduct!
+        }
+      } else if (resolvedProdId) {
+        const { data: prodRow } = await supabase
+          .from('products')
+          .select('id, stock_quantity')
+          .eq('id', resolvedProdId)
+          .eq('branch', branch)
+          .maybeSingle()
+
+        if (prodRow) {
+          const currentStock = Number(prodRow.stock_quantity) || 0
+          const newStock = Math.max(0, currentStock - qty)
+          await supabase
+            .from('products')
+            .update({ stock_quantity: newStock })
+            .eq('id', resolvedProdId)
+
+          // Insert movement
+          await supabase.from('inventory_movements').insert({
+            product_id: resolvedProdId,
+            variant_id: null,
+            movement_type: 'SALE',
+            quantity_delta: -qty,
+            quantity_before: currentStock,
+            quantity_after: newStock,
+            note: `Advance Order Reserved (${order.deposit_id})`,
+            created_by_name: order.created_by_name || 'Staff',
+            branch,
+          })
+
+          item.product_id = resolvedProdId
+          item._stock_deducted = true
+          item.is_manual = true // tells complete_advance_order_v2 not to double deduct!
+        }
+      }
+
+      updatedProducts.push(item)
+    }
+
+    // Save updated products metadata with _stock_deducted: true
+    await supabase
+      .from('advance_orders')
+      .update({ products: updatedProducts })
+      .eq('id', order.id)
+  } catch (err) {
+    console.error('[deductStockForAdvanceOrder] Error:', err)
+  }
+}
+
+/**
+ * Rollback (restock) deducted items if an advance order is cancelled or deleted before completion.
+ */
+async function rollbackStockForAdvanceOrder(order: AdvanceOrder): Promise<void> {
+  if (!isSupabaseConfigured) return
+  try {
+    const branch = order.branch || 'pos1'
+    const items = order.products || []
+    const updatedProducts: Array<Record<string, unknown>> = []
+
+    for (const rawItem of items) {
+      const item = { ...rawItem }
+      const wasDeducted = item._stock_deducted === true || item._stock_deducted === undefined
+      const qty = Math.max(1, Number(item.quantity) || 1)
+      const resolvedProdId = item.product_id ? Number(item.product_id) : null
+      const resolvedVariantId = item.variant_id ? String(item.variant_id) : null
+
+      if (wasDeducted) {
+        if (resolvedVariantId) {
+          const { data: varRow } = await supabase
+            .from('product_variants')
+            .select('id, product_id, stock')
+            .eq('id', resolvedVariantId)
+            .eq('branch', branch)
+            .maybeSingle()
+
+          if (varRow) {
+            const currentStock = Number(varRow.stock) || 0
+            const newStock = currentStock + qty
+            await supabase
+              .from('product_variants')
+              .update({ stock: newStock })
+              .eq('id', resolvedVariantId)
+
+            // Sync parent product stock
+            const { data: siblingVars } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('product_id', varRow.product_id)
+              .eq('branch', branch)
+
+            if (siblingVars) {
+              const totalStock = siblingVars.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+              await supabase
+                .from('products')
+                .update({ stock_quantity: totalStock })
+                .eq('id', varRow.product_id)
+            }
+
+            // Insert RETURN movement
+            await supabase.from('inventory_movements').insert({
+              product_id: varRow.product_id,
+              variant_id: resolvedVariantId,
+              movement_type: 'RETURN',
+              quantity_delta: qty,
+              quantity_before: currentStock,
+              quantity_after: newStock,
+              note: `Advance Order Cancelled - Stock Restocked (${order.deposit_id})`,
+              created_by_name: 'Admin',
+              branch,
+            })
+
+            item._stock_deducted = false
+          }
+        } else if (resolvedProdId) {
+          const { data: prodRow } = await supabase
+            .from('products')
+            .select('id, stock_quantity')
+            .eq('id', resolvedProdId)
+            .eq('branch', branch)
+            .maybeSingle()
+
+          if (prodRow) {
+            const currentStock = Number(prodRow.stock_quantity) || 0
+            const newStock = currentStock + qty
+            await supabase
+              .from('products')
+              .update({ stock_quantity: newStock })
+              .eq('id', resolvedProdId)
+
+            // Insert RETURN movement
+            await supabase.from('inventory_movements').insert({
+              product_id: resolvedProdId,
+              variant_id: null,
+              movement_type: 'RETURN',
+              quantity_delta: qty,
+              quantity_before: currentStock,
+              quantity_after: newStock,
+              note: `Advance Order Cancelled - Stock Restocked (${order.deposit_id})`,
+              created_by_name: 'Admin',
+              branch,
+            })
+
+            item._stock_deducted = false
+          }
+        }
+      }
+      updatedProducts.push(item)
+    }
+
+    await supabase
+      .from('advance_orders')
+      .update({ products: updatedProducts })
+      .eq('id', order.id)
+  } catch (err) {
+    console.error('[rollbackStockForAdvanceOrder] Error:', err)
+  }
+}
+
 export async function deleteAdvanceOrder(orderId: string): Promise<void> {
   let completedOrderId: string | null = null
   if (isSupabaseConfigured) {
-    const { data: adv } = await supabase.from('advance_orders').select('completed_order_id').eq('id', orderId).maybeSingle()
-    if (adv?.completed_order_id) {
-      completedOrderId = adv.completed_order_id
+    const { data: adv } = await supabase.from('advance_orders').select('*').eq('id', orderId).maybeSingle()
+    if (adv) {
+      if (adv.completed_order_id) {
+        completedOrderId = adv.completed_order_id
+      }
+      // Rollback stock if active (neither completed nor cancelled)
+      if (adv.status !== 'completed' && adv.status !== 'cancelled') {
+        const normalized = normalizeOrder(adv as Record<string, unknown>)
+        await rollbackStockForAdvanceOrder(normalized)
+      }
     }
     const { error } = await supabase.from('advance_orders').delete().eq('id', orderId)
     if (error) throw new Error(error.message)
@@ -211,13 +454,34 @@ export async function createAdvanceOrder(input: {
 }): Promise<AdvanceOrder> {
   let createdOrder: AdvanceOrder | null = null
 
+  // Ensure items have is_manual: true so complete_advance_order_v2 does not double deduct later
+  const preparedProducts = (input.products && input.products.length > 0)
+    ? input.products.map(p => ({
+        ...p,
+        is_manual: true,
+        _stock_deducted: true
+      }))
+    : [{
+        name: input.productName,
+        category: input.category,
+        description: input.description,
+        quantity: 1,
+        base_price: input.totalAmount,
+        line_total: input.totalAmount,
+        unit: 'piece',
+        unit_type: 'unit',
+        source: 'advance_order',
+        is_manual: true,
+        _stock_deducted: true
+      }]
+
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase.rpc('create_advance_order', {
         p_customer_name: input.customerName, p_phone: input.phone, p_address: input.address, p_product_name: input.productName,
         p_category: input.category, p_description: input.description, p_total_amount: input.totalAmount,
         p_deposit_amount: input.depositAmount, p_expected_delivery_date: input.expectedDeliveryDate, p_remarks: input.remarks,
-        p_payment_method: input.paymentMethod, p_created_by_name: input.createdByName, p_products: input.products || [],
+        p_payment_method: input.paymentMethod, p_created_by_name: input.createdByName, p_products: preparedProducts,
         p_branch: input.branch || 'pos1',
       })
       if (error) {
@@ -247,7 +511,7 @@ export async function createAdvanceOrder(input: {
       phone: input.phone.trim(),
       address: input.address.trim(),
       product_name: input.productName.trim(),
-      products: input.products || [{ name: input.productName, category: input.category, quantity: 1, base_price: input.totalAmount, line_total: input.totalAmount }],
+      products: preparedProducts,
       category: input.category.trim(),
       description: input.description.trim(),
       total_amount: Number(input.totalAmount),
@@ -287,6 +551,11 @@ export async function createAdvanceOrder(input: {
     saveLocalPayments(currentPayments)
   }
 
+  // Deduct stock immediately upon creating advance order
+  if (createdOrder) {
+    await deductStockForAdvanceOrder(createdOrder)
+  }
+
   const localOrders = loadLocalOrders()
   const updated = [createdOrder, ...localOrders.filter(o => o.id !== createdOrder!.id)]
   saveLocalOrders(updated)
@@ -294,6 +563,15 @@ export async function createAdvanceOrder(input: {
 }
 
 export async function updateAdvanceStatus(orderId: string, status: AdvanceStatus, remarks = ''): Promise<AdvanceOrder> {
+  // Fetch current order before update to check whether rollback is needed
+  let orderBefore: AdvanceOrder | null = null
+  if (isSupabaseConfigured) {
+    const { data: cur } = await supabase.from('advance_orders').select('*').eq('id', orderId).maybeSingle()
+    if (cur) orderBefore = normalizeOrder(cur as Record<string, unknown>)
+  } else {
+    orderBefore = loadLocalOrders().find(o => o.id === orderId) || null
+  }
+
   let updatedOrder: AdvanceOrder | null = null
 
   if (isSupabaseConfigured) {
@@ -305,6 +583,14 @@ export async function updateAdvanceStatus(orderId: string, status: AdvanceStatus
         updatedOrder = normalizeOrder(rpcRow(data))
       }
     } catch (err) { console.error('[updateAdvanceStatus] Exception:', err) }
+  }
+
+  // Rollback stock when advance order is cancelled
+  if (status === 'cancelled' && orderBefore && orderBefore.status !== 'cancelled' && orderBefore.status !== 'completed') {
+    await rollbackStockForAdvanceOrder(orderBefore)
+    if (updatedOrder) {
+      updatedOrder.products = updatedOrder.products.map(p => ({ ...p, _stock_deducted: false }))
+    }
   }
 
   const localOrders = loadLocalOrders()

@@ -105,7 +105,20 @@ export const barcodeService = {
     if (data) {
       // Cast array-joined relations if Supabase returned them as single objects
       const p = Array.isArray(data.product) ? data.product[0] : data.product
-      const v = Array.isArray(data.variant) ? data.variant[0] : data.variant
+      let v = Array.isArray(data.variant) ? data.variant[0] : data.variant
+
+      // Fallback: if variant_id is linked but joined relation returned null, fetch directly
+      if (data.variant_id && !v) {
+        const { data: directVar } = await supabase
+          .from('product_variants')
+          .select('id, variant_name, price, stock, sku')
+          .eq('id', data.variant_id)
+          .maybeSingle()
+        if (directVar) {
+          v = directVar
+        }
+      }
+
       return {
         ...data,
         product: p,
