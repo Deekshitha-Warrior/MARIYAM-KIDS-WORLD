@@ -5,15 +5,15 @@
 @layer base {
   :root {
     /* Active dynamic theme variables — driven by current active branch / role */
-    --theme-primary: #EC4899;
-    --theme-primary-dark: #DB2777;
+    --theme-primary: #DB2777;
+    --theme-primary-dark: #BE185D;
     --theme-primary-light: #FDF2F8;
-    --theme-primary-border: #FBCFE8;
+    --theme-primary-border: #F472B6;
 
-    --brand-black: var(--theme-primary, #EC4899);
-    --brand-black-surface: var(--theme-primary-dark, #DB2777);
+    --brand-black: var(--theme-primary, #DB2777);
+    --brand-black-surface: var(--theme-primary-dark, #BE185D);
     --brand-gold: #F472B6;
-    --brand-gold-hover: #EC4899;
+    --brand-gold-hover: #DB2777;
     --brand-gold-light: #FDF2F8;
     --brand-gold-border: #FBCFE8;
     --brand-surface: #FFFFFF;
@@ -21,11 +21,11 @@
     --brand-text-muted: #6B7280;
 
     /* Branch accent colors */
-    --pos-one: #EC4899;
-    --pos-one-dark: #DB2777;
+    --pos-one: #DB2777;
+    --pos-one-dark: #BE185D;
     --pos-one-light: #FDF2F8;
-    --pos-two: #2563EB;
-    --pos-two-dark: #1D4ED8;
+    --pos-two: #1D4ED8;
+    --pos-two-dark: #1E40AF;
     --pos-two-light: #EFF6FF;
   }
 

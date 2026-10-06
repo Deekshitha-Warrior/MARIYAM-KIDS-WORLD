@@ -21,15 +21,18 @@ export const branchSubtitle = (branch: PosBranch) =>
  * business line there would be misleading since admin manages both. */
 export const combinedBranchSubtitle = () => `${branchSubtitle('pos1')} + ${branchSubtitle('pos2')}`
 
+export const branchShopName = (branch: PosBranch) =>
+  branch === 'pos2' ? 'TAJ TEXTILES' : 'MARIYAM KIDS WORLD'
+
 export const branchLogo = (branch: PosBranch) =>
   useSettingsStore.getState().settingsByBranch[branch]?.logoUrl || (branch === 'pos2' ? BRAND_LOGO_POS2 : BRAND_LOGO_POS1)
 
 export const posAccent = (branch: PosBranch) => branch === 'pos2'
-  ? { bg: 'bg-posTwo', bgLight: 'bg-posTwo-light', text: 'text-posTwo-dark', border: 'border-posTwo', hex: '#2563EB' }
-  : { bg: 'bg-posOne', bgLight: 'bg-posOne-light', text: 'text-posOne-dark', border: 'border-posOne', hex: '#EC4899' }
+  ? { bg: 'bg-posTwo', bgLight: 'bg-posTwo-light', text: 'text-posTwo-dark', border: 'border-posTwo', hex: '#1D4ED8' }
+  : { bg: 'bg-posOne', bgLight: 'bg-posOne-light', text: 'text-posOne-dark', border: 'border-posOne', hex: '#DB2777' }
 
-export const DEFAULT_BRANCH_COLOR: Record<PosBranch, string> = { pos1: '#EC4899', pos2: '#2563EB' }
-export const DEFAULT_ADMIN_COLOR = '#EC4899'
+export const DEFAULT_BRANCH_COLOR: Record<PosBranch, string> = { pos1: '#DB2777', pos2: '#1D4ED8' }
+export const DEFAULT_ADMIN_COLOR = '#DB2777'
 
 const ADMIN_THEME_STORAGE_KEY = 'mkw_admin_theme_color'
 

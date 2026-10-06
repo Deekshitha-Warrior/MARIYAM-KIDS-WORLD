@@ -30,13 +30,13 @@ export default {
         },
         // Branch accents for POS 1 / POS 2
         posOne: {
-          DEFAULT: 'var(--pos-one, #EC4899)',
-          dark:    'var(--pos-one-dark, #DB2777)',
+          DEFAULT: 'var(--pos-one, #DB2777)',
+          dark:    'var(--pos-one-dark, #BE185D)',
           light:   'var(--pos-one-light, #FDF2F8)',
         },
         posTwo: {
-          DEFAULT: 'var(--pos-two, #2563EB)',
-          dark:    'var(--pos-two-dark, #1D4ED8)',
+          DEFAULT: 'var(--pos-two, #1D4ED8)',
+          dark:    'var(--pos-two-dark, #1E40AF)',
           light:   'var(--pos-two-light, #EFF6FF)',
         },
         textMain:  '#1F2937',

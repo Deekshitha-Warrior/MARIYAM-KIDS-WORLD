@@ -94,8 +94,8 @@ export default function AdminLogin() {
         {/* Left Hero Panel */}
         <div className={`hidden flex-col justify-between items-center transition-all duration-500 p-8 lg:p-10 text-white lg:flex overflow-y-auto ${
           isTaj
-            ? 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 border-r border-blue-400/20'
-            : 'bg-gradient-to-br from-pink-500 via-pink-600 to-pink-700 border-r border-pink-300/20'
+            ? 'bg-gradient-to-br from-blue-700 via-blue-800 to-blue-950 border-r border-blue-500/20'
+            : 'bg-gradient-to-br from-pink-600 via-pink-700 to-pink-800 border-r border-pink-400/20'
         }`}>
           <div className="w-full flex items-center justify-between">
             <p className="text-[11px] font-black uppercase tracking-[0.26em] text-white/90">
@@ -117,9 +117,9 @@ export default function AdminLogin() {
               }}
               title={loginTab === 'staff' ? 'Click to flip branch' : undefined}
             >
-              {/* Front Face: Mariyam Kids World (Pink) */}
+              {/* Front Face: Mariyam Kids World (Slight Dark Pink) */}
               <div
-                className="absolute inset-0 p-5 sm:p-7 rounded-3xl bg-white border-2 border-pink-200 shadow-[0_20px_50px_rgba(219,39,119,0.35)] flex items-center justify-center transition-shadow"
+                className="absolute inset-0 p-5 sm:p-7 rounded-3xl bg-white border-2 border-pink-300 shadow-[0_20px_50px_rgba(190,24,93,0.35)] flex items-center justify-center transition-shadow"
                 style={{
                   backfaceVisibility: 'hidden',
                   WebkitBackfaceVisibility: 'hidden',
@@ -132,9 +132,9 @@ export default function AdminLogin() {
                 />
               </div>
 
-              {/* Back Face: Taj Textiles (Blue) */}
+              {/* Back Face: Taj Textiles (Slight Dark Blue) */}
               <div
-                className="absolute inset-0 p-5 sm:p-7 rounded-3xl bg-white border-2 border-blue-200 shadow-[0_20px_50px_rgba(30,58,138,0.45)] flex items-center justify-center transition-shadow"
+                className="absolute inset-0 p-5 sm:p-7 rounded-3xl bg-white border-2 border-blue-300 shadow-[0_20px_50px_rgba(29,78,216,0.45)] flex items-center justify-center transition-shadow"
                 style={{
                   transform: 'rotateY(180deg)',
                   backfaceVisibility: 'hidden',
@@ -197,12 +197,12 @@ export default function AdminLogin() {
               </div>
             </div>
             <p className={`text-[10px] font-black uppercase tracking-[0.22em] transition-colors ${
-              isTaj ? 'text-blue-600' : 'text-pink-600'
+              isTaj ? 'text-blue-800' : 'text-pink-700'
             }`}>
               {loginTab === 'staff' ? branchSubtitle(branch) : combinedBranchSubtitle()}
             </p>
             <h1 className={`mt-1 text-2xl sm:text-3xl font-black tracking-tight transition-colors duration-300 ${
-              isTaj ? 'text-blue-700' : 'text-pink-600'
+              isTaj ? 'text-blue-800' : 'text-pink-700'
             }`}>
               {loginTab === 'staff' ? (branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN) : `${BRAND_EN} + TAJ TEXTILES`}
             </h1>
@@ -218,7 +218,7 @@ export default function AdminLogin() {
               onClick={() => switchTab('staff')}
               className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] sm:text-xs font-black uppercase tracking-wide transition-all cursor-pointer ${
                 loginTab === 'staff'
-                  ? isTaj ? 'bg-blue-600 text-white shadow-sm' : 'bg-pink-600 text-white shadow-sm'
+                  ? isTaj ? 'bg-blue-700 text-white shadow-sm' : 'bg-pink-700 text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
@@ -258,8 +258,8 @@ export default function AdminLogin() {
                   <div
                     className={`absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-md pointer-events-none ${
                       branch === 'pos2'
-                        ? 'translate-x-[calc(100%+6px)] bg-white border-2 border-blue-600 shadow-blue-500/25'
-                        : 'translate-x-0 bg-white border-2 border-pink-500 shadow-pink-500/25'
+                        ? 'translate-x-[calc(100%+6px)] bg-white border-2 border-blue-700 shadow-blue-700/25'
+                        : 'translate-x-0 bg-white border-2 border-pink-600 shadow-pink-600/25'
                     }`}
                   />
 
@@ -283,7 +283,7 @@ export default function AdminLogin() {
                         >
                           <span className={`w-8 h-8 shrink-0 rounded-lg bg-white border p-1 flex items-center justify-center overflow-hidden transition-all duration-300 ${
                             isSelected
-                              ? isKeyPos2 ? 'border-blue-400 shadow-xs' : 'border-pink-400 shadow-xs'
+                              ? isKeyPos2 ? 'border-blue-500 shadow-xs' : 'border-pink-400 shadow-xs'
                               : 'border-black/10 opacity-70'
                           }`}>
                             <img src={branchLogo(key)} alt="" className="w-full h-full object-contain" />
@@ -292,7 +292,7 @@ export default function AdminLogin() {
                             <p className="text-xs font-black truncate leading-tight">{label}</p>
                             <p className={`text-[10px] font-semibold truncate transition-colors ${
                               isSelected
-                                ? isKeyPos2 ? 'text-blue-700' : 'text-pink-700'
+                                ? isKeyPos2 ? 'text-blue-800' : 'text-pink-700'
                                 : 'text-gray-400'
                             }`}>
                               {isKeyPos2 ? 'Taj Textiles' : 'Mariyam Kids World'}
@@ -316,7 +316,7 @@ export default function AdminLogin() {
                   autoComplete="username"
                   placeholder={l(`Enter ${branchShortLabel(branch)} staff ID`, 'பணியாளர் ஐடி')}
                   className={`w-full rounded-xl border-2 bg-gray-50/60 px-3.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold outline-none transition-colors placeholder:text-gray-400 text-gray-900 ${
-                    isTaj ? 'border-blue-200 focus:border-blue-600 focus:bg-white' : 'border-pink-200 focus:border-pink-500 focus:bg-white'
+                    isTaj ? 'border-blue-200 focus:border-blue-700 focus:bg-white' : 'border-pink-200 focus:border-pink-600 focus:bg-white'
                   }`}
                   value={staffId}
                   onChange={(e) => { setStaffId(e.target.value); setError('') }}
@@ -337,7 +337,7 @@ export default function AdminLogin() {
                     autoComplete="current-password"
                     placeholder={l('Enter password', 'கடவுச்சொல்லை உள்ளிடவும்')}
                     className={`w-full rounded-xl border-2 bg-gray-50/60 px-3.5 py-2.5 sm:py-3 pr-11 text-xs sm:text-sm font-semibold outline-none transition-colors placeholder:text-gray-400 text-gray-900 ${
-                      isTaj ? 'border-blue-200 focus:border-blue-600 focus:bg-white' : 'border-pink-200 focus:border-pink-500 focus:bg-white'
+                      isTaj ? 'border-blue-200 focus:border-blue-700 focus:bg-white' : 'border-pink-200 focus:border-pink-600 focus:bg-white'
                     }`}
                     value={staffPassword}
                     onChange={(e) => { setStaffPassword(e.target.value); setError('') }}
@@ -360,8 +360,8 @@ export default function AdminLogin() {
                 disabled={loading}
                 className={`group flex w-full items-center justify-center gap-2 rounded-xl py-3 font-black text-xs sm:text-sm text-white shadow-lg transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 cursor-pointer ${
                   isTaj
-                    ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
-                    : 'bg-pink-600 hover:bg-pink-700 shadow-pink-600/30'
+                    ? 'bg-blue-700 hover:bg-blue-800 shadow-blue-700/30'
+                    : 'bg-pink-700 hover:bg-pink-800 shadow-pink-700/30'
                 }`}
               >
                 {loading ? (

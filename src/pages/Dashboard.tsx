@@ -70,7 +70,7 @@ import { useHardwareBarcodeScanner } from '../hooks/useHardwareBarcodeScanner'
 import { BarcodeRedirectDialog } from '../components/pos/BarcodeRedirectDialog'
 import { exportAnalyticsToCSV, exportAnalyticsToPDF } from '../services/analyticsExport'
 import { BRAND_EN, BRAND_LOGO, BRAND_ICON } from '../lib/brand'
-import { branchShortLabel } from '../lib/branchTheme'
+import { branchShortLabel, branchLogo, branchShopName } from '../lib/branchTheme'
 import { getPeriodRange, toLocalDateKey } from '../lib/dateRanges'
 import { buildCsv, downloadCsvFile } from '../lib/csv'
 import {
@@ -1721,19 +1721,25 @@ export default function Dashboard() {
         {/* Desktop brand header */}
         <div className={`hidden lg:flex items-center relative transition-all duration-300 shrink-0 ${sidebarCollapsed ? 'flex-col items-center pt-4 pb-3 px-2 gap-2' : 'px-4 py-3.5 justify-between border-b border-white/5'}`}>
           <Link to="/pos" title="Go to Billing Panel" className={`flex items-center gap-2.5 min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'justify-center' : 'flex-1'}`}>
-            <div className="flex items-center justify-center shrink-0 w-9 h-9 rounded-xl bg-[#5C0D18] border border-[#D4AF37]/50 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden">
-              <img src={BRAND_ICON} alt={BRAND_EN} className="w-full h-full object-contain" />
+            <div className="flex items-center justify-center shrink-0 w-9 h-9 rounded-xl bg-white/10 border border-white/20 shadow-sm hover:scale-105 transition-transform p-1 overflow-hidden">
+              <img
+                src={isGlobalView ? BRAND_ICON : branchLogo(branch)}
+                alt={isGlobalView ? BRAND_EN : branchShopName(branch)}
+                className="w-full h-full object-contain"
+              />
             </div>
             {!sidebarCollapsed && (
               <div className="flex flex-col min-w-0 gap-1">
-                <h1 className="text-[15px] font-black text-white break-words tracking-wider">{BRAND_EN}</h1>
+                <h1 className="text-[14px] font-black text-white break-words tracking-wider leading-tight">
+                  {isGlobalView ? BRAND_EN : branchShopName(branch)}
+                </h1>
                 <div className="flex items-center gap-1 flex-wrap">
                   {!isGlobalView && (
-                    <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit text-white ${branch === 'pos2' ? 'bg-posTwo' : 'bg-posOne'}`}>
+                    <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit text-white ${branch === 'pos2' ? 'bg-posTwo-dark' : 'bg-posOne-dark'}`}>
                       {branchLabel}
                     </span>
                   )}
-                  <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
+                  <span className={`text-[8.5px] font-black uppercase tracking-widest px-1.5 py-0.2 rounded w-fit ${role === 'admin' ? 'bg-white/20 text-white border border-white/30' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
                     {role === 'admin' ? 'ADMIN' : 'STAFF'}
                   </span>
                 </div>
@@ -1753,20 +1759,24 @@ export default function Dashboard() {
         {/* Mobile mini-header */}
         <div className="flex lg:hidden items-center justify-between px-3 py-2 border-b border-white/10 bg-[#7A1220] shrink-0 gap-2">
           <Link to="/pos" title="Go to Billing Panel" className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#5C0D18] border border-[#D4AF37]/50 shrink-0 shadow-sm hover:scale-105 transition-transform p-0.5 overflow-hidden">
-              <img src={BRAND_ICON} alt={BRAND_EN} className="w-full h-full object-contain" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 border border-white/20 shrink-0 shadow-sm hover:scale-105 transition-transform p-1 overflow-hidden">
+              <img
+                src={isGlobalView ? BRAND_ICON : branchLogo(branch)}
+                alt={isGlobalView ? BRAND_EN : branchShopName(branch)}
+                className="w-full h-full object-contain"
+              />
             </div>
             <div className="flex flex-col min-w-0 flex-1 overflow-hidden gap-0.5">
               <span className="text-[13px] sm:text-[14px] font-black text-white tracking-wide leading-tight">
-                {BRAND_EN}
+                {isGlobalView ? BRAND_EN : branchShopName(branch)}
               </span>
               <div className="flex items-center gap-1 flex-wrap">
                 {!isGlobalView && (
-                  <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap text-white ${branch === 'pos2' ? 'bg-posTwo' : 'bg-posOne'}`}>
+                  <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap text-white ${branch === 'pos2' ? 'bg-posTwo-dark' : 'bg-posOne-dark'}`}>
                     {branchLabel}
                   </span>
                 )}
-                <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap ${role === 'admin' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
+                <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded whitespace-nowrap ${role === 'admin' ? 'bg-white/20 text-white border border-white/30' : 'bg-gray-800 text-gray-300 border border-gray-700'}`}>
                   {role === 'admin' ? 'ADMIN' : 'STAFF'}
                 </span>
               </div>

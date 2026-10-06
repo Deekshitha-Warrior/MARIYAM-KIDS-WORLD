@@ -1210,7 +1210,7 @@ export default function Pos(props: PosProps = {}) {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  POS 2 (Crackers)
+                  POS 2 (Taj Textiles)
                 </button>
               </div>
             ) : (
