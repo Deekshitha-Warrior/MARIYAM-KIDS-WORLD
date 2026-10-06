@@ -17,7 +17,7 @@ The app keeps the established dashboard, POS billing, catalog, category, coupon,
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_WHATSAPP_NUMBER`
 - `VITE_ADMIN_ID` / `VITE_ADMIN_PASSWORD` — Admin Orchestrator login (all branches)
-- `VITE_POS1_STAFF_ID` / `VITE_POS1_STAFF_PASSWORD` — POS 1 staff login (`VITE_STAFF_ID`/`VITE_STAFF_PASSWORD` also work as a legacy fallback)
-- `VITE_POS2_STAFF_ID` / `VITE_POS2_STAFF_PASSWORD` — POS 2 staff login
+- `VITE_BRANCH_1_STAFF_ID` / `VITE_BRANCH_1_STAFF_PASSWORD` — Branch 1 (Mariyam Kids World) staff login
+- `VITE_BRANCH_2_STAFF_ID` / `VITE_BRANCH_2_STAFF_PASSWORD` — Branch 2 (Taj Textiles) staff login
 
 Brand assets are located in `public/yg-logo.png`.

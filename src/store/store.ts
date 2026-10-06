@@ -736,9 +736,9 @@ export const useAdminAuthStore = create<AdminAuthState>()(
           return 'admin'
         }
 
-        // 2. Check POS 1 Staff Credentials (falls back to legacy VITE_STAFF_ID/PASSWORD)
-        const pos1Id = String(import.meta.env.VITE_POS1_STAFF_ID || import.meta.env.VITE_STAFF_ID || 'staff1').trim()
-        const pos1Pass = overrides.pos1_staff || String(import.meta.env.VITE_POS1_STAFF_PASSWORD || import.meta.env.VITE_STAFF_PASSWORD || 'staff123').trim()
+        // 2. Check Branch 1 (POS 1) Staff Credentials
+        const pos1Id = String(import.meta.env.VITE_BRANCH_1_STAFF_ID || import.meta.env.VITE_POS1_STAFF_ID || import.meta.env.VITE_STAFF_ID || 'staff1').trim()
+        const pos1Pass = overrides.pos1_staff || String(import.meta.env.VITE_BRANCH_1_STAFF_PASSWORD || import.meta.env.VITE_POS1_STAFF_PASSWORD || import.meta.env.VITE_STAFF_PASSWORD || 'staff123').trim()
 
         if (trimmedId === pos1Id && trimmedPass === pos1Pass) {
           if (branchAttempt && branchAttempt !== 'pos1') return false
@@ -747,9 +747,9 @@ export const useAdminAuthStore = create<AdminAuthState>()(
           return 'staff'
         }
 
-        // 3. Check POS 2 Staff Credentials
-        const pos2Id = String(import.meta.env.VITE_POS2_STAFF_ID || 'staff2').trim()
-        const pos2Pass = overrides.pos2_staff || String(import.meta.env.VITE_POS2_STAFF_PASSWORD || 'staff123').trim()
+        // 3. Check Branch 2 (POS 2) Staff Credentials
+        const pos2Id = String(import.meta.env.VITE_BRANCH_2_STAFF_ID || import.meta.env.VITE_POS2_STAFF_ID || 'staff2').trim()
+        const pos2Pass = overrides.pos2_staff || String(import.meta.env.VITE_BRANCH_2_STAFF_PASSWORD || import.meta.env.VITE_POS2_STAFF_PASSWORD || 'staff123').trim()
 
         if (pos2Id && trimmedId === pos2Id && trimmedPass === pos2Pass) {
           if (branchAttempt && branchAttempt !== 'pos2') return false
