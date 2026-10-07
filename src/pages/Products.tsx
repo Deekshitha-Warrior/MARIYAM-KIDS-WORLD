@@ -299,7 +299,7 @@ export default function Products() {
                 <CheckCircle2 size={32} className="text-green-600" />
              </div>
              <div>
-                <h4 className="font-black text-lg text-[#7A1220] leading-tight">YG Premium Quality</h4>
+                <h4 className="font-black text-lg text-[#7A1220] leading-tight">Mariyam Premium Quality</h4>
                 <p className="text-sm text-gray-700 mt-1">Every garment and product in our collection is curated with premium fabric and verified for quality excellence.</p>
              </div>
           </div>

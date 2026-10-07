@@ -167,6 +167,10 @@ export const Invoice: React.FC<InvoiceProps> = ({
             {items.map((item, idx) => {
               const normalized = normalizeStructuredOrderItem(item as unknown as Record<string, unknown>)
               const displayName = normalized.tamil_name || item.nameTa || normalized.name
+              const itemBaseTotal = Math.round((normalized.quantity * normalized.base_price) * 100) / 100
+              const itemLineAmount = itemBaseTotal > 0 && Math.abs(normalized.line_total - itemBaseTotal) > 0.01 && (gstAmount > 0 || Math.abs(normalized.line_total - itemBaseTotal) > 0.5)
+                ? itemBaseTotal
+                : (normalized.line_total || itemBaseTotal)
               return (
                 <tr key={idx} style={{ borderBottom: `1px solid ${rowLine}` }}>
                   <td style={{ padding: '10px 8px', fontSize: 11, color: '#999', verticalAlign: 'top' }}>{idx + 1}</td>
@@ -182,7 +186,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
                   </td>
                   <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, textAlign: 'center', verticalAlign: 'top' }}>{formatQuantityValue(normalized.quantity)}</td>
                   <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, textAlign: 'right', verticalAlign: 'top', color: '#555', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(normalized.base_price)}</td>
-                  <td style={{ padding: '10px 8px', fontSize: 13, fontWeight: 800, textAlign: 'right', verticalAlign: 'top', color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(normalized.line_total)}</td>
+                  <td style={{ padding: '10px 8px', fontSize: 13, fontWeight: 800, textAlign: 'right', verticalAlign: 'top', color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(itemLineAmount)}</td>
                 </tr>
               )
             })}
@@ -194,59 +198,102 @@ export const Invoice: React.FC<InvoiceProps> = ({
       <div className="invoice-totals" style={{ marginTop: 24, borderTop: `2px solid ${headerBorder}`, paddingTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ minWidth: 240, width: '100%', maxWidth: 300 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: '#666' }}>Subtotal</span>
-              <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(subtotal)}</span>
-            </div>
-            {discountAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 13, color: primaryColor, fontWeight: 600 }}>
-                  Coupon{couponCode ? ` (${couponCode})` : ''}
-                </span>
-                <span style={{ fontSize: 15, fontWeight: 800, color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>−{formatCurrency(discountAmount)}</span>
-              </div>
-            )}
-            {manualDiscountAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: primaryColor }}>Manual Discount</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>−{formatCurrency(manualDiscountAmount)}</span>
-              </div>
-            )}
-            {gstAmount > 0 && (() => {
-              const taxable = Math.max(0, subtotal - discountAmount - manualDiscountAmount)
-              const calculatedPercent = taxable > 0 ? (gstAmount / taxable) * 100 : 0
-              const halfPercent = Math.round((calculatedPercent / 2) * 100) / 100
-              const percentLabel = halfPercent > 0 ? ` (${halfPercent}%)` : ''
-              const cgst = Math.round((gstAmount / 2) * 100) / 100
-              const sgst = Math.round((gstAmount - cgst) * 100) / 100
+            {(() => {
+              const hasCouponCode = Boolean(couponCode && String(couponCode).trim())
+              let effectiveCoupon = 0
+              let effectiveManual = Math.max(0, Number(manualDiscountAmount) || 0)
+
+              if (hasCouponCode) {
+                if (Math.abs(discountAmount - effectiveManual) < 0.01 && effectiveManual > 0) {
+                  const checkTotal = Math.round((subtotal - effectiveManual + effectiveDelivery + (gstAmount || 0)) * 100) / 100
+                  if (Math.abs(total - checkTotal) < 0.05) {
+                    effectiveCoupon = 0
+                  } else {
+                    effectiveCoupon = Number(discountAmount) || 0
+                  }
+                } else if (discountAmount > effectiveManual) {
+                  const withCombined = Math.round((subtotal - discountAmount + effectiveDelivery + (gstAmount || 0)) * 100) / 100
+                  if (Math.abs(total - withCombined) < 0.05) {
+                    effectiveCoupon = Math.round((discountAmount - effectiveManual) * 100) / 100
+                  } else {
+                    effectiveCoupon = Number(discountAmount) || 0
+                  }
+                } else {
+                  effectiveCoupon = Number(discountAmount) || 0
+                }
+              } else {
+                effectiveCoupon = 0
+                if (effectiveManual === 0 && discountAmount > 0) {
+                  effectiveManual = Number(discountAmount) || 0
+                }
+              }
+
+              let effectiveGst = Math.max(0, Number(gstAmount) || 0)
+              if (effectiveGst === 0 && total > 0) {
+                const preTaxTotal = Math.max(0, subtotal - effectiveCoupon - effectiveManual + effectiveDelivery)
+                if (total > preTaxTotal + 0.5) {
+                  effectiveGst = Math.round((total - preTaxTotal) * 100) / 100
+                }
+              }
+
               return (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, color: '#666' }}>CGST{percentLabel}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>+{formatCurrency(cgst)}</span>
+                    <span style={{ fontSize: 12, color: '#666' }}>Subtotal</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(subtotal)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, color: '#666' }}>SGST{percentLabel}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>+{formatCurrency(sgst)}</span>
+                  {effectiveCoupon > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, color: primaryColor, fontWeight: 600 }}>
+                        Coupon{couponCode ? ` (${couponCode})` : ''}
+                      </span>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>−{formatCurrency(effectiveCoupon)}</span>
+                    </div>
+                  )}
+                  {effectiveManual > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: primaryColor }}>Manual Discount</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>−{formatCurrency(effectiveManual)}</span>
+                    </div>
+                  )}
+                  {effectiveGst > 0 && (() => {
+                    const taxable = Math.max(0, subtotal - effectiveCoupon - effectiveManual)
+                    const calculatedPercent = taxable > 0 ? (effectiveGst / taxable) * 100 : 0
+                    const halfPercent = Math.round((calculatedPercent / 2) * 100) / 100
+                    const percentLabel = halfPercent > 0 ? ` (${halfPercent}%)` : ''
+                    const cgst = Math.round((effectiveGst / 2) * 100) / 100
+                    const sgst = Math.round((effectiveGst - cgst) * 100) / 100
+                    return (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 10, color: '#666' }}>CGST{percentLabel}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>+{formatCurrency(cgst)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 10, color: '#666' }}>SGST{percentLabel}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>+{formatCurrency(sgst)}</span>
+                        </div>
+                      </>
+                    )
+                  })()}
+                  {effectiveDelivery > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: '#666' }}>Delivery</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(effectiveDelivery)}</span>
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      borderTop: `2px solid ${headerBorder}`, paddingTop: 10, marginTop: 4,
+                    }}
+                  >
+                    <span style={{ fontSize: 15, fontWeight: 900, color: primaryColor, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</span>
+                    <span style={{ fontSize: 20, fontWeight: 900, color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(total)}</span>
                   </div>
                 </>
               )
             })()}
-            {effectiveDelivery > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: '#666' }}>Delivery</span>
-                <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(effectiveDelivery)}</span>
-              </div>
-            )}
-            <div
-              style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                borderTop: `2px solid ${headerBorder}`, paddingTop: 10, marginTop: 4,
-              }}
-            >
-              <span style={{ fontSize: 15, fontWeight: 900, color: primaryColor, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</span>
-              <span style={{ fontSize: 20, fontWeight: 900, color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(total)}</span>
-            </div>
           </div>
         </div>
       </div>

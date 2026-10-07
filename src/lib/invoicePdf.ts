@@ -153,10 +153,11 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
     doc.text(`${unitLabel} · ${money(item.base_price)}`, left + 12, subY)
     doc.text(`${formatQuantityValue(item.quantity)}`, 139, y, { align: 'center' })
     doc.text(money(item.base_price), 164, y, { align: 'right' })
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(ink)
-    doc.text(money(item.line_total), right - 3, y, { align: 'right' })
+    const itemBaseTotal = Math.round((item.quantity * item.base_price) * 100) / 100
+    const itemAmount = itemBaseTotal > 0 && Math.abs(item.line_total - itemBaseTotal) > 0.01 && (data.gstAmount || 0) > 0
+      ? itemBaseTotal
+      : (item.line_total || itemBaseTotal)
+    doc.text(money(itemAmount), right - 3, y, { align: 'right' })
     y += Math.max(14, (nameLines.length + 1) * 4 + 4)
     doc.setDrawColor(tableRowLine)
     doc.line(left, y - 3, right, y - 3)
@@ -164,7 +165,8 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
 
   y = Math.max(y + 6, 150)
   const rows: Array<[string, string, string, number]> = [['Subtotal', money(data.subtotal), ink, 9]]
-  if ((data.discountAmount || 0) > 0) rows.push([`Coupon${data.couponCode ? ` (${data.couponCode})` : ''}`, `-${money(data.discountAmount || 0)}`, primaryColor, 11])
+  if ((data.discountAmount || 0) > 0) rows.push([`Coupon${data.couponCode ? ` (${data.couponCode})` : ''}`, `-${money(data.discountAmount || 0)}`, primaryColor, 10])
+  if ((data.manualDiscountAmount || 0) > 0) rows.push(['Manual Discount', `-${money(data.manualDiscountAmount || 0)}`, primaryColor, 10])
   if ((data.gstAmount || 0) > 0) {
     const gst = data.gstAmount || 0
     const taxable = Math.max(0, data.subtotal - (data.discountAmount || 0) - (data.manualDiscountAmount || 0))

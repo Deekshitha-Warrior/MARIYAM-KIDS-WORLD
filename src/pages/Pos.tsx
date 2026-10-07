@@ -804,29 +804,28 @@ export default function Pos(props: PosProps = {}) {
     if (!depositForm.expectedDeliveryDate) { setError('Select the expected delivery date.'); return }
     setSaving(true); setError('')
     try {
-      const allocationBase = items.reduce((sum, item) => sum + item.lineTotal, 0)
-      let allocated = 0
-      const productsSnapshot = items.map((item, index) => {
-        const lineTotal = index === items.length - 1
-          ? Math.max(0, Math.round((total - allocated) * 100) / 100)
-          : Math.max(0, Math.round((allocationBase > 0 ? total * item.lineTotal / allocationBase : total / items.length) * 100) / 100)
-        allocated += lineTotal
+      const productsSnapshot = items.map((item) => {
+        const itemLineTotal = Math.round(((Number(item.basePrice) || 0) * (item.qty || 1)) * 100) / 100
         return {
           product_id: item.parentProductId || toProductId(item.id), variant_id: item.variantId || null,
           variant_name: item.variantName || null, name: item.name, category: item.category,
           description: item.note || '', quantity: item.qty, unit: item.selectedUnit, unit_type: item.unitType,
-          base_quantity: item.baseQuantity, base_price: Number(item.basePrice) || 0, line_total: lineTotal,
+          base_quantity: item.baseQuantity, base_price: Number(item.basePrice) || 0, line_total: itemLineTotal,
           source: 'advance_order', note: item.note || null,
           is_manual: item.source === 'manual' || item.category === 'Unregistered',
         }
       })
+      const effectiveRemarks = [
+        depositForm.remarks.trim(),
+        billGstEnabled && totalGst > 0 ? `GST: ₹${totalGst.toFixed(2)}` : '',
+      ].filter(Boolean).join(' | ')
       const created = await createAdvanceOrder({
         customerName: customer.name.trim(), phone: customer.phone.trim(), address: depositForm.address.trim(),
         productName: items.map(item => `${item.qty}× ${item.name}`).join(', '),
         category: Array.from(new Set(items.map(item => item.category).filter(Boolean))).join(', '),
         description: items.map(item => `${item.qty}× ${item.name}${item.note ? ` — ${item.note}` : ''}`).join('\n'),
         totalAmount: total, depositAmount, expectedDeliveryDate: depositForm.expectedDeliveryDate,
-        remarks: depositForm.remarks, referenceNumber: depositForm.referenceNumber, paymentMethod: depositForm.paymentMethod, createdByName: role || 'Staff',
+        remarks: effectiveRemarks, referenceNumber: depositForm.referenceNumber, paymentMethod: depositForm.paymentMethod, createdByName: role || 'Staff',
         products: productsSnapshot,
         branch,
       })

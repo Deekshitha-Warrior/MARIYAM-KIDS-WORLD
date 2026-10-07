@@ -154,7 +154,7 @@ const emptyForm = {
   hasVariants: false,
 }
 
-const exportCSV = (orders: DashboardOrder[]) => {
+const exportCSV = (orders: DashboardOrder[], branch?: PosBranch) => {
   const header = ['Order Ref', 'Customer', 'Phone', 'Date', 'Total (INR)', 'Order Type', 'Status']
   const rows = orders.map(o => {
     let dateStr = ''
@@ -174,7 +174,8 @@ const exportCSV = (orders: DashboardOrder[]) => {
     ]
   })
   const csv = buildCsv(header, rows)
-  downloadCsvFile(`orders_${new Date().toISOString().slice(0, 10)}.csv`, csv)
+  const prefix = branch === 'pos2' ? 'Taj_Textiles' : 'Mariyam_Kids_World'
+  downloadCsvFile(`${prefix}_Orders_${new Date().toISOString().slice(0, 10)}.csv`, csv)
 }
 
 const UNIT_TYPE_OPTIONS: { value: UnitType; label: string; hint: string }[] = [
@@ -2579,6 +2580,7 @@ export default function Dashboard() {
                       datePreset: analyticsDatePreset,
                       dateFrom: analyticsDateFrom,
                       dateTo: analyticsDateTo,
+                      branch,
                     })
                   }}
                   className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E8D399] text-[#7A1220] font-bold text-xs hover:bg-[#FBFAF6] shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
@@ -2600,6 +2602,7 @@ export default function Dashboard() {
                         datePreset: analyticsDatePreset,
                         dateFrom: analyticsDateFrom,
                         dateTo: analyticsDateTo,
+                        branch,
                       })
                     } catch (err) {
                       console.error('PDF export error:', err)
@@ -3686,7 +3689,7 @@ export default function Dashboard() {
                 {filteredSearchResults.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => exportCSV(filteredSearchResults)}
+                    onClick={() => exportCSV(filteredSearchResults, branch)}
                     className="inline-flex items-center gap-1 text-[11px] font-bold text-[#D4AF37] hover:text-[#b89528] transition-colors cursor-pointer"
                   >
                     <Download size={11} /> Export CSV

@@ -49,6 +49,7 @@ interface ExportOptions {
   datePreset: string
   dateFrom?: string
   dateTo?: string
+  branch?: string
 }
 
 const getFilterLabel = (preset: string, from?: string, to?: string) => {
@@ -65,7 +66,7 @@ const getFilterLabel = (preset: string, from?: string, to?: string) => {
 /**
  * Export Analytics to CSV format based on the selected tab and active date filter
  */
-export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, dateTo }: ExportOptions) {
+export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, dateTo, branch }: ExportOptions) {
   const filterText = getFilterLabel(datePreset, dateFrom, dateTo)
   const rows: string[][] = []
 
@@ -185,7 +186,8 @@ export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, da
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `YG_Analytics_${activeTab}_${datePreset || 'all'}_${new Date().toISOString().slice(0, 10)}.csv`
+  const storePrefix = branch === 'pos2' ? 'Taj_Textiles' : 'Mariyam_Kids_World'
+  a.download = `${storePrefix}_Analytics_${activeTab}_${datePreset || 'all'}_${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -199,6 +201,7 @@ export async function exportAnalyticsToPDF({
   datePreset,
   dateFrom,
   dateTo,
+  branch,
 }: ExportOptions): Promise<void> {
   const filterText = getFilterLabel(datePreset, dateFrom, dateTo)
   const nowStr = new Date().toLocaleDateString('en-IN', {
@@ -233,7 +236,7 @@ export async function exportAnalyticsToPDF({
         <div>
           <div style="display: flex; align-items: center; gap: 12px;">
             <div style="width: 44px; height: 44px; border-radius: 10px; background: #7A1220; border: 1.5px solid #D4AF37; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px; box-sizing: border-box; flex-shrink: 0;">
-              <img src="${LOGO_BASE64}" style="width: 100%; height: 100%; object-fit: contain; display: block;" alt="YG Logo" />
+              <img src="${LOGO_BASE64}" style="width: 100%; height: 100%; object-fit: contain; display: block;" alt="Store Logo" />
             </div>
             <div>
               <h1 style="margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.5px; color: #7A1220; text-transform: uppercase; line-height: 1.15;">${BRAND_EN}</h1>
@@ -494,7 +497,8 @@ export async function exportAnalyticsToPDF({
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width
 
     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(297, pdfHeight))
-    pdf.save(`YG_Analytics_Report_${activeTab}_${datePreset || 'all'}_${new Date().toISOString().slice(0, 10)}.pdf`)
+    const storePrefix = branch === 'pos2' ? 'Taj_Textiles' : 'Mariyam_Kids_World'
+    pdf.save(`${storePrefix}_Analytics_Report_${activeTab}_${datePreset || 'all'}_${new Date().toISOString().slice(0, 10)}.pdf`)
   } catch (error) {
     console.error('Failed to generate Analytics PDF:', error)
     throw error

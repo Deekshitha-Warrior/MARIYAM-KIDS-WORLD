@@ -222,7 +222,47 @@ export default function DigitalInvoice() {
 
   const invoiceItems = (Array.isArray(invoice.items) ? invoice.items : [])
     .map((item: Record<string, unknown>) => normalizeStructuredOrderItem(item))
-  const subtotal = invoiceItems.reduce((sum: number, item: ReturnType<typeof normalizeStructuredOrderItem>) => sum + item.line_total, 0)
+  const itemsBaseTotal = invoiceItems.reduce(
+    (sum: number, item: ReturnType<typeof normalizeStructuredOrderItem>) =>
+      sum + Math.round((item.quantity * item.base_price) * 100) / 100,
+    0
+  )
+  const itemsLineTotal = invoiceItems.reduce(
+    (sum: number, item: ReturnType<typeof normalizeStructuredOrderItem>) => sum + (item.line_total || 0),
+    0
+  )
+
+  const recordedGst = Number(invoice.total_gst || invoice.gst_amount || 0)
+  const impliedGst = recordedGst > 0
+    ? recordedGst
+    : (itemsLineTotal > itemsBaseTotal && itemsBaseTotal > 0 ? Math.round((itemsLineTotal - itemsBaseTotal) * 100) / 100 : 0)
+
+  const subtotal = itemsBaseTotal > 0 && impliedGst > 0
+    ? itemsBaseTotal
+    : (invoice.subtotal ? Number(invoice.subtotal) : (itemsBaseTotal > 0 ? itemsBaseTotal : itemsLineTotal))
+
+  const hasCouponCode = Boolean(invoice.coupon_code && String(invoice.coupon_code).trim())
+  const rawDiscount = Number(invoice.discount_amount || 0)
+  const rawManual = Number(invoice.manual_discount_amount || 0)
+
+  let cleanCouponDiscount = 0
+  let cleanManualDiscount = 0
+
+  if (hasCouponCode) {
+    cleanCouponDiscount = rawDiscount
+    cleanManualDiscount = rawManual
+    const expectedWithRawOnly = Math.round((subtotal - rawDiscount + (invoice.delivery_charge || 0) + impliedGst) * 100) / 100
+    if (Math.abs(Number(invoice.total || 0) - expectedWithRawOnly) < 0.05 && rawDiscount >= rawManual && rawManual > 0) {
+      cleanCouponDiscount = Math.max(0, rawDiscount - rawManual)
+    }
+  } else {
+    cleanCouponDiscount = 0
+    cleanManualDiscount = rawManual > 0 ? rawManual : rawDiscount
+  }
+
+  const effectiveTotal = Number(invoice.total || 0) > 0
+    ? Number(invoice.total)
+    : Math.max(0, subtotal + (Number(invoice.delivery_charge) || 0) + impliedGst - cleanCouponDiscount - cleanManualDiscount)
 
   const downloadPdf = async () => {
     if (downloadingPdf) return
@@ -340,11 +380,11 @@ export default function DigitalInvoice() {
       invoiceDate: invoice.created_at,
       items,
       subtotal,
-      couponDiscount: invoice.discount_amount,
-      manualDiscountAmount: invoice.manual_discount_amount,
+      couponDiscount: cleanCouponDiscount,
+      manualDiscountAmount: cleanManualDiscount,
       shipping: invoice.delivery_charge,
-      gstAmount: invoice.total_gst || invoice.gst_amount || 0,
-      total: invoice.total,
+      gstAmount: impliedGst,
+      total: effectiveTotal,
       paymentMode: invoice.payment_mode || invoice.payment_method,
     })
 
@@ -383,13 +423,13 @@ export default function DigitalInvoice() {
             address: invoice.address || '',
             branch: invoice.branch as any,
             items: invoice.items || [],
-            subtotal: invoiceItems.reduce((sum: number, item: any) => sum + (item.line_total || 0), 0),
+            subtotal,
             shipping: invoice.shipping || 0,
-            total: invoice.total || 0,
-            discountAmount: invoice.discount_amount,
-            manualDiscountAmount: invoice.manual_discount_amount,
-            gstAmount: invoice.gst_amount,
-            couponCode: invoice.coupon_code,
+            total: effectiveTotal,
+            discountAmount: cleanCouponDiscount,
+            manualDiscountAmount: cleanManualDiscount,
+            gstAmount: impliedGst,
+            couponCode: hasCouponCode ? invoice.coupon_code : undefined,
             paymentMode: invoice.payment_mode,
           })
           await uploadInvoicePdf(file, invoice.invoice_no)
@@ -415,10 +455,10 @@ export default function DigitalInvoice() {
       })),
       subtotal,
       shipping: invoice.delivery_charge || 0,
-      couponDiscount: invoice.discount_amount || 0,
-      manualDiscount: invoice.manual_discount_amount || 0,
-      totalGst: invoice.total_gst || invoice.gst_amount || 0,
-      total: invoice.total > 0 ? invoice.total : (subtotal + (invoice.delivery_charge || 0) + (invoice.total_gst || invoice.gst_amount || 0) - (invoice.discount_amount || 0) - (invoice.manual_discount_amount || 0)),
+      couponDiscount: cleanCouponDiscount,
+      manualDiscount: cleanManualDiscount,
+      totalGst: impliedGst,
+      total: effectiveTotal,
       paymentMode: invoice.payment_mode || invoice.payment_method,
     })
   }
@@ -469,11 +509,11 @@ export default function DigitalInvoice() {
             items={invoice.items || []}
             subtotal={subtotal}
             shipping={invoice.delivery_charge || 0}
-            discountAmount={invoice.discount_amount || 0}
-            manualDiscountAmount={invoice.manual_discount_amount || 0}
-            gstAmount={invoice.total_gst || invoice.gst_amount || 0}
-            couponCode={invoice.coupon_code}
-            total={invoice.total > 0 ? invoice.total : (subtotal + (invoice.delivery_charge || 0) + (invoice.total_gst || invoice.gst_amount || 0) - (invoice.discount_amount || 0) - (invoice.manual_discount_amount || 0))}
+            discountAmount={cleanCouponDiscount}
+            manualDiscountAmount={cleanManualDiscount}
+            gstAmount={impliedGst}
+            couponCode={hasCouponCode ? invoice.coupon_code : undefined}
+            total={effectiveTotal}
             status={invoice.status}
             paymentMode={invoice.payment_mode || invoice.payment_method}
           />

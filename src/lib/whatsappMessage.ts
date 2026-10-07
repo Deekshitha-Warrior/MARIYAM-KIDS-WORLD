@@ -59,10 +59,7 @@ export const buildProfessionalWhatsAppMessage = (input: BuildWhatsAppMessageInpu
     ? input.items.map(item => `• ${item.name} (x${item.qty}) - ₹ ${Number(item.lineTotal || 0).toFixed(2)}`).join('\n')
     : ''
 
-  // Instagram URLs (same handles for both branches)
   const profile = getBranchProfile(input.branch)
-  const instagramSection = profile.instagramUrls
-  const instagramText = instagramSection ? `\n📷 *Follow us on Instagram:*\n${instagramSection}` : ''
 
   return `✨ *${BRAND_EN}* ✨
 🛍️ *Official Purchase Invoice & Receipt* 🛍️
@@ -80,7 +77,7 @@ ${itemsText ? `📦 *ITEMS ORDERED:*\n${itemsText}\n\n` : ''}📄 *View & Downlo
 🌐 *Visit Our Official Website:*
 👉 ${BRAND_WEBSITE}
 
-📞 *Shop Contact:* ${profile.phone}${instagramText}
+📞 *Shop Contact:* ${profile.phone}
 
 Thank you, and visit us again! ✨`
 }
@@ -101,10 +98,7 @@ export const buildAdvanceDepositWhatsAppMessage = (input: AdvanceDepositWhatsApp
       })()
     : '-'
 
-  // Instagram URLs (same handles for both branches)
   const profile = getBranchProfile(input.branch)
-  const instagramUrls = profile.instagramUrls
-  const instagramSection = instagramUrls ? `\n📷 *Follow us on Instagram:*\n${instagramUrls}` : ''
 
   return `✨ *Thank You for Your Advance Order with ${BRAND_EN}!* ✨
 
@@ -122,5 +116,5 @@ We have successfully received your initial advance payment!
 
 Your order is being prepared with utmost care. We will have everything ready on or before ${deliveryDateFormatted}!
 
-📞 *Shop Contact:* ${profile.phone}${instagramSection}`
+📞 *Shop Contact:* ${profile.phone}`
 }

@@ -6947,7 +6947,7 @@ BEGIN
     v_subtotal := v_subtotal + v_line_total;
   END LOOP;
 
-  v_total := GREATEST(0, ROUND(v_subtotal + COALESCE(p_shipping, 0) + COALESCE(p_delivery_charge, 0) - COALESCE(p_discount_amount, 0), 2));
+  v_total := GREATEST(0, ROUND(v_subtotal + COALESCE(p_shipping, 0) + COALESCE(p_delivery_charge, 0) + COALESCE(p_total_gst, 0) - COALESCE(p_discount_amount, 0) - COALESCE(p_manual_discount_amount, 0), 2));
 
   -- 3. Insert Order Record
   INSERT INTO public.orders (
@@ -7391,7 +7391,7 @@ BEGIN
     v_bill_items,
     v_advance.total_amount, greatest(0, v_advance.total_amount - v_total_discount),
     'completed', 'offline', 'advance_order',
-    0, 0, v_total_discount, p_manual_discount,
+    0, 0, CASE WHEN p_coupon_code IS NOT NULL AND BTRIM(p_coupon_code) <> '' THEN GREATEST(0, v_total_discount - p_manual_discount) ELSE 0 END, p_manual_discount,
     p_coupon_code, p_coupon_percentage, 'flat', p_manual_discount,
     lower(p_payment_method), lower(p_payment_method), v_branch,
     v_now, v_now

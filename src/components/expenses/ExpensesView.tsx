@@ -361,7 +361,7 @@ export const ExpensesView: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => exportExpensesToCSV(filteredExpenses)}
+                  onClick={() => exportExpensesToCSV(filteredExpenses, branch)}
                   disabled={filteredExpenses.length === 0}
                   className="h-10 px-3 sm:px-3.5 rounded-xl border border-gray-200 bg-[#F9FAFB] text-xs font-bold text-gray-800 hover:bg-gray-100 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40 shrink-0 shadow-xs"
                 >

@@ -501,7 +501,7 @@ export const expenseService = {
 }
 
 // 6. CSV Ledger Export Utility
-export function exportExpensesToCSV(expenses: ExpenseRecord[]): void {
+export function exportExpensesToCSV(expenses: ExpenseRecord[], branch?: PosBranch): void {
   if (!Array.isArray(expenses) || expenses.length === 0) return
 
   const headers = ['Date', 'Category', 'Description', 'Amount (INR)', 'Payment Mode', 'Recorded By']
@@ -514,5 +514,6 @@ export function exportExpensesToCSV(expenses: ExpenseRecord[]): void {
     String(e?.recorded_by_name || 'Staff'),
   ])
 
-  downloadCsvFile(`YG-Expenses-${new Date().toISOString().slice(0, 10)}.csv`, buildCsv(headers, rows))
+  const storePrefix = branch === 'pos2' ? 'Taj-Textiles' : 'Mariyam-Kids-World'
+  downloadCsvFile(`${storePrefix}-Expenses-${new Date().toISOString().slice(0, 10)}.csv`, buildCsv(headers, rows))
 }

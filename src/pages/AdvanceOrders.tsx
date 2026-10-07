@@ -269,12 +269,19 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
         remarksWithCoupon
       )
 
-      if (paymentForm.method === 'split') {
-        try {
-          await supabase.from('orders').update({ payment_mode: finalMethodStr, payment_method: finalMethodStr }).eq('id', result.order_id).eq('branch', branch)
+      try {
+        await supabase.from('orders').update({
+          payment_mode: finalMethodStr,
+          payment_method: finalMethodStr,
+          discount_amount: 0,
+          manual_discount_amount: manualDisc,
+          coupon_code: null,
+          total: Math.max(0, paymentOrder.total_amount - manualDisc),
+        }).eq('id', result.order_id).eq('branch', branch)
+        if (paymentForm.method === 'split') {
           await supabase.from('advance_orders').update({ final_payment_method: finalMethodStr }).eq('id', paymentOrder.id).eq('branch', branch)
-        } catch { /* best effort db update */ }
-      }
+        }
+      } catch { /* best effort db update */ }
 
       const completed: AdvanceOrder = { ...paymentOrder, status: 'completed', remaining_balance: finalAmount, completed_at: result.completed_at, completed_order_id: result.order_id, invoice_number: result.invoice_no, final_payment_method: finalMethodStr }
       setOrders(rows => rows.map(row => row.id === completed.id ? completed : row)); onOrderCompleted?.(completed); setPaymentOrder(null); setPaymentForm({ method: 'cash', remarks: '' }); setSplitP1Amount(''); setAppliedCoupon(null); setCouponInput(''); setCouponError(''); setManualDiscount(''); setManualDiscountType('rm'); setNotice(`${result.invoice_no} generated once. The full ${formatCurrency(completed.total_amount)} is now recognized as revenue.`)
