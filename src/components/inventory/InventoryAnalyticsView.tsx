@@ -192,7 +192,7 @@ export const InventoryAnalyticsView: React.FC = () => {
             onClick={() => setRange('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
               range === 'all'
-                ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs'
+                ? 'bg-[#7A1220] text-white shadow-xs'
                 : 'text-gray-600 hover:text-black'
             }`}
           >
@@ -203,7 +203,7 @@ export const InventoryAnalyticsView: React.FC = () => {
             onClick={() => setRange('today')}
             className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
               range === 'today'
-                ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs'
+                ? 'bg-[#7A1220] text-white shadow-xs'
                 : 'text-gray-600 hover:text-black'
             }`}
           >
@@ -214,7 +214,7 @@ export const InventoryAnalyticsView: React.FC = () => {
             onClick={() => setRange('week')}
             className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
               range === 'week'
-                ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs'
+                ? 'bg-[#7A1220] text-white shadow-xs'
                 : 'text-gray-600 hover:text-black'
             }`}
           >
@@ -225,7 +225,7 @@ export const InventoryAnalyticsView: React.FC = () => {
             onClick={() => setRange('month')}
             className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
               range === 'month'
-                ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs'
+                ? 'bg-[#7A1220] text-white shadow-xs'
                 : 'text-gray-600 hover:text-black'
             }`}
           >
@@ -234,7 +234,7 @@ export const InventoryAnalyticsView: React.FC = () => {
           <button
             type="button"
             onClick={() => setRange('year')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${range === 'year' ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs' : 'text-gray-600 hover:text-black'}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${range === 'year' ? 'bg-[#7A1220] text-white shadow-xs' : 'text-gray-600 hover:text-black'}`}
           >
             This Year
           </button>
@@ -272,7 +272,7 @@ export const InventoryAnalyticsView: React.FC = () => {
             type="button"
             onClick={exportCsv}
             disabled={filteredMovements.length === 0}
-            className="px-3.5 py-2 rounded-xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] text-xs font-black hover:bg-[#1A1A1A] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40 whitespace-nowrap"
+            className="px-3.5 py-2 rounded-xl bg-[#7A1220] border border-white/30 text-white text-xs font-black hover:bg-[#1A1A1A] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40 whitespace-nowrap"
             title="Export audit movements log"
           >
             <Download size={13} />
@@ -330,7 +330,7 @@ export const InventoryAnalyticsView: React.FC = () => {
 
         {/* Net Movement Delta */}
         <div className="bg-white border border-[#E8D399] rounded-2xl p-4 shadow-sm flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-[#7A1220] text-[#D4AF37] flex items-center justify-center font-black">
+          <div className="w-11 h-11 rounded-xl bg-[#7A1220] text-white flex items-center justify-center font-black">
             {data.netDelta >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
           </div>
           <div>

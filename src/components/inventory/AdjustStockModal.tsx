@@ -163,14 +163,14 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
         {/* Compact Header */}
         <div className="shrink-0 bg-[#7A1220] px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-[#D4AF37]/30 flex items-center justify-between text-white">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#1A1A1A] border border-[#D4AF37] flex items-center justify-center text-[#D4AF37] shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/30 flex items-center justify-center text-white shrink-0">
               <SlidersHorizontal size={14} />
             </div>
             <div className="min-w-0">
               <h2 className="text-xs sm:text-sm font-black tracking-wide text-white leading-tight truncate">
                 Adjust Inventory Stock ({BRAND_EN})
               </h2>
-              <p className="text-[10px] text-[#D4AF37] font-semibold leading-tight truncate">
+              <p className="text-[10px] text-white/80 font-semibold leading-tight truncate">
                 Restock, return, deduct loss, or reconcile count
               </p>
             </div>
@@ -647,7 +647,7 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-black transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] ${
                 mode === 'LOSS_DAMAGE'
                   ? 'bg-rose-700 text-white hover:bg-rose-800 border border-rose-800'
-                  : 'bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] hover:bg-[#1A1A1A]'
+                  : 'bg-[#7A1220] border border-white/30 text-white hover:bg-[#1A1A1A]'
               }`}
             >
               {submitting ? (

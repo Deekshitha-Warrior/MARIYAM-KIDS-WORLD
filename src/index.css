@@ -33,8 +33,13 @@
      seamlessly shifts the whole theme color across POS 1, POS 2, and Admin */
   .bg-\[\#7A1220\],
   .bg-\[\#8B1A1A\],
-  .bg-brand-black {
+  .bg-brand-black,
+  .bg-posOne,
+  .bg-posTwo,
+  .bg-posOne-dark,
+  .bg-posTwo-dark {
     background-color: var(--theme-primary) !important;
+    color: #FFFFFF !important;
   }
   .text-\[\#7A1220\],
   .text-\[\#8B1A1A\],
@@ -50,6 +55,7 @@
   .hover\:bg-\[\#8B1A1A\]:hover,
   .hover\:bg-brand-black:hover {
     background-color: var(--theme-primary-dark) !important;
+    color: #FFFFFF !important;
   }
   .hover\:text-\[\#7A1220\]:hover,
   .hover\:text-\[\#8B1A1A\]:hover {
@@ -64,13 +70,86 @@
     border-color: var(--theme-primary) !important;
   }
 
-  /* Map old gold and cream elements to clean pink and white theme */
+  /* Any text, icon, or gold-token on top of colored theme backgrounds MUST be white */
+  .bg-\[\#7A1220\],
+  .bg-\[\#8B1A1A\],
+  .bg-brand-black,
+  .bg-posOne,
+  .bg-posTwo,
+  .bg-posOne-dark,
+  .bg-posTwo-dark,
+  .bg-\[\#7A1220\].text-\[\#D4AF37\],
+  .bg-brand-black.text-\[\#D4AF37\],
+  .bg-\[\#7A1220\].text-\[\#B48811\],
+  .bg-brand-black.text-\[\#B48811\],
   .bg-\[\#7A1220\] .text-\[\#D4AF37\],
   .bg-brand-black .text-\[\#D4AF37\],
+  .bg-\[\#7A1220\] .text-\[\#B48811\],
+  .bg-brand-black .text-\[\#B48811\],
+  .bg-posOne.text-\[\#D4AF37\],
+  .bg-posTwo.text-\[\#D4AF37\],
+  .bg-posOne .text-\[\#D4AF37\],
+  .bg-posTwo .text-\[\#D4AF37\],
+  .bg-posOne-dark .text-\[\#D4AF37\],
+  .bg-posTwo-dark .text-\[\#D4AF37\],
+  button.bg-\[\#7A1220\],
+  button.bg-\[\#8B1A1A\],
+  button.bg-brand-black,
+  button.bg-posOne,
+  button.bg-posTwo,
+  button.bg-posOne-dark,
+  button.bg-posTwo-dark,
+  button.bg-\[\#7A1220\] span,
+  button.bg-\[\#8B1A1A\] span,
+  button.bg-brand-black span,
+  button.bg-posOne span,
+  button.bg-posTwo span,
+  button.bg-posOne-dark span,
+  button.bg-posTwo-dark span,
+  button.bg-\[\#7A1220\] p,
+  button.bg-posOne p,
+  button.bg-posTwo p,
+  a.bg-\[\#7A1220\],
+  a.bg-\[\#8B1A1A\],
+  a.bg-brand-black,
+  a.bg-posOne,
+  a.bg-posTwo,
+  a.bg-posOne-dark,
+  a.bg-posTwo-dark,
+  a.bg-\[\#7A1220\] span,
+  a.bg-posOne span,
+  a.bg-posTwo span {
+    color: #FFFFFF !important;
+  }
+
+  .bg-\[\#7A1220\] svg,
+  .bg-\[\#8B1A1A\] svg,
+  .bg-brand-black svg,
+  .bg-posOne svg,
+  .bg-posTwo svg,
+  .bg-posOne-dark svg,
+  .bg-posTwo-dark svg,
+  button.bg-\[\#7A1220\] svg,
+  button.bg-posOne svg,
+  button.bg-posTwo svg,
+  a.bg-\[\#7A1220\] svg,
+  a.bg-posOne svg,
+  a.bg-posTwo svg {
+    color: #FFFFFF !important;
+    stroke: currentColor;
+  }
+
+  .bg-\[\#7A1220\].border-\[\#D4AF37\],
+  .bg-brand-black.border-\[\#D4AF37\],
   .bg-\[\#7A1220\] .border-\[\#D4AF37\],
   .bg-brand-black .border-\[\#D4AF37\],
-  .bg-\[\#7A1220\] .text-\[\#B48811\] {
-    color: #FFFFFF !important;
+  .bg-posOne.border-\[\#D4AF37\],
+  .bg-posTwo.border-\[\#D4AF37\],
+  .bg-posOne .border-\[\#D4AF37\],
+  .bg-posTwo .border-\[\#D4AF37\],
+  button.bg-\[\#7A1220\].border-\[\#D4AF37\],
+  button.bg-posOne.border-\[\#D4AF37\],
+  button.bg-posTwo.border-\[\#D4AF37\] {
     border-color: rgba(255, 255, 255, 0.4) !important;
   }
 

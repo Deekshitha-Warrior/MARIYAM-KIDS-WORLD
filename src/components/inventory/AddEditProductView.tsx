@@ -1079,7 +1079,7 @@ export const AddEditProductView: React.FC<{
                           onClick={() => setSizePartition('alpha')}
                           className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                             sizePartition === 'alpha'
-                              ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs'
+                              ? 'bg-[#7A1220] text-white shadow-xs'
                               : 'text-gray-600 hover:text-black'
                           }`}
                         >
@@ -1090,7 +1090,7 @@ export const AddEditProductView: React.FC<{
                           onClick={() => setSizePartition('numeric')}
                           className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                             sizePartition === 'numeric'
-                              ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs'
+                              ? 'bg-[#7A1220] text-white shadow-xs'
                               : 'text-gray-600 hover:text-black'
                           }`}
                         >
@@ -1101,7 +1101,7 @@ export const AddEditProductView: React.FC<{
                           onClick={() => setSizePartition('custom')}
                           className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                             sizePartition === 'custom'
-                              ? 'bg-[#7A1220] text-[#D4AF37] shadow-xs'
+                              ? 'bg-[#7A1220] text-white shadow-xs'
                               : 'text-gray-600 hover:text-black'
                           }`}
                         >
@@ -1171,7 +1171,7 @@ export const AddEditProductView: React.FC<{
                         type="button"
                         onClick={() => handleAddCustomNamedVariant(customVariantInput)}
                         disabled={!customVariantInput.trim()}
-                        className="h-8 px-3.5 rounded-lg bg-[#7A1220] text-[#D4AF37] text-xs font-bold hover:bg-[#1A1A1A] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0"
+                        className="h-8 px-3.5 rounded-lg bg-[#7A1220] text-white text-xs font-bold hover:bg-[#1A1A1A] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0"
                       >
                         <Plus size={13} /> Add Custom
                       </button>
@@ -1204,7 +1204,7 @@ export const AddEditProductView: React.FC<{
                     <button
                       type="button"
                       onClick={handleAddVariantRow}
-                      className="px-3 py-1 rounded-lg bg-[#7A1220] text-[#D4AF37] text-xs font-black flex items-center gap-1 hover:bg-[#1A1A1A] cursor-pointer"
+                      className="px-3 py-1 rounded-lg bg-[#7A1220] text-white text-xs font-black flex items-center gap-1 hover:bg-[#1A1A1A] cursor-pointer"
                     >
                       <Plus size={12} /> Add Blank Variant Row
                     </button>
@@ -1329,11 +1329,11 @@ export const AddEditProductView: React.FC<{
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-xl bg-[#7A1220] border border-white/30 text-white text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin inline-block" />
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
                   Saving Product...
                 </>
               ) : (

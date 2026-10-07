@@ -1699,7 +1699,7 @@ export default function Dashboard() {
                 <button
                   key={b}
                   onClick={() => { setActiveBranch(b); setTab('billing'); navigate('/dashboard', { replace: true }) }}
-                  className="shrink-0 flex items-center gap-2 lg:w-full px-3 h-[38px] rounded-xl text-[12.5px] font-bold text-white/80 hover:bg-white/10 hover:text-[#D4AF37] transition-colors cursor-pointer"
+                  className="shrink-0 flex items-center gap-2 lg:w-full px-3 h-[38px] rounded-xl text-[12.5px] font-bold text-white/80 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
                 >
                   <span className={`h-2 w-2 rounded-full ${b === 'pos1' ? 'bg-posOne' : 'bg-posTwo'}`} />
                   {branchShortLabel(b)}
@@ -1814,7 +1814,7 @@ export default function Dashboard() {
               <option value="pos2" className="text-black">{branchShortLabel('pos2')}</option>
             </select>
           ) : (
-            <div className="w-full rounded-xl bg-white/10 border border-white/15 text-[#D4AF37] text-[11px] font-black px-2.5 py-2 flex items-center gap-1.5">
+            <div className="w-full rounded-xl bg-white/10 border border-white/15 text-white text-[11px] font-black px-2.5 py-2 flex items-center gap-1.5">
               <Store size={13} /> {branchLabel}
             </div>
           )}
@@ -1836,8 +1836,8 @@ export default function Dashboard() {
                 'px-1 py-1 lg:py-0',
                 'rounded-xl font-medium text-[10px] lg:text-[12.5px] xl:text-[13px] transition-all overflow-hidden cursor-pointer',
                 tab === item.id
-                  ? (isGlobalView ? 'bg-[#D4AF37] text-[#7A1220]' : branch === 'pos2' ? 'bg-posTwo text-white' : 'bg-posOne text-white') + ' font-black shadow-md'
-                  : 'text-white/70 hover:bg-white/10 hover:text-[#D4AF37]',
+                  ? (isGlobalView ? 'bg-white/20 text-white' : branch === 'pos2' ? 'bg-posTwo text-white' : 'bg-posOne text-white') + ' font-black shadow-md'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white',
               ].join(' ')}
             >
               <span className="shrink-0 flex items-center">
@@ -1866,7 +1866,7 @@ export default function Dashboard() {
                 'h-[46px] min-w-[56px] lg:min-w-0 lg:w-full lg:h-[38px] xl:h-[40px]',
                 sidebarCollapsed ? 'lg:w-[42px] lg:justify-center mx-auto' : 'lg:px-3',
                 'px-1 py-1 lg:py-0 mt-1',
-                'rounded-xl font-medium text-[10px] lg:text-[12.5px] xl:text-[13px] transition-all overflow-hidden cursor-pointer text-white/70 hover:bg-white/10 hover:text-[#D4AF37]',
+                'rounded-xl font-medium text-[10px] lg:text-[12.5px] xl:text-[13px] transition-all overflow-hidden cursor-pointer text-white/70 hover:bg-white/10 hover:text-white',
               ].join(' ')}
             >
               <span className="shrink-0 flex items-center"><ArrowLeft size={18} /></span>
@@ -2502,13 +2502,13 @@ export default function Dashboard() {
                       setExportingPdf(false)
                     }
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] font-black text-xs hover:bg-[#1A1A1A] shadow-md transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7A1220] border border-white/30 text-white font-black text-xs hover:bg-[#1A1A1A] shadow-md transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-60"
                   title="Export formatted executive PDF with chart diagrams"
                 >
                   {exportingPdf ? (
-                    <RefreshCw size={14} className="animate-spin text-[#D4AF37]" />
+                    <RefreshCw size={14} className="animate-spin text-white" />
                   ) : (
-                    <FileText size={14} className="text-[#D4AF37]" />
+                    <FileText size={14} className="text-white" />
                   )}
                   <span>{exportingPdf ? 'Generating PDF...' : 'Export PDF (Charts)'}</span>
                 </button>
@@ -3623,7 +3623,7 @@ export default function Dashboard() {
                           </span>
                         )}
                         {role === 'admin' && (
-                          <button onClick={() => void deleteOrder(o.id, o.invoice_no)} className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl border border-[#E5E7EB]/60 text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/5" title="Delete Order">
+                          <button onClick={() => void deleteOrder(o.id, o.invoice_no)} className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl border border-red-200 text-red-500 transition-colors hover:bg-red-50" title="Delete Order">
                             <Trash2 size={14} className="mx-auto" />
                           </button>
                         )}
@@ -3694,7 +3694,7 @@ export default function Dashboard() {
                                 </span>
                               )}
                               {role === 'admin' && (
-                                <button onClick={() => void deleteOrder(o.id, o.invoice_no)} className="rounded-lg p-1 text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/5" title="Delete Order">
+                                <button onClick={() => void deleteOrder(o.id, o.invoice_no)} className="rounded-lg p-1 text-red-500 transition-colors hover:bg-red-50" title="Delete Order">
                                   <Trash2 size={13} />
                                 </button>
                               )}
@@ -4324,7 +4324,7 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <p className="text-[11px] font-bold text-[#111111] uppercase tracking-wider">Total Redemptions</p>
-                    <div className="w-8 h-8 rounded-full bg-[#7A1220] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-[#7A1220] text-white border border-white/30 flex items-center justify-center shrink-0">
                       <Percent size={15} />
                     </div>
                   </div>
@@ -4349,7 +4349,7 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
                     <div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#7A1220] text-[#D4AF37] border border-[#D4AF37]/30 text-[10px] font-black uppercase tracking-wider">
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#7A1220] text-white border border-white/30 text-[10px] font-black uppercase tracking-wider">
                         {editingCouponId !== null ? 'EDIT MODE' : 'NEW COUPON'}
                       </span>
                       <h3 className="mt-1.5 text-[18px] font-black text-[#111111]">
@@ -4396,9 +4396,9 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={generateCouponCode}
-                            className="inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
+                            className="inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-[#7A1220] border border-white/30 text-white px-4 py-2.5 text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
                           >
-                            <Sparkles size={13} className="text-[#D4AF37]" />
+                            <Sparkles size={13} className="text-white" />
                             <span>Generate</span>
                           </button>
                         )}
@@ -4472,9 +4472,9 @@ export default function Dashboard() {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full rounded-xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] py-3 text-[13px] font-black uppercase tracking-wider shadow-md hover:bg-[#1A1A1A] hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full rounded-xl bg-[#7A1220] border border-white/30 text-white py-3 text-[13px] font-black uppercase tracking-wider shadow-md hover:bg-[#1A1A1A] hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <Ticket size={15} className="text-[#D4AF37]" />
+                    <Ticket size={15} className="text-white" />
                     <span>{editingCouponId !== null ? l('Update Coupon', 'கூப்பனை புதுப்பி') : l('Create Coupon', 'கூப்பனை உருவாக்கு')}</span>
                   </button>
                 </div>
@@ -4549,7 +4549,7 @@ export default function Dashboard() {
                               onClick={() => void toggleCoupon(coupon)}
                               className={`rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                                 coupon.is_active
-                                  ? 'bg-[#7A1220] text-[#D4AF37] border border-[#D4AF37]/40 hover:bg-[#1A1A1A]'
+                                  ? 'bg-[#7A1220] text-white border border-white/40 hover:bg-[#1A1A1A]'
                                   : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
                               }`}
                               title={coupon.is_active ? 'Click to deactivate' : 'Click to activate'}

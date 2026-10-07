@@ -1096,7 +1096,7 @@ export default function Pos(props: PosProps = {}) {
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Bill Number:</span>
-                <span className="px-2.5 py-0.5 rounded-lg bg-[#7A1220] text-[#D4AF37] font-black text-xs font-mono">
+                <span className="px-2.5 py-0.5 rounded-lg bg-[#7A1220] text-white font-black text-xs font-mono">
                   #{formatInvoiceNo(invoice.invoiceNo)}
                 </span>
               </div>
@@ -1254,13 +1254,13 @@ export default function Pos(props: PosProps = {}) {
           <div className="grid grid-cols-2 bg-white rounded-xl border border-gray-200 p-1 shadow-sm flex-1 min-[480px]:flex-none">
             <button
               onClick={() => setOrdermode('offline')}
-              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'offline' ? 'bg-[#7A1220] text-[#D4AF37] shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
+              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'offline' ? 'bg-[#7A1220] text-white shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
             >
               Offline
             </button>
             <button
               onClick={() => setOrdermode('online')}
-              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'online' ? 'bg-[#7A1220] text-[#D4AF37] shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
+              className={`min-h-[38px] sm:min-h-[42px] px-3 sm:px-4 py-1.5 rounded-lg text-[11px] font-black tracking-wider uppercase transition-colors ${ordermode === 'online' ? 'bg-[#7A1220] text-white shadow-sm' : 'text-[#374151] hover:bg-[#F9FAFB]'}`}
             >
               Online
             </button>
@@ -1396,7 +1396,7 @@ export default function Pos(props: PosProps = {}) {
                 <button
                   type="button"
                   onClick={() => setCatalogOpen(true)}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg bg-[#7A1220] text-white hover:bg-[#1A1A1A] border border-[#D4AF37] shadow-xs transition-all shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 text-[11px] font-bold rounded-lg bg-[#7A1220] text-white hover:bg-[#1A1A1A] border border-white/30 shadow-xs transition-all shrink-0 cursor-pointer"
                 >
                   <Search className="w-3.5 h-3.5 text-white" />
                   <span className="tracking-wide">Search Catalog</span>
@@ -1679,7 +1679,7 @@ export default function Pos(props: PosProps = {}) {
                     <button
                       onClick={() => void applyCoupon()}
                       disabled={couponLoading || !couponInput.trim()}
-                      className="h-9 px-3 bg-[#7A1220] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#1A1A1A] rounded-xl text-[11px] font-black transition-colors disabled:opacity-50 shrink-0"
+                      className="h-9 px-3 bg-[#7A1220] text-white border border-white/30 hover:bg-[#1A1A1A] rounded-xl text-[11px] font-black transition-colors disabled:opacity-50 shrink-0"
                     >
                       Apply
                     </button>
@@ -2094,7 +2094,7 @@ export default function Pos(props: PosProps = {}) {
               <button
                 type="button"
                 onClick={addVariantToItems}
-                className="w-full py-3 rounded-2xl bg-[#7A1220] border border-[#D4AF37] text-[#D4AF37] text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3 rounded-2xl bg-[#7A1220] border border-white/30 text-white text-xs font-black uppercase tracking-wider hover:bg-[#1A1A1A] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 Add to Order (₹{((selectedVariant?.price || variantPickerProduct.price || 0) * variantPickerQty).toFixed(2)})
               </button>
@@ -2176,7 +2176,7 @@ export default function Pos(props: PosProps = {}) {
                   type="button"
                   disabled={priceEditModal.isSubmitting}
                   onClick={() => void handleSavePrice(true)}
-                  className="h-11 px-3 bg-[#7A1220] hover:bg-[#1A1A1A] text-[#D4AF37] border border-[#D4AF37] font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  className="h-11 px-3 bg-[#7A1220] hover:bg-[#1A1A1A] text-white border border-white/30 font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
                   {priceEditModal.isSubmitting ? (
                     <RefreshCw size={14} className="animate-spin" />

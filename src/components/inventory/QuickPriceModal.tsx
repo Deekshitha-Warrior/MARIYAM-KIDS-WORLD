@@ -204,16 +204,16 @@ export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSucc
             <button
               type="submit"
               disabled={loading}
-              className="h-10 px-5 text-xs font-bold rounded-xl bg-[#7A1220] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#1A1A1A] transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+              className="h-10 px-5 text-xs font-bold rounded-xl bg-[#7A1220] text-white border border-white/30 hover:bg-[#1A1A1A] transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
             >
               {loading ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin inline-block" />
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
                   <span>Saving...</span>
                 </>
               ) : (
                 <>
-                  <Check className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <Check className="w-3.5 h-3.5 text-white" />
                   <span>Update Price</span>
                 </>
               )}

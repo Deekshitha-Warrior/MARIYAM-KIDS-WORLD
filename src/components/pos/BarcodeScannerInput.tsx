@@ -378,7 +378,7 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="px-3 py-1.5 rounded-xl bg-[#7A1220] text-[#D4AF37] text-xs font-black hover:bg-[#1A1A1A] cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-[#7A1220] text-white text-xs font-black hover:bg-[#1A1A1A] cursor-pointer"
               >
                 {loading ? '...' : 'Add'}
               </button>
@@ -422,7 +422,7 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
           <div className="bg-[#7A1220] rounded-3xl max-w-md w-full border border-[#D4AF37] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 text-white">
             <div className="px-5 py-4 border-b border-[#D4AF37]/30 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Camera size={18} className="text-[#D4AF37]" />
+                <Camera size={18} className="text-white" />
                 <span className="font-black text-sm text-white">Camera Barcode Scanner</span>
               </div>
               <button
@@ -444,7 +444,7 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
               {/* Camera Switcher if multiple devices */}
               {videoDevices.length > 1 && (
                 <div className="mt-3 flex items-center gap-2 w-full max-w-[320px]">
-                  <SwitchCamera size={15} className="text-[#D4AF37] shrink-0" />
+                  <SwitchCamera size={15} className="text-white shrink-0" />
                   <select
                     value={selectedDeviceId}
                     onChange={(e) => setSelectedDeviceId(e.target.value)}
@@ -459,7 +459,7 @@ export const BarcodeScannerInput: React.FC<BarcodeScannerInputProps> = ({
                 </div>
               )}
 
-              <p className="text-xs text-[#D4AF37] mt-3 text-center font-bold">
+              <p className="text-xs text-white/90 mt-3 text-center font-bold">
                 Align the red line with the barcode sticker on the product
               </p>
             </div>
