@@ -258,7 +258,7 @@ export default function Dashboard() {
   const [editingCouponId, setEditingCouponId] = useState<number | null>(null)
 
   // Variant management state
-  const { getVariants, refetchVariants } = useVariantStore()
+  const { getVariants, refetchVariants, variantsMap } = useVariantStore()
   useEffect(() => {
     void refetchVariants(branch)
   }, [branch, refetchVariants])
@@ -618,18 +618,87 @@ export default function Dashboard() {
 
     // Item-level analytics
     const completedIds = new Set(billableCompleted.map(o => o.id))
-    const completedItems = orderItems.length > 0
-      ? orderItems.filter(item => completedIds.has(item.order_id))
-      : billableCompleted.flatMap(order => parseOrderItems(order.items).map(row => ({
-          order_id: order.id,
-          product_name: String((row as Record<string,unknown>).product_name || (row as Record<string,unknown>).name || 'Product'),
-          category: String((row as Record<string,unknown>).category || ''),
-          quantity: toNumber((row as Record<string,unknown>).quantity ?? (row as Record<string,unknown>).qty, 0),
-          line_total: toNumber((row as Record<string,unknown>).line_total ?? (row as Record<string,unknown>).lineTotal, 0),
-          is_manual: (row as Record<string,unknown>).is_manual === true || (row as Record<string,unknown>).source === 'manual',
-        })))
+    const completedItems = billableCompleted.flatMap(order => {
+      const parsed = parseOrderItems(order.items)
+      if (parsed.length > 0) {
+        return parsed.map(row => {
+          const rawName = String(row.product_name || row.name || 'Product').trim()
+          const rawVariant = String(row.variant_name || row.variantName || row.variant || row.size_label || row.sizeLabel || '').trim()
+          const quantity = toNumber(row.quantity ?? row.qty, 0)
+          const lineTotal = toNumber(row.line_total ?? row.lineTotal, 0)
+          const unitPrice = toNumber(row.price ?? row.base_price ?? row.basePrice, 0)
+          const rawCost = toNumber(row.purchase_price ?? row.purchasePrice ?? row.cost_price ?? row.costPrice, 0)
+          const productId = String(row.product_id || row.productId || row.id || '')
+          const variantId = String(row.variant_id || row.variantId || '')
+          const category = String(row.category || '')
+          return {
+            order_id: order.id,
+            product_id: productId,
+            variant_id: variantId,
+            product_name: rawName,
+            variant_name: rawVariant,
+            category,
+            quantity,
+            line_total: lineTotal > 0 ? lineTotal : (unitPrice * quantity),
+            purchase_price: rawCost,
+            is_manual: (row as Record<string,unknown>).is_manual === true || (row as Record<string,unknown>).source === 'manual',
+          }
+        })
+      }
+      return orderItems.filter(item => item.order_id === order.id && completedIds.has(item.order_id)).map(item => ({
+        order_id: order.id,
+        product_id: '',
+        variant_id: '',
+        product_name: item.product_name,
+        variant_name: '',
+        category: item.category || '',
+        quantity: item.quantity,
+        line_total: item.line_total,
+        purchase_price: 0,
+        is_manual: Boolean(item.is_manual),
+      }))
+    })
 
-    const productMap    = new Map<string, { name: string; variant: string; qty: number; revenue: number; billCount: number }>()
+    // Comprehensive cost lookups by ID and Name from catalog
+    const costById = new Map<string, number>()
+    const costByName = new Map<string, number>()
+
+    products.forEach(p => {
+      const pCost = toNumber(p.purchasePrice, 0)
+      if (pCost > 0) {
+        costById.set(String(p.id), pCost)
+        costByName.set(String(p.name || '').trim().toLowerCase(), pCost)
+      }
+    })
+
+    if (variantsMap) {
+      Object.values(variantsMap).forEach(vList => {
+        (vList || []).forEach(v => {
+          const vCost = v.purchasePrice != null && v.purchasePrice > 0
+            ? v.purchasePrice
+            : (costById.get(String(v.productId)) || 0)
+          if (vCost > 0) {
+            costById.set(String(v.id), vCost)
+            const parent = products.find(p => String(p.id) === String(v.productId))
+            if (parent && v.variantName) {
+              costByName.set(`${parent.name} - ${v.variantName}`.trim().toLowerCase(), vCost)
+              costByName.set(`${parent.name} (${v.variantName})`.trim().toLowerCase(), vCost)
+            }
+          }
+        })
+      })
+    }
+
+    const productMap = new Map<string, {
+      name: string
+      variant: string
+      qty: number
+      revenue: number
+      cost: number
+      profit: number
+      margin: number
+      billCount: number
+    }>()
     const productOrders = new Map<string, Set<string>>()
     const categoryMap   = new Map<string, { name: string; qty: number; revenue: number }>()
     const prodCatLookup = new Map(products.map(p => [String(p.name || '').trim().toLowerCase(), p.category || 'Uncategorized']))
@@ -637,7 +706,7 @@ export default function Dashboard() {
     let totalProductsSold = 0
     let totalManualRevenue = 0
 
-    completedItems.forEach(({ product_name, category, quantity, line_total, order_id, is_manual }) => {
+    completedItems.forEach(({ product_name, variant_name, product_id, variant_id, purchase_price, category, quantity, line_total, order_id, is_manual }) => {
       const qty = toNumber(quantity, 0)
       const rev = toNumber(line_total, 0)
       totalProductsSold += qty
@@ -645,10 +714,34 @@ export default function Dashboard() {
       const rawKey  = String(product_name || 'Product').trim() || 'Product'
       const dashIdx = rawKey.indexOf(' - ')
       const mainName   = dashIdx > 0 ? rawKey.slice(0, dashIdx) : rawKey
-      const variantName = dashIdx > 0 ? rawKey.slice(dashIdx + 3) : ''
+      const vName = variant_name || (dashIdx > 0 ? rawKey.slice(dashIdx + 3) : '')
 
-      const pc = productMap.get(rawKey) || { name: mainName, variant: variantName, qty: 0, revenue: 0, billCount: 0 }
-      pc.qty += qty; pc.revenue += rev; productMap.set(rawKey, pc)
+      // Resolve unit cost
+      let unitCost = purchase_price > 0 ? purchase_price : 0
+      if (!unitCost && variant_id) unitCost = costById.get(variant_id) || 0
+      if (!unitCost && product_id) unitCost = costById.get(product_id) || 0
+      if (!unitCost) unitCost = costByName.get(rawKey.toLowerCase()) || 0
+      if (!unitCost && vName) unitCost = costByName.get(`${mainName} - ${vName}`.toLowerCase()) || 0
+      if (!unitCost) unitCost = costByName.get(mainName.toLowerCase()) || 0
+
+      const itemCost = unitCost * qty
+
+      const pc = productMap.get(rawKey) || {
+        name: mainName,
+        variant: vName,
+        qty: 0,
+        revenue: 0,
+        cost: 0,
+        profit: 0,
+        margin: 0,
+        billCount: 0
+      }
+      pc.qty += qty
+      pc.revenue += rev
+      pc.cost += itemCost
+      pc.profit = pc.revenue - pc.cost
+      pc.margin = pc.revenue > 0 ? ((pc.revenue - pc.cost) / pc.revenue) * 100 : 0
+      productMap.set(rawKey, pc)
 
       if (!productOrders.has(rawKey)) productOrders.set(rawKey, new Set())
       productOrders.get(rawKey)!.add(order_id)
@@ -663,6 +756,15 @@ export default function Dashboard() {
     for (const [key, orderSet] of productOrders) {
       const p = productMap.get(key); if (p) { p.billCount = orderSet.size; productMap.set(key, p) }
     }
+
+    let totalProductCost = 0
+    productMap.forEach(p => {
+      totalProductCost += p.cost
+    })
+    const totalProductProfit = completedRevenue - totalProductCost
+    const overallProductMargin = completedRevenue > 0 && totalProductCost > 0
+      ? ((completedRevenue - totalProductCost) / completedRevenue) * 100
+      : 0
 
     const topProducts   = Array.from(productMap.values()).sort((a, b) => b.qty - a.qty)
     const topCategories = Array.from(categoryMap.values()).sort((a, b) => b.revenue - a.revenue)
@@ -859,6 +961,9 @@ export default function Dashboard() {
       topCategories,
       weeklySales,
       topProducts,
+      totalProductCost,
+      totalProductProfit,
+      overallProductMargin,
       waRequests,
       waPending,
       waContacted,
@@ -869,7 +974,7 @@ export default function Dashboard() {
       netProfit,
       isProfitable,
     }
-  }, [orders, orderItems, products, coupons, expenses, analyticsDateFrom, analyticsDateTo])
+  }, [orders, orderItems, products, coupons, expenses, analyticsDateFrom, analyticsDateTo, variantsMap])
 
   // Bill-type & Payment-method filtered results for Order Management table (client-side, instant)
   const filteredSearchResults = useMemo(() => {
@@ -2908,22 +3013,24 @@ export default function Dashboard() {
             {/* Products sub-tab */}
             {posAnalyticsTab === 'products' && (
               <div className="space-y-6">
-                {/* Key metrics row: Revenue is 1st KPI card */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {/* Key metrics row: 6 KPI cards for executive financial overview */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {[
-                    { label: 'Total Product Revenue', value: formatCurrency(analytics.totalCompletedRevenue), icon: <RMIcon size={18} />, from: 'from-emerald-500 to-teal-600' },
-                    { label: 'Total Products Sold', value: String(Math.round(analytics.totalProductsSold)), icon: <Package size={18} />, from: 'from-blue-500 to-indigo-600' },
-                    { label: 'Average Product Revenue', value: formatCurrency(analytics.averageProductRevenue), icon: <RMIcon size={18} />, from: 'from-violet-500 to-purple-600' },
-                    { label: 'Top Product', value: analytics.bestProduct || 'No sales yet', icon: <Trophy size={18} />, from: 'from-amber-500 to-orange-600' },
+                    { label: 'Total Revenue', value: formatCurrency(analytics.totalCompletedRevenue), icon: <RMIcon size={16} />, from: 'from-emerald-500 to-teal-600' },
+                    { label: 'Total Cost', value: analytics.totalProductCost > 0 ? formatCurrency(analytics.totalProductCost) : '₹0.00', icon: <TrendingUp size={16} />, from: 'from-slate-600 to-zinc-700' },
+                    { label: 'Net Profit', value: formatCurrency(analytics.totalProductProfit), icon: <TrendingUp size={16} />, from: 'from-cyan-600 to-blue-600' },
+                    { label: 'Cost Margin', value: `${analytics.overallProductMargin.toFixed(1)}%`, icon: <Percent size={16} />, from: 'from-blue-600 to-indigo-700' },
+                    { label: 'Units Sold', value: String(Math.round(analytics.totalProductsSold)), icon: <Package size={16} />, from: 'from-violet-500 to-purple-600' },
+                    { label: 'Top Product', value: analytics.bestProduct || 'No sales yet', icon: <Trophy size={16} />, from: 'from-amber-500 to-orange-600' },
                   ].map((card, i) => (
-                    <div key={i} className={`relative overflow-hidden rounded-2xl p-5 shadow-lg border border-white/20 bg-gradient-to-br ${card.from} flex flex-col justify-between min-h-[120px]`}>
+                    <div key={i} className={`relative overflow-hidden rounded-2xl p-4 shadow-md border border-white/20 bg-gradient-to-br ${card.from} flex flex-col justify-between min-h-[110px]`}>
                       <div className="absolute inset-0 bg-gradient-to-tl from-white/30 via-white/10 to-transparent" />
                       <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[10px] uppercase font-black text-white/80 tracking-wider">{card.label}</p>
-                          <div className="w-9 h-9 rounded-xl bg-white/25 backdrop-blur-sm flex items-center justify-center text-white shadow-sm shrink-0">{card.icon}</div>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <p className="text-[9.5px] uppercase font-black text-white/80 tracking-wider truncate">{card.label}</p>
+                          <div className="w-7 h-7 rounded-lg bg-white/25 backdrop-blur-sm flex items-center justify-center text-white shadow-xs shrink-0">{card.icon}</div>
                         </div>
-                        <p className="text-[18px] sm:text-[22px] font-extrabold text-white drop-shadow-sm break-words leading-tight">{card.value}</p>
+                        <p className="text-[16px] sm:text-[18px] font-extrabold text-white drop-shadow-sm break-words leading-tight">{card.value}</p>
                       </div>
                     </div>
                   ))}
@@ -2934,7 +3041,7 @@ export default function Dashboard() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <div>
                       <h3 className="text-[15px] font-bold text-[#111111]">All Products Analytics</h3>
-                      <p className="text-[12px] text-[#6B7280]">Search by Product Name, SKU, or Category for instant statistics</p>
+                      <p className="text-[12px] text-[#6B7280]">Real-time product performance, revenue, cost price, and gross profit margin</p>
                     </div>
                     <span className="text-[11px] font-bold text-[#10B981] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 self-start sm:self-auto">{analytics.topProducts.length} products</span>
                   </div>
@@ -2957,55 +3064,104 @@ export default function Dashboard() {
                       <>
                       <div className="space-y-3 md:hidden">
                         {filteredProds.slice(0, 50).map((p, i) => (
-                          <div key={`${p.name}-${p.variant || i}`} className="rounded-2xl border border-[#E5E7EB]/30 bg-[#FBFAF6] p-4">
+                          <div key={`${p.name}-${p.variant || i}`} className="rounded-2xl border border-[#E5E7EB]/30 bg-[#FBFAF6] p-4 space-y-3">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="text-[13px] font-black text-[#9BAB9A]">#{i + 1}</p>
-                                <p className="text-[16px] font-bold text-[#111111] break-words">{p.name}</p>
-                                <p className="text-[13px] text-[#374151]">{p.variant || 'No variant'}</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[12px] font-black text-[#9BAB9A]">#{i + 1}</span>
+                                  <p className="text-[15px] font-bold text-[#111111] truncate">{p.name}</p>
+                                </div>
+                                <p className="text-[12px] text-[#6B7280]">{p.variant || 'No variant'}</p>
                               </div>
-                              <p className="text-[14px] font-black text-emerald-700">{formatCurrency(p.revenue)}</p>
+                              <div className="text-right">
+                                <p className="text-[14px] font-black text-emerald-700">{formatCurrency(p.revenue)}</p>
+                                {p.cost > 0 && (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                    p.margin >= 30 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                    p.margin >= 10 ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                    p.margin > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                    'bg-red-50 text-red-700 border border-red-200'
+                                  }`}>
+                                    {p.margin.toFixed(1)}% margin
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div className="mt-3 grid grid-cols-3 gap-3 text-[13px]">
-                              <div className="flex flex-col justify-between">
-                                <p className="text-[#9BAB9A] uppercase text-[11px] font-black leading-tight">Qty Sold</p>
-                                <p className="font-bold text-[#111111] mt-1">{Math.round(p.qty)}</p>
+                            <div className="grid grid-cols-3 gap-2 text-[12px] pt-2 border-t border-gray-200/50">
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[10px] font-black">Qty Sold</p>
+                                <p className="font-bold text-[#111111]">{Math.round(p.qty)}</p>
                               </div>
-                              <div className="flex flex-col justify-between">
-                                <p className="text-[#9BAB9A] uppercase text-[11px] font-black leading-tight">Bills</p>
-                                <p className="font-bold text-[#111111] mt-1">{p.billCount}</p>
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[10px] font-black">Total Cost</p>
+                                <p className="font-bold text-[#4B5563]">{p.cost > 0 ? formatCurrency(p.cost) : '—'}</p>
                               </div>
-                              <div className="flex flex-col justify-between">
-                                <p className="text-[#9BAB9A] uppercase text-[11px] font-black leading-tight">Avg Revenue/Bill</p>
-                                <p className="font-bold text-[#111111] mt-1">{formatCurrency(p.billCount > 0 ? p.revenue / p.billCount : 0)}</p>
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[10px] font-black">Net Profit</p>
+                                <p className={`font-black ${p.cost > 0 ? (p.profit >= 0 ? 'text-emerald-700' : 'text-red-600') : 'text-emerald-700'}`}>
+                                  {p.cost > 0 ? formatCurrency(p.profit) : formatCurrency(p.revenue)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[10px] font-black">Margin</p>
+                                <p className="font-black text-emerald-700">{p.cost > 0 ? `${p.margin.toFixed(1)}%` : '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[10px] font-black">Bills</p>
+                                <p className="font-bold text-[#111111]">{p.billCount}</p>
+                              </div>
+                              <div>
+                                <p className="text-[#9BAB9A] uppercase text-[10px] font-black">Avg/Bill</p>
+                                <p className="font-bold text-[#111111]">{formatCurrency(p.billCount > 0 ? p.revenue / p.billCount : 0)}</p>
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
                       <div className="hidden md:block overflow-x-auto rounded-xl border border-[#E5E7EB]/30">
-                        <table className="w-full min-w-[580px] text-left text-[12px]">
+                        <table className="w-full min-w-[760px] text-left text-[12px]">
                           <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-wider text-[#374151]">
                             <tr>
-                              <th className="px-4 py-2.5 font-black">#</th>
-                              <th className="px-4 py-2.5 font-black">Product</th>
-                              <th className="px-4 py-2.5 font-black">Variant / SKU</th>
-                              <th className="px-4 py-2.5 font-black">Qty Sold</th>
-                              <th className="px-4 py-2.5 font-black">Revenue</th>
-                              <th className="px-4 py-2.5 font-black">Bills</th>
-                              <th className="px-4 py-2.5 font-black">Avg Revenue/Bill</th>
+                              <th className="px-3 py-2.5 font-black">#</th>
+                              <th className="px-3 py-2.5 font-black">Product</th>
+                              <th className="px-3 py-2.5 font-black">Variant / SKU</th>
+                              <th className="px-3 py-2.5 font-black text-center">Qty Sold</th>
+                              <th className="px-3 py-2.5 font-black text-right">Revenue</th>
+                              <th className="px-3 py-2.5 font-black text-right">Total Cost</th>
+                              <th className="px-3 py-2.5 font-black text-right">Net Profit</th>
+                              <th className="px-3 py-2.5 font-black text-center">Cost Margin</th>
+                              <th className="px-3 py-2.5 font-black text-center">Bills</th>
+                              <th className="px-3 py-2.5 font-black text-right">Avg Revenue/Bill</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[#E5E7EB]/20">
                             {filteredProds.slice(0, 50).map((p, i) => (
-                              <tr key={`${p.name}-${p.variant || i}`} className="hover:bg-[#F9FAFB]/50">
-                                <td className="px-4 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
-                                <td className="px-4 py-2 font-bold text-[#111111]">{p.name}</td>
-                                <td className="px-4 py-2 text-[#374151]">{p.variant || '-'}</td>
-                                <td className="px-4 py-2 font-bold">{Math.round(p.qty)}</td>
-                                <td className="px-4 py-2 font-bold text-emerald-700">{formatCurrency(p.revenue)}</td>
-                                <td className="px-4 py-2 text-[#374151]">{p.billCount}</td>
-                                <td className="px-4 py-2 font-bold text-[#111111]">{formatCurrency(p.billCount > 0 ? p.revenue / p.billCount : 0)}</td>
+                              <tr key={`${p.name}-${p.variant || i}`} className="hover:bg-[#F9FAFB]/50 transition-colors">
+                                <td className="px-3 py-2 text-[11px] text-[#9BAB9A] font-bold">{i + 1}</td>
+                                <td className="px-3 py-2 font-bold text-[#111111]">{p.name}</td>
+                                <td className="px-3 py-2 text-[#374151]">{p.variant || '-'}</td>
+                                <td className="px-3 py-2 font-bold text-center">{Math.round(p.qty)}</td>
+                                <td className="px-3 py-2 font-black text-emerald-700 text-right">{formatCurrency(p.revenue)}</td>
+                                <td className="px-3 py-2 font-bold text-[#4B5563] text-right">{p.cost > 0 ? formatCurrency(p.cost) : '—'}</td>
+                                <td className={`px-3 py-2 font-black text-right ${p.cost > 0 ? (p.profit >= 0 ? 'text-emerald-700' : 'text-red-600') : 'text-emerald-700'}`}>
+                                  {p.cost > 0 ? formatCurrency(p.profit) : formatCurrency(p.revenue)}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  {p.cost > 0 ? (
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black ${
+                                      p.margin >= 30 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                      p.margin >= 10 ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                      p.margin > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                      'bg-red-50 text-red-700 border border-red-200'
+                                    }`}>
+                                      {p.margin.toFixed(1)}%
+                                    </span>
+                                  ) : (
+                                    <span className="text-[#9BAB9A] text-[11px] font-bold" title="Cost price not entered in inventory">—</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-[#374151] text-center">{p.billCount}</td>
+                                <td className="px-3 py-2 font-bold text-[#111111] text-right">{formatCurrency(p.billCount > 0 ? p.revenue / p.billCount : 0)}</td>
                               </tr>
                             ))}
                           </tbody>

@@ -12,6 +12,7 @@ const PRODUCT_COLUMNS = [
   'predefined_options', 'is_active', 'sort_order', 'unit', 'rating',
   'description', 'description_ta', 'benefits', 'benefits_ta',
   'image_url', 'image', 'has_variants', 'barcode', 'sku',
+  'purchase_price', 'mrp',
 ].join(', ')
 
 // `branch` omitted returns both branches combined (used by the public storefront,

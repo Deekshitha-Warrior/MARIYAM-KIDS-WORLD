@@ -28,7 +28,10 @@ export interface AnalyticsExportData {
   todayHourlyTrend: Array<{ hour: string; key: string; revenue: number }>
   todayTopProducts: Array<{ name: string; qty: number; revenue: number }>
   todayBills?: Array<{ invoice_no?: string; id?: string; customer_name?: string; total: number; created_at: string; status: string; order_mode?: string }>
-  topProducts: Array<{ name: string; variant?: string; qty: number; revenue: number; billCount: number }>
+  topProducts: Array<{ name: string; variant?: string; qty: number; revenue: number; cost?: number; profit?: number; margin?: number; billCount: number }>
+  totalProductCost?: number
+  totalProductProfit?: number
+  overallProductMargin?: number
   topCategories: Array<{ name: string; qty: number; revenue: number }>
   categoryDist?: Array<{ name: string; value: number }>
   topCoupons: Array<{ code: string; usage: number; discounts: number }>
@@ -124,14 +127,20 @@ export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, da
     })
   } else if (activeTab === 'products') {
     rows.push(['--- PRODUCT PERFORMANCE BREAKDOWN ---'])
-    rows.push(['Rank', 'Product Name', 'Variant', 'Units Sold', 'Revenue (INR)', 'Bill Count'])
+    rows.push(['Rank', 'Product Name', 'Variant', 'Units Sold', 'Revenue (INR)', 'Total Cost (INR)', 'Net Profit (INR)', 'Cost Margin %', 'Bill Count'])
     data.topProducts.forEach((item, index) => {
+      const costVal = item.cost !== undefined ? item.cost : 0
+      const profitVal = item.profit !== undefined ? item.profit : (item.revenue - costVal)
+      const marginVal = item.margin !== undefined ? `${item.margin.toFixed(1)}%` : (costVal > 0 ? `${((profitVal / item.revenue) * 100).toFixed(1)}%` : '-')
       rows.push([
         String(index + 1),
         item.name,
         item.variant || '-',
         String(Math.round(item.qty)),
         item.revenue.toFixed(2),
+        costVal > 0 ? costVal.toFixed(2) : '0.00',
+        profitVal.toFixed(2),
+        marginVal,
         String(item.billCount),
       ])
     })
@@ -373,6 +382,9 @@ export async function exportAnalyticsToPDF({
                   <th style="padding: 4px 0;">Product</th>
                   <th style="padding: 4px 0; text-align: right;">Qty</th>
                   <th style="padding: 4px 0; text-align: right;">Revenue</th>
+                  <th style="padding: 4px 0; text-align: right;">Cost</th>
+                  <th style="padding: 4px 0; text-align: right;">Profit</th>
+                  <th style="padding: 4px 0; text-align: center;">Margin</th>
                 </tr>
               </thead>
               <tbody>
@@ -382,9 +394,12 @@ export async function exportAnalyticsToPDF({
                     (p, idx) => `
                   <tr style="border-bottom: 1px solid #F3F4F6;">
                     <td style="padding: 5px 0; font-weight: 800; color: #888;">${idx + 1}</td>
-                    <td style="padding: 5px 0; font-weight: 700; color: #111; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</td>
+                    <td style="padding: 5px 0; font-weight: 700; color: #111; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</td>
                     <td style="padding: 5px 0; text-align: right; font-weight: 800; color: #4B5563;">${Math.round(p.qty)} pcs</td>
                     <td style="padding: 5px 0; text-align: right; font-weight: 900; color: #7A1220;">${formatCurrency(p.revenue)}</td>
+                    <td style="padding: 5px 0; text-align: right; font-weight: 700; color: #4B5563;">${p.cost ? formatCurrency(p.cost) : '—'}</td>
+                    <td style="padding: 5px 0; text-align: right; font-weight: 800; color: #047857;">${p.profit ? formatCurrency(p.profit) : formatCurrency(p.revenue)}</td>
+                    <td style="padding: 5px 0; text-align: center; font-weight: 800; color: #1D4ED8;">${p.margin ? `${p.margin.toFixed(1)}%` : '—'}</td>
                   </tr>
                 `
                   )
