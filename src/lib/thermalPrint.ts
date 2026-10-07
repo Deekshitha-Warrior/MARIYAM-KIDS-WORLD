@@ -24,6 +24,7 @@ export interface ThermalReceiptData {
   couponDiscount?: number
   manualDiscount?: number
   totalGst?: number
+  gstPercent?: number
   total: number
   paymentMode?: string
   storeName?: string
@@ -38,7 +39,6 @@ export function printThermalReceipt(data: ThermalReceiptData) {
     // Embedded logo prints instantly; a custom logo from Store Settings is used when one is uploaded
     const customLogo = useSettingsStore.getState().settingsByBranch[data.branch === 'pos2' ? 'pos2' : 'pos1']?.logoUrl
     const logoSrc = customLogo || (data.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1)
-    const instagramUrls = profile.instagramUrls
     // Create an isolated print iframe protected from third-party extension observers
     const iframe = document.createElement('iframe')
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0.01;pointer-events:none;z-index:-1;'
@@ -105,7 +105,6 @@ export function printThermalReceipt(data: ThermalReceiptData) {
           <div style="font-size: 10px; margin-top: 2px;">${data.storeAddress || profile.address}</div>
           <div class="mt-1" style="font-size: 10px;">Ph: ${data.storePhone || profile.phone}</div>
           <div style="font-size: 9px; color: #333;">${data.storeEmail || profile.email}</div>
-          ${instagramUrls ? `<div style="font-size: 9px; color: #333; margin-top: 2px;">Insta: ${instagramUrls.split('\\n').join(' | ')}</div>` : ''}
         </div>
 
         <div class="border-bottom border-top" style="font-size: 11px;">
@@ -167,12 +166,26 @@ export function printThermalReceipt(data: ThermalReceiptData) {
                 <td class="text-right">-${formatCurrency(data.manualDiscount || 0)}</td>
               </tr>
             ` : ''}
-            ${(data.totalGst || 0) > 0 ? `
-              <tr style="font-size: 10px;">
-                <td class="text-left">GST</td>
-                <td class="text-right">+${formatCurrency(data.totalGst || 0)}</td>
-              </tr>
-            ` : ''}
+            ${(() => {
+              const gst = data.totalGst || 0
+              if (gst <= 0) return ''
+              const taxable = Math.max(0, data.subtotal - (data.couponDiscount || 0) - (data.manualDiscount || 0))
+              const calculatedPercent = data.gstPercent ?? (taxable > 0 ? (gst / taxable) * 100 : 0)
+              const halfPercent = Math.round((calculatedPercent / 2) * 100) / 100
+              const percentLabel = halfPercent > 0 ? ` (${halfPercent}%)` : ''
+              const cgst = Math.round((gst / 2) * 100) / 100
+              const sgst = Math.round((gst - cgst) * 100) / 100
+              return `
+                <tr style="font-size: 10px;">
+                  <td class="text-left">CGST${percentLabel}</td>
+                  <td class="text-right">+${formatCurrency(cgst)}</td>
+                </tr>
+                <tr style="font-size: 10px;">
+                  <td class="text-left">SGST${percentLabel}</td>
+                  <td class="text-right">+${formatCurrency(sgst)}</td>
+                </tr>
+              `
+            })()}
             ${data.shipping > 0 ? `
               <tr>
                 <td class="text-left">Delivery</td>
@@ -187,8 +200,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
         </div>
 
         <div class="text-center mt-2" style="font-size: 11px;">
-          <div class="font-bold">Thank you for shopping at MARIYAM KIDS WORLD!</div>
-          ${instagramUrls ? `<div style="font-size: 10px; margin-top: 2px;">Follow us on Instagram:<br/>${instagramUrls.split('\n').join('<br/>')}</div>` : ''}
+          <div class="font-bold">Thank you for shopping at ${data.storeName || (data.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN)}!</div>
         </div>
       </body>
     </html>

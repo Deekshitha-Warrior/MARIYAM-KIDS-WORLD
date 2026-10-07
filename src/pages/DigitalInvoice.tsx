@@ -399,7 +399,7 @@ export default function DigitalInvoice() {
   }
 
   const printReceipt = () => {
-    const subtotal = invoice.total - (invoice.delivery_charge || 0) + (invoice.discount_amount || 0)
+    const subtotal = invoice.subtotal || (invoice.total - (invoice.delivery_charge || 0) + (invoice.discount_amount || 0) + (invoice.manual_discount_amount || 0) - (invoice.total_gst || invoice.gst_amount || 0))
     printThermalReceipt({
       invoiceNo: invoice.invoice_no,
       date: invoice.created_at,
@@ -407,15 +407,16 @@ export default function DigitalInvoice() {
       phone: invoice.phone,
       branch: invoice.branch,
       items: (invoice.items || []).map((item: Record<string, unknown>) => ({
-        name: item.name || item.product_name,
-        qty: item.qty || item.quantity,
-        unit: item.unit,
-        price: item.price || item.base_price || 0,
-        line_total: item.line_total
+        name: (item.name || item.product_name || '') as string,
+        qty: Number(item.qty || item.quantity || 0),
+        unit: (item.unit || '') as string,
+        price: Number(item.price || item.base_price || 0),
+        line_total: Number(item.line_total || 0)
       })),
       subtotal,
       shipping: invoice.delivery_charge || 0,
       couponDiscount: invoice.discount_amount || 0,
+      manualDiscount: invoice.manual_discount_amount || 0,
       totalGst: invoice.total_gst || invoice.gst_amount || 0,
       total: invoice.total > 0 ? invoice.total : (subtotal + (invoice.delivery_charge || 0) + (invoice.total_gst || invoice.gst_amount || 0) - (invoice.discount_amount || 0) - (invoice.manual_discount_amount || 0)),
       paymentMode: invoice.payment_mode || invoice.payment_method,

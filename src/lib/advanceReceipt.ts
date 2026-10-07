@@ -21,7 +21,7 @@ export function advanceReceiptPdf(order: AdvanceOrder) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   doc.setFillColor('#7A1220'); doc.rect(0, 0, 210, 5, 'F')
   try { doc.addImage(order.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1, 'PNG', 16, 9, 16, 16) } catch (_err) { /* ignore missing logo */ }
-  doc.setTextColor('#111111'); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text(BRAND_EN.toUpperCase(), 38, 20)
+  doc.setTextColor('#111111'); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text((order.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN).toUpperCase(), 38, 20)
   doc.setTextColor('#6b7280'); doc.setFontSize(8); doc.text('ADVANCE RECEIPT - NOT A TAX INVOICE', 38, 26)
 
   doc.setFont('helvetica', 'normal'); doc.text(getBranchProfile(order.branch).address, 194, 20, { align: 'right', maxWidth: 76 }); doc.text(getBranchProfile(order.branch).phone, 194, 30, { align: 'right' })
@@ -98,7 +98,7 @@ export function printAdvanceReceipt(order: AdvanceOrder) {
 <div class="c" style="margin-bottom: 6px;">
   <img src="${order.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1}" style="width: 50px; height: 50px; object-fit: contain; margin: 0 auto; display: block;" alt="YG Logo" />
 </div>
-<div class="c big">${esc(BRAND_EN)}</div>
+<div class="c big">${esc(order.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN)}</div>
 <div class="c" style="font-size:10px;color:#555;">${esc(getBranchProfile(order.branch).address)}</div>
 <div class="c" style="font-size:10px;color:#555;">${esc(getBranchProfile(order.branch).phone)}</div>
 <div class="line"></div>

@@ -78,7 +78,6 @@ export const Invoice: React.FC<InvoiceProps> = ({
   const statusColor = status === 'completed' ? (isPos2 ? '#2563EB' : '#EC4899') : status === 'cancelled' ? '#dc2626' : '#d97706'
   const effectiveDelivery = deliveryCharge || shipping
   const profile = getBranchProfile(branch)
-  const instagramUrls = profile.instagramUrls
 
   return (
     <div
@@ -103,7 +102,6 @@ export const Invoice: React.FC<InvoiceProps> = ({
         <div style={{ fontSize: 11, color: '#4b5563', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span>📞 {formatPhoneForDisplay(profile.phone)}</span>
           <span>✉️ {profile.email}</span>
-          {instagramUrls && <span>📷 Instagram</span>}
         </div>
       </div>
 
@@ -214,12 +212,26 @@ export const Invoice: React.FC<InvoiceProps> = ({
                 <span style={{ fontSize: 12, fontWeight: 700, color: primaryColor, fontVariantNumeric: 'tabular-nums' }}>−{formatCurrency(manualDiscountAmount)}</span>
               </div>
             )}
-            {gstAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 10, color: '#666' }}>GST</span>
-                <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>+{formatCurrency(gstAmount)}</span>
-              </div>
-            )}
+            {gstAmount > 0 && (() => {
+              const taxable = Math.max(0, subtotal - discountAmount - manualDiscountAmount)
+              const calculatedPercent = taxable > 0 ? (gstAmount / taxable) * 100 : 0
+              const halfPercent = Math.round((calculatedPercent / 2) * 100) / 100
+              const percentLabel = halfPercent > 0 ? ` (${halfPercent}%)` : ''
+              const cgst = Math.round((gstAmount / 2) * 100) / 100
+              const sgst = Math.round((gstAmount - cgst) * 100) / 100
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10, color: '#666' }}>CGST{percentLabel}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>+{formatCurrency(cgst)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10, color: '#666' }}>SGST{percentLabel}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>+{formatCurrency(sgst)}</span>
+                  </div>
+                </>
+              )
+            })()}
             {effectiveDelivery > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: '#666' }}>Delivery</span>
@@ -256,11 +268,6 @@ export const Invoice: React.FC<InvoiceProps> = ({
         <div style={{ fontSize: 12, fontWeight: 800, color: primaryColor, letterSpacing: 0.5 }}>
           {isPos2 ? 'Thank you for shopping at TAJ TEXTILES!' : 'Thank you for shopping at MARIYAM KIDS WORLD!'}
         </div>
-        {instagramUrls && (
-          <div style={{ fontSize: 10, color: '#666', marginTop: 3, fontWeight: 500, whiteSpace: 'pre-line' }}>
-            Follow us on Instagram:{'\n'}{instagramUrls}
-          </div>
-        )}
       </div>
     </div>
   )

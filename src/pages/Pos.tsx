@@ -1053,6 +1053,7 @@ export default function Pos(props: PosProps = {}) {
       couponDiscount: inv.couponDiscount,
       manualDiscount: inv.manualDiscountAmount,
       totalGst: inv.gstAmount,
+      gstPercent: gstType === 'percent' ? Number(gstInput) || undefined : undefined,
       total: inv.total,
       paymentMode: inv.paymentMode,
     })
@@ -1762,12 +1763,27 @@ export default function Pos(props: PosProps = {}) {
                   <span className="text-[12px] font-black text-[#111111]">{formatCurrency(subtotal)}</span>
                 </div>
 
-                {billGstEnabled && totalGst > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-[#374151]">GST Amount</span>
-                    <span className="text-[12px] font-black text-[#111111]">{formatCurrency(totalGst)}</span>
-                  </div>
-                )}
+                {billGstEnabled && totalGst > 0 && (() => {
+                  const effectiveGstPercent = gstType === 'percent'
+                    ? Number(gstInput) || 0
+                    : (discountedSubtotal > 0 ? (totalGst / discountedSubtotal) * 100 : 0)
+                  const halfPercent = Math.round((effectiveGstPercent / 2) * 100) / 100
+                  const percentLabel = halfPercent > 0 ? ` (${halfPercent}%)` : ''
+                  const cgst = Math.round((totalGst / 2) * 100) / 100
+                  const sgst = Math.round((totalGst - cgst) * 100) / 100
+                  return (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-[#374151]">CGST{percentLabel}</span>
+                        <span className="text-[12px] font-black text-[#111111]">{formatCurrency(cgst)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-[#374151]">SGST{percentLabel}</span>
+                        <span className="text-[12px] font-black text-[#111111]">{formatCurrency(sgst)}</span>
+                      </div>
+                    </>
+                  )
+                })()}
 
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-black text-[#374151]">Delivery</span>

@@ -165,8 +165,17 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   y = Math.max(y + 6, 150)
   const rows: Array<[string, string, string, number]> = [['Subtotal', money(data.subtotal), ink, 9]]
   if ((data.discountAmount || 0) > 0) rows.push([`Coupon${data.couponCode ? ` (${data.couponCode})` : ''}`, `-${money(data.discountAmount || 0)}`, primaryColor, 11])
-  if ((data.manualDiscountAmount || 0) > 0) rows.push(['Discount', `-${money(data.manualDiscountAmount || 0)}`, primaryColor, 9])
-  if ((data.gstAmount || 0) > 0) rows.push(['GST', money(data.gstAmount || 0), ink, 7])
+  if ((data.gstAmount || 0) > 0) {
+    const gst = data.gstAmount || 0
+    const taxable = Math.max(0, data.subtotal - (data.discountAmount || 0) - (data.manualDiscountAmount || 0))
+    const calculatedPercent = taxable > 0 ? (gst / taxable) * 100 : 0
+    const halfPercent = Math.round((calculatedPercent / 2) * 100) / 100
+    const percentLabel = halfPercent > 0 ? ` (${halfPercent}%)` : ''
+    const cgst = Math.round((gst / 2) * 100) / 100
+    const sgst = Math.round((gst - cgst) * 100) / 100
+    rows.push([`CGST${percentLabel}`, `+${money(cgst)}`, ink, 7])
+    rows.push([`SGST${percentLabel}`, `+${money(sgst)}`, ink, 7])
+  }
   rows.push(['Delivery', (data.shipping || 0) > 0 ? money(data.shipping) : 'FREE', ink, 9])
   rows.forEach(([label, value, color, fontSize]) => {
     doc.setFont('helvetica', 'normal')
