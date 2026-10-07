@@ -67,12 +67,6 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   const [splitP1Type, setSplitP1Type] = useState<'cash' | 'upi' | 'card'>('cash')
   const [splitP1Amount, setSplitP1Amount] = useState('')
   const [splitP2Type, setSplitP2Type] = useState<'cash' | 'upi' | 'card'>('upi')
-  const [couponInput, setCouponInput] = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; percentage: number } | null>(null)
-  const [couponError, setCouponError] = useState('')
-  const [availableCoupons, setAvailableCoupons] = useState<{ code: string; percentage: number }[]>([])
-  const [manualDiscount, setManualDiscount] = useState('')
-  const [manualDiscountType, setManualDiscountType] = useState<'rm' | '%'>('rm')
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -94,23 +88,6 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
       setError(err instanceof Error ? err.message : 'Failed to delete order')
     }
   }
-
-  // Fetch active coupons for the payment modal
-  useEffect(() => {
-    if (!isSupabaseConfigured) return
-    supabase.from('coupons').select('code, percentage').eq('branch', branch).eq('is_active', true)
-      .then(({ data }) => { if (data) setAvailableCoupons(data as { code: string; percentage: number }[]) })
-  }, [branch])
-
-  const applyCoupon = () => {
-    const code = couponInput.trim().toUpperCase()
-    const found = availableCoupons.find(c => c.code.toUpperCase() === code)
-    if (!found) { setCouponError('Invalid or inactive coupon code.'); return }
-    setAppliedCoupon(found)
-    setCouponError('')
-  }
-
-  const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); setCouponError('') }
 
   // Close modals or drawer on Escape key
   useEffect(() => {
@@ -237,15 +214,9 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   const receivePayment = async (event: FormEvent) => {
     event.preventDefault(); if (!paymentOrder) return; setSaving(true); setError('')
     try {
-      // Advance orders use fixed payment amounts - no coupon application allowed
-      const manualDiscountNum = Math.max(0, Number(manualDiscount) || 0)
-      const manualDisc = manualDiscountType === '%'
-        ? Math.round(paymentOrder.remaining_balance * (manualDiscountNum / 100) * 100) / 100
-        : manualDiscountNum
-      const finalAmount = Math.max(0, paymentOrder.remaining_balance - manualDisc)
-      const parts = [paymentForm.remarks]
-      if (manualDisc > 0) parts.push(`Manual Adjustment: ${manualDiscountType === '%' ? manualDiscountNum + '%' : '₹' + manualDiscountNum.toFixed(2)} = -INR ${manualDisc.toFixed(2)}`)
-      const remarksWithCoupon = parts.filter(Boolean).join(' | ')
+      // Advance orders use exact remaining balance payment - no discounts or coupons allowed
+      const finalAmount = paymentOrder.remaining_balance
+      const remarks = paymentForm.remarks.trim()
 
       const labelFor = (t: 'cash' | 'upi' | 'card') => t === 'upi' ? 'QR' : t === 'card' ? 'Card' : 'Cash'
       let finalMethodStr: string = paymentForm.method
@@ -265,8 +236,8 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
         finalAmount,
         null, // No coupon codes for advance orders
         0, // No coupon percentage
-        manualDisc,
-        remarksWithCoupon
+        0, // No manual discount
+        remarks
       )
 
       try {
@@ -274,9 +245,9 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
           payment_mode: finalMethodStr,
           payment_method: finalMethodStr,
           discount_amount: 0,
-          manual_discount_amount: manualDisc,
+          manual_discount_amount: 0,
           coupon_code: null,
-          total: Math.max(0, paymentOrder.total_amount - manualDisc),
+          total: paymentOrder.total_amount,
         }).eq('id', result.order_id).eq('branch', branch)
         if (paymentForm.method === 'split') {
           await supabase.from('advance_orders').update({ final_payment_method: finalMethodStr }).eq('id', paymentOrder.id).eq('branch', branch)
@@ -284,9 +255,9 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
       } catch { /* best effort db update */ }
 
       const completed: AdvanceOrder = { ...paymentOrder, status: 'completed', remaining_balance: finalAmount, completed_at: result.completed_at, completed_order_id: result.order_id, invoice_number: result.invoice_no, final_payment_method: finalMethodStr }
-      setOrders(rows => rows.map(row => row.id === completed.id ? completed : row)); onOrderCompleted?.(completed); setPaymentOrder(null); setPaymentForm({ method: 'cash', remarks: '' }); setSplitP1Amount(''); setAppliedCoupon(null); setCouponInput(''); setCouponError(''); setManualDiscount(''); setManualDiscountType('rm'); setNotice(`${result.invoice_no} generated once. The full ${formatCurrency(completed.total_amount)} is now recognized as revenue.`)
+      setOrders(rows => rows.map(row => row.id === completed.id ? completed : row)); onOrderCompleted?.(completed); setPaymentOrder(null); setPaymentForm({ method: 'cash', remarks: '' }); setSplitP1Amount(''); setNotice(`${result.invoice_no} generated once. The full ${formatCurrency(completed.total_amount)} is now recognized as revenue.`)
 
-      // Redirect to WhatsApp with final invoice URL + Instagram + Feedback form
+      // Redirect to WhatsApp with final invoice URL
       whatsappInvoice(completed)
     } catch (err) { setError(err instanceof Error ? err.message : 'Unable to complete payment') } finally { setSaving(false) }
   }
@@ -522,38 +493,10 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
             </button>
           </div>
           <div className="mb-6 rounded-2xl bg-emerald-50 py-5 text-center">
-            {(() => {
-              const couponDisc = appliedCoupon ? Math.round(paymentOrder.remaining_balance * (appliedCoupon.percentage / 100) * 100) / 100 : 0;
-              const manualNum = Math.max(0, Number(manualDiscount) || 0);
-              const manualDisc = manualDiscountType === '%' ? Math.round(paymentOrder.remaining_balance * (manualNum / 100) * 100) / 100 : manualNum;
-              const finalAmt = Math.max(0, paymentOrder.remaining_balance - couponDisc - manualDisc);
-              return (
-                <>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600">Remaining Amount</p>
-                  <p className={`mt-1 font-black text-emerald-800 ${(couponDisc > 0 || manualDisc > 0) ? 'text-xl line-through opacity-60' : 'text-4xl'}`}>{formatCurrency(paymentOrder.remaining_balance)}</p>
-                  {(couponDisc > 0 || manualDisc > 0) && (
-                    <>
-                      <div className="mt-2 space-y-0.5 text-xs text-emerald-700">
-                        {couponDisc > 0 && <p>Coupon {appliedCoupon!.code} ({appliedCoupon!.percentage}%): -{formatCurrency(couponDisc)}</p>}
-                        {manualDisc > 0 && <p>Manual Discount: -{formatCurrency(manualDisc)}</p>}
-                      </div>
-                      <p className="mt-3 text-3xl font-black text-emerald-950">You Pay: {formatCurrency(finalAmt)}</p>
-                    </>
-                  )}
-                </>
-              )
-            })()}
+            <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600">Remaining Balance</p>
+            <p className="mt-1 text-4xl font-black text-emerald-800">{formatCurrency(paymentOrder.remaining_balance)}</p>
           </div>
           <div className="space-y-4">
-            <Field label="Manual Adjustment (Admin Only)">
-              <div className="flex gap-2 items-center">
-                <select value={manualDiscountType} onChange={e=>setManualDiscountType(e.target.value as 'rm'|'%')} className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm font-black text-[#273126] outline-none focus:border-[#7e22ce] focus:ring-2 focus:ring-violet-100 cursor-pointer">
-                  <option value="rm">₹</option>
-                  <option value="%">%</option>
-                </select>
-                <input type="number" min="0" step="0.01" className={`${inputClass} flex-1`} value={manualDiscount} onChange={e=>setManualDiscount(e.target.value)} placeholder="0" />
-              </div>
-            </Field>
             <Field label="Payment Method">
               <select className={inputClass} value={paymentForm.method} onChange={e=>setPaymentForm({...paymentForm,method:e.target.value as AdvancePaymentMethod | 'split'})}>
                 <option value="cash">Cash</option>
