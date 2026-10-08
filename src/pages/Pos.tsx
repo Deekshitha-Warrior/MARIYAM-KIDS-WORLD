@@ -120,6 +120,18 @@ const getVariantBaseName = (item: Pick<PosItem, 'name' | 'variantName'>): string
   return suffix && item.name.endsWith(suffix) ? item.name.slice(0, -suffix.length) : item.name
 }
 
+const getItemAvailableStock = (item: PosItem): number => {
+  if (item.source === 'manual' || item.category === 'Unregistered') return 999999
+  if (typeof item.stockQuantity === 'number') return Math.max(0, item.stockQuantity)
+  if (typeof item.stock === 'number') return Math.max(0, item.stock)
+  return 0
+}
+
+const isItemOverStock = (item: PosItem): boolean => {
+  if (item.source === 'manual' || item.category === 'Unregistered') return false
+  return item.qty > getItemAvailableStock(item)
+}
+
 
 // ── Category colours ───────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -299,6 +311,14 @@ export default function Pos(props: PosProps = {}) {
     setMobilePanelView('catalogue')
 
     if (specificVariant) {
+      const availStock = typeof specificVariant.stock === 'number' ? Math.max(0, specificVariant.stock) : 0
+      const existing = items.find(i => (i.variantId === specificVariant.id || String(i.id) === String(specificVariant.id)))
+      const nextQty = (existing?.qty || 0) + 1
+      if (nextQty > availStock) {
+        setError(`Requested quantity (${nextQty}) for "${product.name} - ${specificVariant.variantName}" is greater than available stock limit (${availStock})`)
+        return
+      }
+
       const variantProduct: Product = {
         ...product,
         id: specificVariant.id,
@@ -352,6 +372,14 @@ export default function Pos(props: PosProps = {}) {
     }
 
     // Standard non-variant product
+    const availStock = typeof product.stockQuantity === 'number' ? Math.max(0, product.stockQuantity) : (typeof product.stock === 'number' ? Math.max(0, product.stock) : 0)
+    const existing = items.find(i => String(i.id) === String(product.id))
+    const nextQty = (existing?.qty || 0) + 1
+    if (product.category !== 'Unregistered' && nextQty > availStock) {
+      setError(`Requested quantity (${nextQty}) for "${product.name}" is greater than available stock limit (${availStock})`)
+      return
+    }
+
     setItems(cur => {
       const ex = cur.find(i => String(i.id) === String(product.id))
       if (!ex) return [makePosItem(product), ...cur]
@@ -362,6 +390,15 @@ export default function Pos(props: PosProps = {}) {
   const addVariantToItems = () => {
     if (!variantPickerProduct || !selectedVariant) return
     setError('')
+    const availStock = typeof selectedVariant.stock === 'number' ? Math.max(0, selectedVariant.stock) : 0
+    const addQty = Math.max(1, variantPickerQty)
+    const existing = items.find(i => (i.variantId === selectedVariant.id || String(i.id) === String(selectedVariant.id)))
+    const nextQty = (existing?.qty || 0) + addQty
+    if (nextQty > availStock) {
+      setError(`Requested quantity (${nextQty}) for "${variantPickerProduct.name} - ${selectedVariant.variantName}" is greater than available stock limit (${availStock})`)
+      return
+    }
+
     const variantProduct: Product = {
       ...variantPickerProduct,
       id: selectedVariant.id,
@@ -375,7 +412,6 @@ export default function Pos(props: PosProps = {}) {
       baseQuantity: 1,
       unitLabel: selectedVariant.sizeLabel || variantPickerProduct.unitLabel || 'piece',
     }
-    const addQty = Math.max(1, variantPickerQty)
     setItems(cur => {
       const ex = cur.find(i => (i.variantId === selectedVariant.id || String(i.id) === String(selectedVariant.id)))
       if (!ex) {
@@ -398,6 +434,13 @@ export default function Pos(props: PosProps = {}) {
   const handleScannedItem = (scanned: ScannedItemPayload) => {
     setError('')
     const targetId = scanned.variant_id ? scanned.variant_id : scanned.product_id
+    const availStock = typeof scanned.stock === 'number' ? Math.max(0, scanned.stock) : 999
+    const existing = items.find(i => (scanned.variant_id ? i.variantId === scanned.variant_id : (i.id === scanned.product_id && !i.variantId)))
+    const nextQty = (existing?.qty || 0) + 1
+    if (nextQty > availStock) {
+      setError(`Requested quantity (${nextQty}) for "${scanned.product_name}" is greater than available stock limit (${availStock})`)
+      return
+    }
 
     setItems(cur => {
       const ex = cur.find(i => (scanned.variant_id ? i.variantId === scanned.variant_id : (i.id === scanned.product_id && !i.variantId)))
@@ -577,17 +620,28 @@ export default function Pos(props: PosProps = {}) {
   const removeItem = (id: string | number) => setItems(cur => cur.filter(i => i.id !== id))
 
   const updateItem = (id: string | number, field: 'name' | 'basePrice' | 'qty', value: string | number) => {
+    let stockError = ''
     setItems(cur => cur.map((item) => {
       if (item.id !== id) return item
       let safeVal = value
       if (field === 'basePrice') {
         safeVal = Math.max(0, Number(value) || 0)
       } else if (field === 'qty') {
-        safeVal = Math.max(1, Number(value) || 1)
+        const nextQty = Math.max(1, Number(value) || 1)
+        if (item.source !== 'manual' && item.category !== 'Unregistered') {
+          const availableStock = getItemAvailableStock(item)
+          if (nextQty > availableStock) {
+            stockError = `Requested quantity (${nextQty}) for "${item.name}" is greater than available stock limit (${availableStock})`
+          }
+        }
+        safeVal = nextQty
       }
       const nextItem = { ...item, [field]: safeVal } as PosItem
       return field === 'basePrice' || field === 'qty' ? recalc(nextItem, nextItem.qty) : nextItem
     }))
+    if (stockError) {
+      setError(stockError)
+    }
   }
 
   const bumpQty = (id: string | number, delta: number) => {
@@ -596,6 +650,14 @@ export default function Pos(props: PosProps = {}) {
       if (!ex) return cur
       const next = ex.qty + delta
       if (next <= 0) return cur.filter(i => i.id !== id)
+      if (delta > 0 && ex.source !== 'manual' && ex.category !== 'Unregistered') {
+        const availableStock = getItemAvailableStock(ex)
+        if (next > availableStock) {
+          setError(`Requested quantity (${next}) for "${ex.name}" is greater than available stock limit (${availableStock})`)
+          return cur
+        }
+      }
+      setError('')
       return cur.map(i => i.id === id ? recalc(i, next) : i)
     })
   }
@@ -603,6 +665,15 @@ export default function Pos(props: PosProps = {}) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const setQty = (id: string | number, val: number) => {
     if (val <= 0) { removeItem(id); return }
+    const ex = items.find(i => i.id === id)
+    if (ex && ex.source !== 'manual' && ex.category !== 'Unregistered') {
+      const availableStock = getItemAvailableStock(ex)
+      if (val > availableStock) {
+        setError(`Requested quantity (${val}) for "${ex.name}" is greater than available stock limit (${availableStock})`)
+        return
+      }
+    }
+    setError('')
     setItems(cur => cur.map(i => i.id === id ? recalc(i, val) : i))
   }
 
@@ -787,6 +858,15 @@ export default function Pos(props: PosProps = {}) {
 
   const openDepositOrder = () => {
     if (!items.length) { setError('Add at least one product before creating a deposit order.'); return }
+    for (const item of items) {
+      if (item.source !== 'manual' && item.category !== 'Unregistered') {
+        const availableStock = getItemAvailableStock(item)
+        if (item.qty > availableStock) {
+          setError(`Requested quantity (${item.qty}) for "${item.name}" is greater than available stock limit (${availableStock})`)
+          return
+        }
+      }
+    }
     if (!customer.name.trim()) { setError('Enter the customer name for the deposit order.'); return }
     if (!customer.phone.trim()) { setError('Enter the customer phone number for the deposit order.'); return }
     if (total <= 0) { setError('The order total must be greater than zero.'); return }
@@ -799,6 +879,15 @@ export default function Pos(props: PosProps = {}) {
 
   const saveDepositOrder = async (event: FormEvent) => {
     event.preventDefault()
+    for (const item of items) {
+      if (item.source !== 'manual' && item.category !== 'Unregistered') {
+        const availableStock = getItemAvailableStock(item)
+        if (item.qty > availableStock) {
+          setError(`Requested quantity (${item.qty}) for "${item.name}" is greater than available stock limit (${availableStock})`)
+          return
+        }
+      }
+    }
     const depositAmount = Number(depositForm.amount)
     if (!Number.isFinite(depositAmount) || depositAmount <= 0 || depositAmount >= total) { setError(`Deposit must be greater than ${formatCurrency(0)} and less than ${formatCurrency(total)}.`); return }
     if (!depositForm.expectedDeliveryDate) { setError('Select the expected delivery date.'); return }
@@ -842,6 +931,18 @@ export default function Pos(props: PosProps = {}) {
   // ── Generate bill ─────────────────────────────────────────────────────
   const generateBill = async () => {
     if (!items.length) { setError('Add at least one product.'); return }
+
+    // Pre-flight check: validate that no catalog item exceeds available stock
+    for (const item of items) {
+      if (item.source !== 'manual' && item.category !== 'Unregistered') {
+        const availableStock = getItemAvailableStock(item)
+        if (item.qty > availableStock) {
+          setError(`Requested quantity (${item.qty}) for "${item.name}" is greater than available stock limit (${availableStock})`)
+          return
+        }
+      }
+    }
+
     // Validate required phone
     const normalizedPhone = normalizePhone(customer.phone || '')
     if (!normalizedPhone) { setError('Please enter a valid Indian mobile number (e.g. 9876543210 or +91 9876543210)'); return }
@@ -1285,6 +1386,27 @@ export default function Pos(props: PosProps = {}) {
         </div>
       </div>
 
+      {/* Prominent Top Error Banner */}
+      {error && (
+        <div className="mx-3 sm:mx-4 md:mx-6 mb-3 p-3.5 rounded-2xl bg-red-50 border-2 border-red-300 text-red-800 flex items-start justify-between gap-3 shadow-md animate-in fade-in duration-200 shrink-0">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <span className="text-red-600 font-black text-lg shrink-0 mt-0.5">⚠️</span>
+            <div className="text-[13px] font-bold leading-snug">
+              <span className="block text-[10px] font-black uppercase tracking-wider text-red-600 mb-0.5">Notice</span>
+              {error}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError('')}
+            className="text-red-400 hover:text-red-800 p-1 rounded-lg hover:bg-red-100 shrink-0 text-sm font-black cursor-pointer"
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Main Content Split */}
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 md:gap-6 px-3 sm:px-4 md:px-6 pb-6 lg:h-[calc(100vh-120px)] lg:overflow-hidden" style={{ touchAction: 'pan-y' }}>
 
@@ -1433,7 +1555,11 @@ export default function Pos(props: PosProps = {}) {
 
               {items.map(item => (
                 <div key={item.id}>
-                  <div className="md:hidden bg-white border border-gray-200/90 rounded-2xl p-3.5 shadow-sm hover:border-[#D4AF37]/50 transition-all space-y-3">
+                  <div className={`md:hidden bg-white border rounded-2xl p-3.5 shadow-sm transition-all space-y-3 ${
+                    isItemOverStock(item)
+                      ? 'border-red-400 bg-red-50/30 ring-1 ring-red-300'
+                      : 'border-gray-200/90 hover:border-[#D4AF37]/50'
+                  }`}>
                     {/* Header Row: Product Name + Trash Delete */}
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="min-w-0 flex-1">
@@ -1454,6 +1580,24 @@ export default function Pos(props: PosProps = {}) {
                               <span className="inline-block mt-0.5 text-[10.5px] font-semibold text-[#B48811] bg-[#FBFAF6] border border-[#E8D399]/60 px-1.5 py-0.5 rounded">
                                 {item.variantName}
                               </span>
+                            )}
+                            {item.category !== 'Unregistered' && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                  isItemOverStock(item)
+                                    ? 'bg-red-100 border-red-300 text-red-700 font-black'
+                                    : getItemAvailableStock(item) <= 3
+                                    ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                    : 'bg-gray-100 border-gray-200 text-gray-600'
+                                }`}>
+                                  Stock: {getItemAvailableStock(item)}
+                                </span>
+                                {isItemOverStock(item) && (
+                                  <span className="text-[11px] font-black text-red-600">
+                                    ⚠️ Exceeds stock limit ({getItemAvailableStock(item)})!
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
@@ -1497,7 +1641,7 @@ export default function Pos(props: PosProps = {}) {
                         >
                           −
                         </button>
-                        <span className="w-10 text-center text-[15px] font-black text-[#111111]">
+                        <span className={`w-10 text-center text-[15px] font-black ${isItemOverStock(item) ? 'text-red-600' : 'text-[#111111]'}`}>
                           {item.qty}
                         </span>
                         <button
@@ -1520,7 +1664,11 @@ export default function Pos(props: PosProps = {}) {
                     </div>
                   </div>
 
-                  <div className="hidden md:grid grid-cols-[1fr_100px_120px_40px] items-center gap-3 p-2 bg-white border border-gray-200 rounded-xl hover:border-[#D4AF37]/50 transition-colors">
+                  <div className={`hidden md:grid grid-cols-[1fr_100px_120px_40px] items-center gap-3 p-2 bg-white border rounded-xl transition-colors ${
+                    isItemOverStock(item)
+                      ? 'border-red-400 bg-red-50/40 hover:border-red-500'
+                      : 'border-gray-200 hover:border-[#D4AF37]/50'
+                  }`}>
                     {/* Item Name */}
                     <div className="min-w-0 flex items-center gap-2">
                       {item.source === 'manual' ? (
@@ -1533,10 +1681,25 @@ export default function Pos(props: PosProps = {}) {
                         />
                       ) : (
                         <div className="px-3 py-2 w-full truncate border border-transparent flex items-center gap-2">
-                              <span className="text-[13px] font-bold text-[#111111] truncate">{getVariantBaseName(item)} {item.variantName ? `- ${item.variantName}` : ''}</span>
+                          <span className="text-[13px] font-bold text-[#111111] truncate">{getVariantBaseName(item)} {item.variantName ? `- ${item.variantName}` : ''}</span>
                         </div>
                       )}
-                      {item.source !== 'manual' && (
+                      {item.category !== 'Unregistered' ? (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={`hidden sm:inline-flex px-2 py-0.5 rounded border text-[9px] font-black tracking-wider uppercase shrink-0 ${
+                            isItemOverStock(item)
+                              ? 'border-red-400 text-red-600 bg-red-100'
+                              : 'border-[#D4AF37]/30 text-[#B48811] bg-[#D4AF37]/10'
+                          }`}>
+                            Stock: {getItemAvailableStock(item)}
+                          </span>
+                          {isItemOverStock(item) && (
+                            <span className="text-[10px] font-black text-red-600 shrink-0" title={`Requested ${item.qty} exceeds available stock ${getItemAvailableStock(item)}`}>
+                              ⚠️ Limit: {getItemAvailableStock(item)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
                         <span className="hidden sm:inline-flex px-2 py-0.5 rounded border border-[#D4AF37]/30 text-[#B48811] text-[9px] font-black tracking-wider uppercase shrink-0 bg-[#D4AF37]/10">
                           CATALOG
                         </span>
@@ -1564,7 +1727,7 @@ export default function Pos(props: PosProps = {}) {
                         onClick={() => bumpQty(item.id, -1)}
                         className="w-6 h-6 rounded-md hover:bg-[#FAFAFA] flex items-center justify-center text-[#374151] font-bold"
                       >-</button>
-                      <span className="text-[13px] font-black text-[#111111] min-w-[20px] text-center">{item.qty}</span>
+                      <span className={`text-[13px] font-black min-w-[20px] text-center ${isItemOverStock(item) ? 'text-red-600' : 'text-[#111111]'}`}>{item.qty}</span>
                       <button
                         onClick={() => bumpQty(item.id, 1)}
                         className="w-6 h-6 rounded-md hover:bg-[#FAFAFA] flex items-center justify-center text-[#374151] font-bold"
@@ -1934,6 +2097,15 @@ export default function Pos(props: PosProps = {}) {
 
             {/* Action Buttons Fixed Footer */}
             <div className="shrink-0 border-t border-gray-200 bg-white p-3 shadow-[0_-8px_20px_rgba(0,0,0,0.04)]">
+              {error && (
+                <div className="mb-2.5 p-2.5 rounded-xl bg-red-50 border border-red-300 text-red-700 text-[12px] font-bold flex items-center justify-between gap-2 shadow-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="shrink-0 text-red-500">⚠️</span>
+                    <span className="truncate">{error}</span>
+                  </div>
+                  <button type="button" onClick={() => setError('')} className="text-red-400 hover:text-red-700 shrink-0 font-bold px-1 cursor-pointer">✕</button>
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"

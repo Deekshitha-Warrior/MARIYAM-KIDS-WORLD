@@ -54,15 +54,42 @@ export const createOrderWithStock = async (input: CreateOrderInput): Promise<Cre
     throw new Error('Supabase is required to create orders')
   }
 
-  // Match the RPC signature currently defined in the migration files.
-  let data: unknown = null
-  let error: unknown = null
-
   const totalGst        = Number(input.totalGst || 0)
   const gstEnabled      = Boolean(input.gstEnabled)
   const paymentMethod   = input.paymentMethod || 'cash'
   const splitDetails    = input.splitDetails || {}
   const branch          = input.branch || 'pos1'
+
+  // Pre-validate stock limits against database before calling RPC
+  for (const item of input.items) {
+    if (!item.is_manual && Number(item.quantity || 0) > 0) {
+      if (item.variant_id) {
+        const { data: vRow } = await supabase
+          .from('product_variants')
+          .select('stock, variant_name')
+          .eq('id', item.variant_id)
+          .eq('branch', branch)
+          .maybeSingle()
+        if (vRow && typeof vRow.stock === 'number' && Number(item.quantity) > vRow.stock) {
+          throw new Error(`Requested quantity (${item.quantity}) for "${item.name}${vRow.variant_name ? ` - ${vRow.variant_name}` : ''}" is greater than available stock limit (${vRow.stock})`)
+        }
+      } else if (item.product_id) {
+        const { data: pRow } = await supabase
+          .from('products')
+          .select('stock_quantity, name')
+          .eq('id', item.product_id)
+          .eq('branch', branch)
+          .maybeSingle()
+        if (pRow && typeof pRow.stock_quantity === 'number' && Number(item.quantity) > pRow.stock_quantity) {
+          throw new Error(`Requested quantity (${item.quantity}) for "${pRow.name || item.name}" is greater than available stock limit (${pRow.stock_quantity})`)
+        }
+      }
+    }
+  }
+
+  // Match the RPC signature currently defined in the migration files.
+  let data: unknown = null
+  let error: unknown = null
 
   const rpcPayload = {
     p_customer_name:          customerName,

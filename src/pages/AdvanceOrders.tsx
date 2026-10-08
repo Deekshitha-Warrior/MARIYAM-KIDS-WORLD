@@ -207,13 +207,48 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
       setError('This order is already completed and has an official invoice.')
       return
     }
-    if (status === 'completed') { setPaymentOrder(order); return }
+    if (status === 'completed') { setError(''); setPaymentOrder(order); return }
     try { const updated = await updateAdvanceStatus(order.id, status); setOrders(rows => rows.map(row => row.id === order.id ? updated : row)); if (selected?.id === order.id) void openDetails(updated) } catch (err) { setError(err instanceof Error ? err.message : 'Unable to update status') }
   }
 
   const receivePayment = async (event: FormEvent) => {
     event.preventDefault(); if (!paymentOrder) return; setSaving(true); setError('')
     try {
+      // Pre-flight check available stock for catalog products
+      if (paymentOrder.products && paymentOrder.products.length > 0) {
+        for (const p of paymentOrder.products) {
+          const isManual = p.is_manual || p.source === 'manual'
+          if (!isManual) {
+            const reqQty = Number(p.quantity) || 1
+            if (p.variant_id) {
+              const { data: vRow } = await supabase
+                .from('product_variants')
+                .select('stock, variant_name')
+                .eq('id', p.variant_id)
+                .eq('branch', branch)
+                .maybeSingle()
+              if (vRow && typeof vRow.stock === 'number' && reqQty > vRow.stock) {
+                setError(`Requested quantity (${reqQty}) for "${p.name}${vRow.variant_name ? ` - ${vRow.variant_name}` : ''}" is greater than available stock limit (${vRow.stock})`)
+                setSaving(false)
+                return
+              }
+            } else if (p.product_id) {
+              const { data: pRow } = await supabase
+                .from('products')
+                .select('stock_quantity, name')
+                .eq('id', p.product_id)
+                .eq('branch', branch)
+                .maybeSingle()
+              if (pRow && typeof pRow.stock_quantity === 'number' && reqQty > pRow.stock_quantity) {
+                setError(`Requested quantity (${reqQty}) for "${pRow.name || p.name}" is greater than available stock limit (${pRow.stock_quantity})`)
+                setSaving(false)
+                return
+              }
+            }
+          }
+        }
+      }
+
       // Advance orders use exact remaining balance payment - no discounts or coupons allowed
       const finalAmount = paymentOrder.remaining_balance
       const remarks = paymentForm.remarks.trim()
@@ -488,7 +523,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
               <p className="text-xs font-black uppercase tracking-wider text-emerald-600 font-mono">{paymentOrder.deposit_id}</p>
               <h3 className="text-xl font-black text-[#273126]">Receive Remaining Payment</h3>
             </div>
-            <button type="button" onClick={()=>setPaymentOrder(null)} className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition cursor-pointer">
+            <button type="button" onClick={() => { setPaymentOrder(null); setError('') }} className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 transition cursor-pointer">
               <X size={16}/>
             </button>
           </div>
@@ -563,6 +598,15 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
               <textarea className={inputClass} value={paymentForm.remarks} onChange={e=>setPaymentForm({...paymentForm,remarks:e.target.value})} placeholder="Notes about this payment (optional)"/>
             </Field>
             <p className="mt-2 rounded-xl bg-amber-50 p-3 text-[11px] font-semibold text-amber-800">Confirmation marks the order Completed, creates one official invoice, and recognizes the full {formatCurrency(paymentOrder.total_amount)} as revenue.</p>
+            {error && (
+              <div className="mt-3 p-3.5 rounded-xl bg-red-50 border-2 border-red-300 text-red-700 text-xs font-bold flex items-start justify-between gap-2 shadow-xs">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-red-500 font-bold shrink-0">⚠️</span>
+                  <span>{error}</span>
+                </div>
+                <button type="button" onClick={() => setError('')} className="text-red-400 hover:text-red-700 font-bold p-1 cursor-pointer">✕</button>
+              </div>
+            )}
             <button disabled={saving} className="mt-5 w-full rounded-xl bg-emerald-600 py-3.5 font-black text-white shadow-lg shadow-emerald-600/30 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer hover:bg-emerald-700">
               {saving?'Processing...':'Confirm Final Payment'}
             </button>
