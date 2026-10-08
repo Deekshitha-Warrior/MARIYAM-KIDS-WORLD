@@ -1140,6 +1140,17 @@ export default function Pos(props: PosProps = {}) {
   }
 
   const printReceipt = (inv: InvoiceSnap) => {
+    const itemsSum = Math.round(inv.items.reduce((s, it) => s + (it.lineTotal ?? (it.qty * (Number(it.basePrice) || 0))), 0) * 100) / 100
+    const totalDiscount = Math.round(((inv.couponDiscount || 0) + (inv.manualDiscountAmount || 0)) * 100) / 100
+    const shipping = Number(inv.shipping || 0)
+    const effectiveGst = (inv.gstAmount && inv.gstAmount > 0)
+      ? inv.gstAmount
+      : Math.max(0, Math.round((inv.total - (itemsSum - totalDiscount + shipping)) * 100) / 100)
+
+    const subtotal = itemsSum > 0
+      ? itemsSum
+      : Math.max(0, Math.round((inv.total - shipping - effectiveGst + totalDiscount) * 100) / 100)
+
     // Print a Bluetooth/thermal receipt directly
     printThermalReceipt({
       invoiceNo: inv.invoiceNo,
@@ -1148,11 +1159,11 @@ export default function Pos(props: PosProps = {}) {
       phone: inv.phone,
       branch,
       items: inv.items.map(item => ({ name: item.name, qty: item.qty, unit: item.selectedUnit, price: Number(item.basePrice) || 0, line_total: item.lineTotal })),
-      subtotal: inv.subtotal,
-      shipping: inv.shipping,
+      subtotal,
+      shipping,
       couponDiscount: inv.couponDiscount,
       manualDiscount: inv.manualDiscountAmount,
-      totalGst: inv.gstAmount,
+      totalGst: effectiveGst,
       gstPercent: gstType === 'percent' ? Number(gstInput) || undefined : undefined,
       total: inv.total,
       paymentMode: inv.paymentMode,

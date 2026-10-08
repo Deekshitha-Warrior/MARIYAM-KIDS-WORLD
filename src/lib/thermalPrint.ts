@@ -58,6 +58,42 @@ export function printThermalReceipt(data: ThermalReceiptData) {
       catch { return new Date().toLocaleString('en-IN') }
     })()
 
+    // 1. Calculate items sum from actual item line totals
+    const itemsSum = Math.round(data.items.reduce((sum, item) => {
+      const lineTotal = item.line_total ?? (item.qty * item.price)
+      return sum + (Number(lineTotal) || 0)
+    }, 0) * 100) / 100
+
+    const couponDisc = Number(data.couponDiscount || 0)
+    const manualDisc = Number(data.manualDiscount || 0)
+    const totalDisc = Math.round((couponDisc + manualDisc) * 100) / 100
+    const shippingAmt = Number(data.shipping || 0)
+
+    // 2. Determine effective GST amount: either passed explicitly or implied by difference between Total and (items - discounts + shipping)
+    let effectiveGst = Math.max(0, Number(data.totalGst || 0))
+    if (effectiveGst === 0 && data.total > 0 && itemsSum > 0) {
+      const preTaxTotal = Math.max(0, Math.round((itemsSum - totalDisc + shippingAmt) * 100) / 100)
+      if (data.total > preTaxTotal + 0.05) {
+        effectiveGst = Math.round((data.total - preTaxTotal) * 100) / 100
+      }
+    }
+
+    // 3. Determine true pre-tax subtotal
+    let displaySubtotal = Number(data.subtotal || 0)
+    if (itemsSum > 0) {
+      displaySubtotal = itemsSum
+    } else if (displaySubtotal === 0 || (displaySubtotal === data.total && effectiveGst > 0)) {
+      displaySubtotal = Math.max(0, Math.round((data.total - effectiveGst - shippingAmt + totalDisc) * 100) / 100)
+    }
+
+    // 4. Calculate GST percentage and CGST/SGST split
+    const taxableAmount = Math.max(0, displaySubtotal - totalDisc)
+    const calculatedGstPercent = data.gstPercent ?? (taxableAmount > 0 && effectiveGst > 0 ? (effectiveGst / taxableAmount) * 100 : 0)
+    const halfGstPercent = Math.round((calculatedGstPercent / 2) * 100) / 100
+    const percentLabel = halfGstPercent > 0 ? ` (${halfGstPercent}%)` : ''
+    const cgstAmount = Math.round((effectiveGst / 2) * 100) / 100
+    const sgstAmount = Math.round((effectiveGst - cgstAmount) * 100) / 100
+
     const html = `
       <!DOCTYPE html>
       <html lang="en" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" spellcheck="false">
@@ -145,48 +181,38 @@ export function printThermalReceipt(data: ThermalReceiptData) {
 
         <div class="border-bottom" style="font-size: 12px;">
           <table style="width: 100%;">
-            ${data.subtotal !== data.total ? `
+            ${(displaySubtotal !== data.total || effectiveGst > 0 || totalDisc > 0 || shippingAmt > 0) ? `
               <tr>
                 <td class="text-left">Subtotal</td>
-                <td class="text-right">${formatCurrency(data.subtotal)}</td>
+                <td class="text-right">${formatCurrency(displaySubtotal)}</td>
               </tr>
             ` : ''}
-            ${(data.couponDiscount || 0) > 0 ? `
+            ${couponDisc > 0 ? `
               <tr style="font-size: 13px; font-weight: bold;">
                 <td class="text-left">Coupon</td>
-                <td class="text-right">-${formatCurrency(data.couponDiscount || 0)}</td>
+                <td class="text-right">-${formatCurrency(couponDisc)}</td>
               </tr>
             ` : ''}
-            ${(data.manualDiscount || 0) > 0 ? `
+            ${manualDisc > 0 ? `
               <tr>
                 <td class="text-left">Manual Disc.</td>
-                <td class="text-right">-${formatCurrency(data.manualDiscount || 0)}</td>
+                <td class="text-right">-${formatCurrency(manualDisc)}</td>
               </tr>
             ` : ''}
-            ${(() => {
-              const gst = data.totalGst || 0
-              if (gst <= 0) return ''
-              const taxable = Math.max(0, data.subtotal - (data.couponDiscount || 0) - (data.manualDiscount || 0))
-              const calculatedPercent = data.gstPercent ?? (taxable > 0 ? (gst / taxable) * 100 : 0)
-              const halfPercent = Math.round((calculatedPercent / 2) * 100) / 100
-              const percentLabel = halfPercent > 0 ? ` (${halfPercent}%)` : ''
-              const cgst = Math.round((gst / 2) * 100) / 100
-              const sgst = Math.round((gst - cgst) * 100) / 100
-              return `
-                <tr style="font-size: 10px;">
-                  <td class="text-left">CGST${percentLabel}</td>
-                  <td class="text-right">+${formatCurrency(cgst)}</td>
-                </tr>
-                <tr style="font-size: 10px;">
-                  <td class="text-left">SGST${percentLabel}</td>
-                  <td class="text-right">+${formatCurrency(sgst)}</td>
-                </tr>
-              `
-            })()}
-            ${data.shipping > 0 ? `
+            ${effectiveGst > 0 ? `
+              <tr style="font-size: 11px;">
+                <td class="text-left font-bold">CGST${percentLabel}</td>
+                <td class="text-right font-bold">+${formatCurrency(cgstAmount)}</td>
+              </tr>
+              <tr style="font-size: 11px;">
+                <td class="text-left font-bold">SGST${percentLabel}</td>
+                <td class="text-right font-bold">+${formatCurrency(sgstAmount)}</td>
+              </tr>
+            ` : ''}
+            ${shippingAmt > 0 ? `
               <tr>
                 <td class="text-left">Delivery</td>
-                <td class="text-right">${formatCurrency(data.shipping)}</td>
+                <td class="text-right">${formatCurrency(shippingAmt)}</td>
               </tr>
             ` : ''}
             <tr class="font-bold" style="font-size: 14px;">

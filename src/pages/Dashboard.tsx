@@ -1109,7 +1109,26 @@ export default function Dashboard() {
   const handlePrintReceipt = (order: DashboardOrder) => {
     const preview = getOrderWhatsAppPreview(order)
     if (!preview) { alert('This order has no invoice details available.'); return }
-    const subtotal = order.total - (order.delivery_charge || 0) + (order.discount_amount || 0)
+
+    const previewItems = (preview.items as Array<Record<string, unknown>>).map((item) => ({
+      name: (item.name || item.product_name || '') as string,
+      qty: Number(item.qty || item.quantity || 0),
+      unit: (item.unit || '') as string,
+      price: Number(item.price || item.base_price || 0),
+      line_total: Number(item.line_total || 0)
+    }))
+
+    const itemsSum = Math.round(previewItems.reduce((s, it) => s + (it.line_total || it.qty * it.price), 0) * 100) / 100
+    const totalDiscount = Math.round(((order.discount_amount || 0) + (order.manual_discount_amount || 0)) * 100) / 100
+    const shipping = Number(order.delivery_charge || 0)
+
+    const effectiveTotalGst = (order.total_gst && order.total_gst > 0)
+      ? order.total_gst
+      : Math.max(0, Math.round((order.total - (itemsSum - totalDiscount + shipping)) * 100) / 100)
+
+    const subtotal = itemsSum > 0
+      ? itemsSum
+      : Math.max(0, Math.round((order.total - shipping - effectiveTotalGst + totalDiscount) * 100) / 100)
 
     printThermalReceipt({
       invoiceNo: order.invoice_no || order.id,
@@ -1117,26 +1136,12 @@ export default function Dashboard() {
       customerName: order.customer_name,
       phone: order.phone,
       branch: order.branch,
-      items: (preview.items as Array<{
-        name?: string
-        product_name?: string
-        qty?: number
-        quantity?: number
-        unit?: string
-        price?: number
-        base_price?: number
-        line_total?: number
-      }>).map((item) => ({
-        name: item.name || item.product_name || '',
-        qty: item.qty || item.quantity || 0,
-        unit: item.unit || '',
-        price: item.price || item.base_price || 0,
-        line_total: item.line_total || 0
-      })),
+      items: previewItems,
       subtotal,
-      shipping: order.delivery_charge || 0,
+      shipping,
       couponDiscount: order.discount_amount || 0,
-      totalGst: order.total_gst || 0,
+      manualDiscount: order.manual_discount_amount || 0,
+      totalGst: effectiveTotalGst,
       total: order.total
     })
   }
