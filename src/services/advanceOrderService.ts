@@ -658,6 +658,129 @@ export async function completeAdvanceOrder(
           } else {
             throw new Error('This order has already been completed.')
           }
+        } else if (
+          error.message?.includes('remaining_balance') ||
+          error.message?.includes('can only be updated to DEFAULT') ||
+          (error as { code?: string }).code === '428C9'
+        ) {
+          console.warn('[completeAdvanceOrder] RPC failed with remaining_balance error, falling back to direct completion...', error)
+          const { data: existing } = await supabase.from('advance_orders').select('*').eq('id', orderId).maybeSingle()
+          if (existing) {
+            if (existing.completed_order_id && existing.invoice_number) {
+              result = {
+                order_id: existing.completed_order_id,
+                invoice_no: existing.invoice_number,
+                completed_at: existing.completed_at || new Date().toISOString()
+              }
+            } else {
+              const nowIso = new Date().toISOString()
+              const branch = existing.branch === 'pos2' ? 'pos2' : 'pos1'
+
+              let invoiceNo = ''
+              try {
+                const { data: invData } = await supabase.rpc('get_next_invoice_no', { p_branch: branch })
+                if (invData && typeof invData === 'string') {
+                  invoiceNo = invData
+                }
+              } catch { /* fallback */ }
+              if (!invoiceNo) {
+                const prefix = branch === 'pos2' ? '500' : '100'
+                invoiceNo = `${prefix}${String(Math.floor(10000 + Math.random() * 89999))}`
+              }
+
+              const completedOrderId = crypto.randomUUID ? crypto.randomUUID() : `ord_${Date.now()}_${Math.random().toString(36).slice(2)}`
+              const rawProducts = Array.isArray(existing.products) ? existing.products : []
+              const items = rawProducts.length > 0
+                ? rawProducts
+                : [{
+                    name: existing.product_name,
+                    category: existing.category,
+                    description: existing.description,
+                    quantity: 1,
+                    base_price: existing.total_amount,
+                    line_total: existing.total_amount,
+                    unit: 'piece',
+                    unit_type: 'unit',
+                    source: 'advance_order'
+                  }]
+
+              const { error: ordErr } = await supabase.from('orders').insert({
+                id: completedOrderId,
+                invoice_no: invoiceNo,
+                customer_name: existing.customer_name,
+                phone: existing.phone,
+                address: existing.address || '',
+                items,
+                subtotal: existing.total_amount,
+                total: existing.total_amount,
+                status: 'completed',
+                order_mode: 'offline',
+                order_type: 'advance_order',
+                shipping: 0,
+                delivery_charge: 0,
+                discount_amount: 0,
+                manual_discount_amount: 0,
+                coupon_code: null,
+                coupon_percentage: 0,
+                manual_discount_type: 'flat',
+                manual_discount_value: 0,
+                payment_mode: paymentMethod.toLowerCase(),
+                payment_method: paymentMethod.toLowerCase(),
+                branch,
+                created_at: nowIso,
+                updated_at: nowIso
+              })
+
+              if (!ordErr) {
+                const orderItemsToInsert = items.map((it: Record<string, unknown>) => ({
+                  order_id: completedOrderId,
+                  product_name: String(it.name || 'Product'),
+                  name: String(it.name || 'Product'),
+                  quantity: Number(it.quantity || 1),
+                  unit: String(it.unit || 'piece'),
+                  unit_type: String(it.unit_type || 'unit'),
+                  base_price: Number(it.base_price || 0),
+                  line_total: Number(it.line_total || 0),
+                  is_manual: false
+                }))
+                await supabase.from('order_items').insert(orderItemsToInsert)
+
+                await supabase.from('advance_order_payments').insert({
+                  advance_order_id: orderId,
+                  payment_type: 'remaining',
+                  amount: finalAmount,
+                  payment_method: paymentMethod.toLowerCase(),
+                  remarks: remarks || '',
+                  received_at: nowIso
+                })
+
+                await supabase.from('advance_orders').update({
+                  status: 'completed',
+                  completed_at: nowIso,
+                  completed_order_id: completedOrderId,
+                  invoice_number: invoiceNo,
+                  final_payment_method: paymentMethod.toLowerCase(),
+                  remarks: remarks ? remarks : existing.remarks,
+                  updated_at: nowIso
+                }).eq('id', orderId)
+
+                await supabase.from('advance_order_timeline').insert([
+                  { advance_order_id: orderId, event_type: 'remaining_payment_received', label: 'Remaining Payment Received', remarks: remarks || '', created_at: nowIso },
+                  { advance_order_id: orderId, event_type: 'invoice_generated', label: 'Invoice Generated', remarks: invoiceNo, created_at: nowIso }
+                ])
+
+                result = {
+                  order_id: completedOrderId,
+                  invoice_no: invoiceNo,
+                  completed_at: nowIso
+                }
+              } else {
+                throw new Error(ordErr.message || error.message)
+              }
+            }
+          } else {
+            throw new Error(error.message || JSON.stringify(error))
+          }
         } else {
           throw new Error(error.message || JSON.stringify(error))
         }
@@ -668,8 +791,8 @@ export async function completeAdvanceOrder(
       }
     } catch (err: unknown) {
       if (!result) {
-        alert(`Supabase Backend Error: ${err instanceof Error ? err.message : String(err)}`)
-        throw err
+        console.error('[completeAdvanceOrder] Error:', err)
+        throw err instanceof Error ? err : new Error(String(err))
       }
     }
   }
