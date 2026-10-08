@@ -1,10 +1,8 @@
 import { BRAND_EN } from './brand'
-import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import { formatCurrency, formatInvoiceNo } from './retail'
 import { formatPhoneForDisplay } from './phone'
 import type { PosBranch } from '../store/store'
 import { getBranchProfile } from './branchProfile'
-import { useSettingsStore } from '../store/store'
 
 export interface ThermalReceiptData {
   invoiceNo: string
@@ -36,9 +34,8 @@ export interface ThermalReceiptData {
 export function printThermalReceipt(data: ThermalReceiptData) {
   try {
     const profile = getBranchProfile(data.branch)
-    // Embedded logo prints instantly; a custom logo from Store Settings is used when one is uploaded
-    const customLogo = useSettingsStore.getState().settingsByBranch[data.branch === 'pos2' ? 'pos2' : 'pos1']?.logoUrl
-    const logoSrc = customLogo || (data.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1)
+    const brandInitial = data.branch === 'pos2' ? 'T' : 'M'
+    const storeDisplayName = data.storeName || (data.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN)
     // Create an isolated print iframe protected from third-party extension observers
     const iframe = document.createElement('iframe')
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0.01;pointer-events:none;z-index:-1;'
@@ -100,8 +97,8 @@ export function printThermalReceipt(data: ThermalReceiptData) {
       </head>
       <body>
         <div class="text-center mb-2">
-          <img src="${logoSrc}" style="width: 64px; height: 64px; object-fit: contain; margin: 0 auto 8px auto; display: block;" alt="Mariyam Kids World Logo" />
-          <div class="font-bold" style="font-size: 16px; letter-spacing: 2px;">${data.storeName || BRAND_EN}</div>
+          <div style="width: 38px; height: 38px; line-height: 34px; margin: 0 auto 6px auto; border: 2px solid #000; border-radius: 50%; font-size: 22px; font-weight: 900; text-align: center; font-family: 'Arial Black', Arial, sans-serif; box-sizing: border-box;">${brandInitial}</div>
+          <div class="font-bold" style="font-size: 15px; letter-spacing: 1.5px;">${storeDisplayName}</div>
           <div style="font-size: 10px; margin-top: 2px;">${data.storeAddress || profile.address}</div>
           <div class="mt-1" style="font-size: 10px;">Ph: ${data.storePhone || profile.phone}</div>
           <div style="font-size: 9px; color: #333;">${data.storeEmail || profile.email}</div>

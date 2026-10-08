@@ -61,12 +61,12 @@ export const buildProfessionalWhatsAppMessage = (input: BuildWhatsAppMessageInpu
 
   const profile = getBranchProfile(input.branch)
 
-  return `✨ *${BRAND_EN}* ✨
+  return `✨ *${profile.name}* ✨
 🛍️ *Official Purchase Invoice & Receipt* 🛍️
 
 Dear ${customerName},
 
-Thank you for shopping at ${BRAND_EN}! We truly appreciate your patronage.
+Thank you for shopping at ${profile.name}! We truly appreciate your patronage.
 
 🧾 *INVOICE DETAILS*
 📌 *Invoice No:* #${formattedNo}
@@ -100,7 +100,7 @@ export const buildAdvanceDepositWhatsAppMessage = (input: AdvanceDepositWhatsApp
 
   const profile = getBranchProfile(input.branch)
 
-  return `✨ *Thank You for Your Advance Order with ${BRAND_EN}!* ✨
+  return `✨ *Thank You for Your Advance Order with ${profile.name}!* ✨
 
 Dear ${customerName},
 

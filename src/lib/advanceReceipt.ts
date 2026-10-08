@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf'
 import { BRAND_EN } from './brand'
-import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import { formatCurrency } from './retail'
 import type { AdvanceOrder } from '../services/advanceOrderService'
 import { getBranchProfile } from './branchProfile'
@@ -19,9 +18,19 @@ const pdfMoney = (value: number): string => {
 
 export function advanceReceiptPdf(order: AdvanceOrder) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const isPos2 = order.branch === 'pos2'
+  const brandInitial = isPos2 ? 'T' : 'M'
+  const brandColor = isPos2 ? '#1D4ED8' : '#7A1220'
   doc.setFillColor('#7A1220'); doc.rect(0, 0, 210, 5, 'F')
-  try { doc.addImage(order.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1, 'PNG', 16, 9, 16, 16) } catch (_err) { /* ignore missing logo */ }
-  doc.setTextColor('#111111'); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text((order.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN).toUpperCase(), 38, 20)
+  doc.setFillColor(isPos2 ? '#EFF6FF' : '#FDF2F8')
+  doc.setDrawColor(brandColor)
+  doc.setLineWidth(0.8)
+  doc.circle(24, 17, 8, 'FD')
+  doc.setTextColor(brandColor)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.text(brandInitial, 24, 22, { align: 'center' })
+  doc.setTextColor('#111111'); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text((isPos2 ? 'TAJ TEXTILES' : BRAND_EN).toUpperCase(), 38, 20)
   doc.setTextColor('#6b7280'); doc.setFontSize(8); doc.text('ADVANCE RECEIPT - NOT A TAX INVOICE', 38, 26)
 
   doc.setFont('helvetica', 'normal'); doc.text(getBranchProfile(order.branch).address, 194, 20, { align: 'right', maxWidth: 76 }); doc.text(getBranchProfile(order.branch).phone, 194, 30, { align: 'right' })
@@ -96,7 +105,9 @@ export function printAdvanceReceipt(order: AdvanceOrder) {
 </style>
 </head><body>
 <div class="c" style="margin-bottom: 6px;">
-  <img src="${order.branch === 'pos2' ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1}" style="width: 50px; height: 50px; object-fit: contain; margin: 0 auto; display: block;" alt="YG Logo" />
+  <div style="width: 36px; height: 36px; line-height: 32px; margin: 0 auto; border: 2px solid #111; border-radius: 50%; font-size: 22px; font-weight: bold; text-align: center; box-sizing: border-box;">
+    ${order.branch === 'pos2' ? 'T' : 'M'}
+  </div>
 </div>
 <div class="c big">${esc(order.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN)}</div>
 <div class="c" style="font-size:10px;color:#555;">${esc(getBranchProfile(order.branch).address)}</div>

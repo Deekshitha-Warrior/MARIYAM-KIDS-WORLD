@@ -1,5 +1,4 @@
 import React from 'react'
-import { BRAND_ICON } from '../lib/brand'
 import { formatPhoneForDisplay } from '../lib/phone'
 import { formatCurrency, formatQuantityValue, normalizeStructuredOrderItem, formatInvoiceNo } from '../lib/retail'
 import type { PosBranch } from '../store/store'
@@ -90,8 +89,25 @@ export const Invoice: React.FC<InvoiceProps> = ({
     >
       {/* ── HEADER ────────────────────────────────────────────────── */}
       <div className="invoice-header" style={{ textAlign: 'center', borderBottom: `1px solid ${borderColor}`, paddingBottom: 20, marginBottom: 20 }}>
-        <div style={{ width: 100, height: 100, margin: '0 auto 16px auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img src={branch ? profile.logo : BRAND_ICON} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        <div style={{ margin: '0 auto 14px auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              border: `2.5px solid ${primaryColor}`,
+              background: cardBg,
+              color: primaryColor,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 28,
+              fontWeight: 900,
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            {isPos2 ? 'T' : 'M'}
+          </div>
         </div>
         <div style={{ fontSize: 24, fontWeight: 900, color: primaryColor, letterSpacing: 2, textTransform: 'uppercase' }}>
           {profile.name}

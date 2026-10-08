@@ -2,7 +2,6 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { BRAND_EN } from './brand'
 import { formatCurrency, formatQuantityValue, normalizeStructuredOrderItem, normalizeUnitLabel, formatInvoiceNo } from './retail'
-import { LOGO_BASE64_POS1, LOGO_BASE64_POS2 } from './logoBase64'
 import type { PosBranch } from '../store/store'
 import { getBranchProfile } from './branchProfile'
 import { formatPhoneForDisplay } from './phone'
@@ -64,17 +63,18 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   doc.line(left, y, right, y)
   y += 7
 
-  const logoSize = 25
+  const brandInitial = isPos2 ? 'T' : 'M'
+  const logoSize = 22
   const headerTop = y
-  try {
-    const logoData = isPos2 ? LOGO_BASE64_POS2 : LOGO_BASE64_POS1
-    const format = logoData.startsWith('data:image/png') ? 'PNG' : 'JPEG'
-    doc.addImage(logoData, format, left, headerTop, logoSize, logoSize)
-  } catch {
-    doc.setTextColor(primaryColor)
-    doc.setFontSize(16)
-    doc.text(profile.name, left, headerTop + 15)
-  }
+  // Monogram circle badge with M or T instead of logo image
+  doc.setFillColor(boxFill)
+  doc.setDrawColor(primaryColor)
+  doc.setLineWidth(0.8)
+  doc.circle(left + logoSize / 2, headerTop + logoSize / 2, logoSize / 2, 'FD')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(20)
+  doc.setTextColor(primaryColor)
+  doc.text(brandInitial, left + logoSize / 2, headerTop + logoSize / 2 + 5, { align: 'center' })
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(13)
   doc.setTextColor(primaryColor)
