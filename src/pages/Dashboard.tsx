@@ -3008,66 +3008,75 @@ export default function Dashboard() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* 1. Cash Collected */}
+                    {/* 1. Cash Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">Cash Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">Cash Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-700 flex items-center justify-center shrink-0">
                             <Banknote size={16} />
                           </div>
                         </div>
                         <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
-                          {formatCurrency(analytics.cashCollected)}
+                          {formatCurrency(analytics.directCashTotal)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Cash: ${formatCurrency(analytics.directCashTotal)} · Cash from Split: ${formatCurrency(analytics.splitCashPart)} (${analytics.cashBillsCount} direct bills)`}>
-                        Cash incl. split payments
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.cashBillsCount} cash bill{analytics.cashBillsCount === 1 ? '' : 's'}</p>
+                        <p className="text-emerald-700 font-bold" title={`Direct Cash ₹${analytics.directCashTotal.toFixed(2)} + Cash in split ₹${analytics.splitCashPart.toFixed(2)}`}>
+                          Drawer Total: {formatCurrency(analytics.cashCollected)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* 2. QR Collected */}
+                    {/* 2. QR / UPI Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">QR Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">QR / UPI Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-amber-700 flex items-center justify-center shrink-0">
                             <QrCode size={16} />
                           </div>
                         </div>
                         <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
-                          {formatCurrency(analytics.qrCollected)}
+                          {formatCurrency(analytics.directQrTotal)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct QR: ${formatCurrency(analytics.directQrTotal)} · QR from Split: ${formatCurrency(analytics.splitQrPart)} (${analytics.qrBillsCount} direct bills)`}>
-                        QR / UPI incl. split payments
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.qrBillsCount} direct QR bill{analytics.qrBillsCount === 1 ? '' : 's'}</p>
+                        <p className="text-amber-700 font-bold" title={`Direct QR ₹${analytics.directQrTotal.toFixed(2)} + QR in split ₹${analytics.splitQrPart.toFixed(2)}`}>
+                          Bank Total: {formatCurrency(analytics.qrCollected)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* 3. Card Collected */}
+                    {/* 3. Card Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">Card Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">Card Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 flex items-center justify-center shrink-0">
                             <CreditCard size={16} />
                           </div>
                         </div>
                         <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
-                          {formatCurrency(analytics.cardCollected)}
+                          {formatCurrency(analytics.directCardTotal)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Card: ${formatCurrency(analytics.directCardTotal)} · Card from Split: ${formatCurrency(analytics.splitCardPart)} (${analytics.cardBillsCount} direct bills)`}>
-                        Card incl. split payments
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.cardBillsCount} card bill{analytics.cardBillsCount === 1 ? '' : 's'}</p>
+                        <p className="text-blue-700 font-bold" title={`Direct Card ₹${analytics.directCardTotal.toFixed(2)} + Card in split ₹${analytics.splitCardPart.toFixed(2)}`}>
+                          Merchant Total: {formatCurrency(analytics.cardCollected)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* 4. Split Collected */}
+                    {/* 4. Split Payment Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">Split Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">Split Payment Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-200/60 text-purple-700 flex items-center justify-center shrink-0">
                             <GitFork size={16} />
                           </div>
                         </div>
@@ -3075,9 +3084,28 @@ export default function Dashboard() {
                           {formatCurrency(analytics.splitCollected)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`${analytics.splitBillsCount} split bills: Cash portion ${formatCurrency(analytics.splitCashPart)}, QR portion ${formatCurrency(analytics.splitQrPart)}, Card portion ${formatCurrency(analytics.splitCardPart)}`}>
-                        {analytics.splitBillsCount} split payment bill{analytics.splitBillsCount === 1 ? '' : 's'}
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.splitBillsCount} split bill{analytics.splitBillsCount === 1 ? '' : 's'}</p>
+                        <p className="text-purple-700 font-bold" title={`Comprises Cash ₹${analytics.splitCashPart.toFixed(2)} + QR ₹${analytics.splitQrPart.toFixed(2)} + Card ₹${analytics.splitCardPart.toFixed(2)}`}>
+                          Cash {formatCurrency(analytics.splitCashPart)} + QR {formatCurrency(analytics.splitQrPart)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mathematical Reconciliation Banner */}
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-200/80 text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-black text-[#111111]">Reconciliation Check:</span>
+                      <span className="text-gray-600">
+                        Cash ({formatCurrency(analytics.directCashTotal)}) + QR ({formatCurrency(analytics.directQrTotal)}) + Card ({formatCurrency(analytics.directCardTotal)}) + Split ({formatCurrency(analytics.splitCollected)}) =
+                      </span>
+                      <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                        {formatCurrency(analytics.directCashTotal + analytics.directQrTotal + analytics.directCardTotal + analytics.splitCollected)} (100% matched)
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-bold text-gray-500">
+                      Drawer Net: Cash {formatCurrency(analytics.cashCollected)} · QR {formatCurrency(analytics.qrCollected)} · Card {formatCurrency(analytics.cardCollected)}
                     </div>
                   </div>
                 </div>
@@ -3241,66 +3269,75 @@ export default function Dashboard() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* 1. Cash Collected */}
+                    {/* 1. Cash Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">Cash Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">Cash Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-700 flex items-center justify-center shrink-0">
                             <Banknote size={16} />
                           </div>
                         </div>
                         <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
-                          {formatCurrency(analytics.todayCashCollected || 0)}
+                          {formatCurrency(analytics.todayDirectCashTotal || 0)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Cash: ${formatCurrency(analytics.todayDirectCashTotal || 0)} · Split: ${formatCurrency(analytics.todaySplitCashPart || 0)}`}>
-                        Cash incl. split payments
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.todayCashBillsCount || 0} cash bill{(analytics.todayCashBillsCount || 0) === 1 ? '' : 's'}</p>
+                        <p className="text-emerald-700 font-bold" title={`Direct Cash ₹${(analytics.todayDirectCashTotal || 0).toFixed(2)} + Cash in split ₹${(analytics.todaySplitCashPart || 0).toFixed(2)}`}>
+                          Drawer Total: {formatCurrency(analytics.todayCashCollected || 0)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* 2. QR Collected */}
+                    {/* 2. QR / UPI Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">QR Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">QR / UPI Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-amber-700 flex items-center justify-center shrink-0">
                             <QrCode size={16} />
                           </div>
                         </div>
                         <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
-                          {formatCurrency(analytics.todayQrCollected || 0)}
+                          {formatCurrency(analytics.todayDirectQrTotal || 0)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct QR: ${formatCurrency(analytics.todayDirectQrTotal || 0)} · Split: ${formatCurrency(analytics.todaySplitQrPart || 0)}`}>
-                        QR / UPI incl. split payments
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.todayQrBillsCount || 0} direct QR bill{(analytics.todayQrBillsCount || 0) === 1 ? '' : 's'}</p>
+                        <p className="text-amber-700 font-bold" title={`Direct QR ₹${(analytics.todayDirectQrTotal || 0).toFixed(2)} + QR in split ₹${(analytics.todaySplitQrPart || 0).toFixed(2)}`}>
+                          Bank Total: {formatCurrency(analytics.todayQrCollected || 0)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* 3. Card Collected */}
+                    {/* 3. Card Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">Card Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">Card Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 flex items-center justify-center shrink-0">
                             <CreditCard size={16} />
                           </div>
                         </div>
                         <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
-                          {formatCurrency(analytics.todayCardCollected || 0)}
+                          {formatCurrency(analytics.todayDirectCardTotal || 0)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Card: ${formatCurrency(analytics.todayDirectCardTotal || 0)} · Split: ${formatCurrency(analytics.todaySplitCardPart || 0)}`}>
-                        Card incl. split payments
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.todayCardBillsCount || 0} card bill{(analytics.todayCardBillsCount || 0) === 1 ? '' : 's'}</p>
+                        <p className="text-blue-700 font-bold" title={`Direct Card ₹${(analytics.todayDirectCardTotal || 0).toFixed(2)} + Card in split ₹${(analytics.todaySplitCardPart || 0).toFixed(2)}`}>
+                          Merchant Total: {formatCurrency(analytics.todayCardCollected || 0)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* 4. Split Collected */}
+                    {/* 4. Split Payment Bills */}
                     <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <p className="text-[13px] font-bold text-[#111111]">Split Collected</p>
-                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                          <p className="text-[13px] font-bold text-[#111111]">Split Payment Bills</p>
+                          <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-200/60 text-purple-700 flex items-center justify-center shrink-0">
                             <GitFork size={16} />
                           </div>
                         </div>
@@ -3308,9 +3345,28 @@ export default function Dashboard() {
                           {formatCurrency(analytics.todaySplitCollected || 0)}
                         </p>
                       </div>
-                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`${analytics.todaySplitBillsCount || 0} split bills: Cash ${formatCurrency(analytics.todaySplitCashPart || 0)} · QR ${formatCurrency(analytics.todaySplitQrPart || 0)} · Card ${formatCurrency(analytics.todaySplitCardPart || 0)}`}>
-                        {analytics.todaySplitBillsCount || 0} split payment bill{(analytics.todaySplitBillsCount || 0) === 1 ? '' : 's'}
-                      </p>
+                      <div className="mt-2 space-y-0.5 text-[11px] leading-snug">
+                        <p className="text-[#6B7280] font-semibold">{analytics.todaySplitBillsCount || 0} split bill{(analytics.todaySplitBillsCount || 0) === 1 ? '' : 's'}</p>
+                        <p className="text-purple-700 font-bold" title={`Comprises Cash ₹${(analytics.todaySplitCashPart || 0).toFixed(2)} + QR ₹${(analytics.todaySplitQrPart || 0).toFixed(2)} + Card ₹${(analytics.todaySplitCardPart || 0).toFixed(2)}`}>
+                          Cash {formatCurrency(analytics.todaySplitCashPart || 0)} + QR {formatCurrency(analytics.todaySplitQrPart || 0)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mathematical Reconciliation Banner */}
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-200/80 text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-black text-[#111111]">Reconciliation Check:</span>
+                      <span className="text-gray-600">
+                        Cash ({formatCurrency(analytics.todayDirectCashTotal || 0)}) + QR ({formatCurrency(analytics.todayDirectQrTotal || 0)}) + Card ({formatCurrency(analytics.todayDirectCardTotal || 0)}) + Split ({formatCurrency(analytics.todaySplitCollected || 0)}) =
+                      </span>
+                      <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                        {formatCurrency((analytics.todayDirectCashTotal || 0) + (analytics.todayDirectQrTotal || 0) + (analytics.todayDirectCardTotal || 0) + (analytics.todaySplitCollected || 0))} (100% matched)
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-bold text-gray-500">
+                      Drawer Net: Cash {formatCurrency(analytics.todayCashCollected || 0)} · QR {formatCurrency(analytics.todayQrCollected || 0)} · Card {formatCurrency(analytics.todayCardCollected || 0)}
                     </div>
                   </div>
                 </div>

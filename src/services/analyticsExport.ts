@@ -44,10 +44,22 @@ export interface AnalyticsExportData {
   qrCollected?: number
   cardCollected?: number
   splitCollected?: number
+  directCashTotal?: number
+  directQrTotal?: number
+  directCardTotal?: number
+  splitCashPart?: number
+  splitQrPart?: number
+  splitCardPart?: number
   todayCashCollected?: number
   todayQrCollected?: number
   todayCardCollected?: number
   todaySplitCollected?: number
+  todayDirectCashTotal?: number
+  todayDirectQrTotal?: number
+  todayDirectCardTotal?: number
+  todaySplitCashPart?: number
+  todaySplitQrPart?: number
+  todaySplitCardPart?: number
 }
 
 export type AnalyticsTabKey = 'revenue' | 'today' | 'products' | 'categories' | 'coupons' | string
@@ -102,12 +114,17 @@ export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, da
     rows.push(['Top Performing Product', data.bestProduct])
     rows.push([])
 
-    rows.push(['--- PAYMENT MODE COLLECTIONS ---'])
+    rows.push(['--- PAYMENT MODE COLLECTIONS (MUTUALLY EXCLUSIVE BILLS) ---'])
     rows.push(['Payment Mode', 'Collected Amount (INR)'])
-    rows.push(['Cash Collected (incl. split)', (data.cashCollected || 0).toFixed(2)])
-    rows.push(['QR Collected (incl. split)', (data.qrCollected || 0).toFixed(2)])
-    rows.push(['Card Collected (incl. split)', (data.cardCollected || 0).toFixed(2)])
-    rows.push(['Split Collected', (data.splitCollected || 0).toFixed(2)])
+    rows.push(['Cash Bills (Direct)', (data.directCashTotal ?? data.cashCollected ?? 0).toFixed(2)])
+    rows.push(['QR / UPI Bills (Direct)', (data.directQrTotal ?? data.qrCollected ?? 0).toFixed(2)])
+    rows.push(['Card Bills (Direct)', (data.directCardTotal ?? data.cardCollected ?? 0).toFixed(2)])
+    rows.push(['Split Payment Bills', (data.splitCollected || 0).toFixed(2)])
+    rows.push(['Reconciliation Total (Cash + QR + Card + Split)', ((data.directCashTotal || 0) + (data.directQrTotal || 0) + (data.directCardTotal || 0) + (data.splitCollected || 0)).toFixed(2)])
+    rows.push(['--- DRAWER / TENDER RECONCILIATION ---'])
+    rows.push(['Drawer Cash Total (incl. split cash)', (data.cashCollected || 0).toFixed(2)])
+    rows.push(['Bank QR Total (incl. split QR)', (data.qrCollected || 0).toFixed(2)])
+    rows.push(['Merchant Card Total (incl. split card)', (data.cardCollected || 0).toFixed(2)])
     rows.push([])
 
     rows.push(['--- WEEKLY REVENUE TREND ---'])
@@ -131,12 +148,17 @@ export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, da
     rows.push(['Today\'s Average Order Value (INR)', data.todayAvgOrderValue.toFixed(2)])
     rows.push([])
 
-    rows.push(['--- TODAY\'S PAYMENT MODE COLLECTIONS ---'])
+    rows.push(['--- TODAY\'S PAYMENT MODE COLLECTIONS (MUTUALLY EXCLUSIVE BILLS) ---'])
     rows.push(['Payment Mode', 'Collected Amount (INR)'])
-    rows.push(['Cash Collected (incl. split)', (data.todayCashCollected || data.cashCollected || 0).toFixed(2)])
-    rows.push(['QR Collected (incl. split)', (data.todayQrCollected || data.qrCollected || 0).toFixed(2)])
-    rows.push(['Card Collected (incl. split)', (data.todayCardCollected || data.cardCollected || 0).toFixed(2)])
-    rows.push(['Split Collected', (data.todaySplitCollected || data.splitCollected || 0).toFixed(2)])
+    rows.push(['Cash Bills (Direct)', (data.todayDirectCashTotal ?? data.todayCashCollected ?? 0).toFixed(2)])
+    rows.push(['QR / UPI Bills (Direct)', (data.todayDirectQrTotal ?? data.todayQrCollected ?? 0).toFixed(2)])
+    rows.push(['Card Bills (Direct)', (data.todayDirectCardTotal ?? data.todayCardCollected ?? 0).toFixed(2)])
+    rows.push(['Split Payment Bills', (data.todaySplitCollected || 0).toFixed(2)])
+    rows.push(['Reconciliation Total (Cash + QR + Card + Split)', ((data.todayDirectCashTotal || 0) + (data.todayDirectQrTotal || 0) + (data.todayDirectCardTotal || 0) + (data.todaySplitCollected || 0)).toFixed(2)])
+    rows.push(['--- TODAY\'S DRAWER / TENDER RECONCILIATION ---'])
+    rows.push(['Today\'s Drawer Cash (incl. split cash)', (data.todayCashCollected || 0).toFixed(2)])
+    rows.push(['Today\'s Bank QR (incl. split QR)', (data.todayQrCollected || 0).toFixed(2)])
+    rows.push(['Today\'s Merchant Card (incl. split card)', (data.todayCardCollected || 0).toFixed(2)])
     rows.push([])
 
     rows.push(['--- TODAY\'S HOURLY SALES TREND ---'])
@@ -306,24 +328,24 @@ export async function exportAnalyticsToPDF({
       <!-- Payment Collections Breakdown (4 Tiles) -->
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
         <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
-          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Cash Collected</div>
-          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.cashCollected || 0)}</div>
-          <div style="font-size: 7.5px; color: #666;">Cash incl. split</div>
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Cash Bills</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(activeTab === 'today' ? (data.todayDirectCashTotal ?? data.todayCashCollected ?? 0) : (data.directCashTotal ?? data.cashCollected ?? 0))}</div>
+          <div style="font-size: 7.5px; color: #059669; font-weight: 700;">Drawer: ${formatCurrency(activeTab === 'today' ? (data.todayCashCollected || 0) : (data.cashCollected || 0))}</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
-          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">QR Collected</div>
-          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.qrCollected || 0)}</div>
-          <div style="font-size: 7.5px; color: #666;">QR / UPI incl. split</div>
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">QR / UPI Bills</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(activeTab === 'today' ? (data.todayDirectQrTotal ?? data.todayQrCollected ?? 0) : (data.directQrTotal ?? data.qrCollected ?? 0))}</div>
+          <div style="font-size: 7.5px; color: #D97706; font-weight: 700;">Bank: ${formatCurrency(activeTab === 'today' ? (data.todayQrCollected || 0) : (data.qrCollected || 0))}</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
-          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Card Collected</div>
-          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.cardCollected || 0)}</div>
-          <div style="font-size: 7.5px; color: #666;">Card incl. split</div>
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Card Bills</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(activeTab === 'today' ? (data.todayDirectCardTotal ?? data.todayCardCollected ?? 0) : (data.directCardTotal ?? data.cardCollected ?? 0))}</div>
+          <div style="font-size: 7.5px; color: #2563EB; font-weight: 700;">Merchant: ${formatCurrency(activeTab === 'today' ? (data.todayCardCollected || 0) : (data.cardCollected || 0))}</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
-          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Split Collected</div>
-          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.splitCollected || 0)}</div>
-          <div style="font-size: 7.5px; color: #666;">Split payment bills</div>
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Split Bills</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(activeTab === 'today' ? (data.todaySplitCollected || 0) : (data.splitCollected || 0))}</div>
+          <div style="font-size: 7.5px; color: #7C3AED; font-weight: 700;">Cash + QR split</div>
         </div>
       </div>
 
