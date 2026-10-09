@@ -1494,12 +1494,14 @@ export default function Pos(props: PosProps = {}) {
                 />
               </div>
               <div className="min-w-0">
-                <label className="block text-[11px] md:text-[10px] font-bold text-[#374151] mb-1">Remarks (Internal)</label>
+                <label className="block text-[11px] md:text-[10px] font-bold text-[#374151] mb-1">
+                  {branch === 'pos1' ? 'Number of Kids' : 'Remarks (Internal)'}
+                </label>
                 <input
                   type="text"
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
-                  placeholder="Optional remarks"
+                  placeholder={branch === 'pos1' ? 'Enter number of kids' : 'Optional remarks'}
                   className="w-full min-w-0 max-w-full box-border h-10 sm:h-11 px-3 sm:px-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D4AF37] text-[13px] font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
