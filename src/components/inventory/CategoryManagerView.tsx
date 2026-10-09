@@ -13,7 +13,7 @@ export const CategoryManagerView: React.FC = () => {
   // Form State for Add / Edit
   const [nameEn, setNameEn] = useState('')
   const [nameTa, setNameTa] = useState('')
-  const [sortOrder, setSortOrder] = useState<number>(0)
+  const [sortOrder, setSortOrder] = useState<number | string>(0)
   const [isActive, setIsActive] = useState<boolean>(true)
   const [saving, setSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -68,12 +68,13 @@ export const CategoryManagerView: React.FC = () => {
 
     setSaving(true)
     try {
+      const numericSortOrder = sortOrder === '' ? 0 : Number(sortOrder)
       if (editingId) {
         // Update
         await inventoryService.updateCategory(editingId, {
           name_en: trimmedEn,
           name_ta: nameTa.trim() || undefined,
-          sort_order: sortOrder,
+          sort_order: numericSortOrder,
           is_active: isActive,
         }, branch)
         setSuccessMessage(`Category "${trimmedEn}" updated successfully!`)
@@ -82,7 +83,7 @@ export const CategoryManagerView: React.FC = () => {
         await inventoryService.createCategory({
           name_en: trimmedEn,
           name_ta: nameTa.trim() || undefined,
-          sort_order: sortOrder,
+          sort_order: numericSortOrder,
           is_active: isActive,
         }, branch)
         setSuccessMessage(`Category "${trimmedEn}" created successfully!`)
@@ -244,7 +245,13 @@ export const CategoryManagerView: React.FC = () => {
                 <input
                   type="number"
                   value={sortOrder}
-                  onChange={(e) => setSortOrder(parseInt(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setSortOrder(val === '' ? '' : parseInt(val) || 0)
+                  }}
+                  onBlur={() => {
+                    if (sortOrder === '') setSortOrder(0)
+                  }}
                   className="w-full h-10 px-3 rounded-xl border border-gray-300 bg-white text-xs font-black text-gray-900 outline-none focus:border-[#7A1220]"
                 />
               </div>

@@ -198,7 +198,10 @@ export default function Pos(props: PosProps = {}) {
   const [addUnregisteredOpen, setAddUnregisteredOpen] = useState(false)
   const [depositOpen, setDepositOpen] = useState(false)
   const [depositCreated, setDepositCreated] = useState<AdvanceOrder | null>(null)
-  const [depositForm, setDepositForm] = useState({ amount: '', expectedDeliveryDate: '', paymentMethod: 'cash' as AdvancePaymentMethod, address: '', remarks: '', referenceNumber: '' })
+  const [depositForm, setDepositForm] = useState({ amount: '', expectedDeliveryDate: '', paymentMethod: 'cash' as AdvancePaymentMethod | 'split', address: '', remarks: '', referenceNumber: '' })
+  const [posDepositSplitP1Type, setPosDepositSplitP1Type] = useState<'cash' | 'upi' | 'card'>('cash')
+  const [posDepositSplitP1Amount, setPosDepositSplitP1Amount] = useState('')
+  const [posDepositSplitP2Type, setPosDepositSplitP2Type] = useState<'cash' | 'upi' | 'card'>('upi')
   const [dbCategories, setDbCategories] = useState<string[]>([])
   const [priceEditModal, setPriceEditModal] = useState<{
     isOpen: boolean
@@ -898,6 +901,28 @@ export default function Pos(props: PosProps = {}) {
     const depositAmount = Number(depositForm.amount)
     if (!Number.isFinite(depositAmount) || depositAmount <= 0 || depositAmount >= total) { setError(`Deposit must be greater than ${formatCurrency(0)} and less than ${formatCurrency(total)}.`); return }
     if (!depositForm.expectedDeliveryDate) { setError('Select the expected delivery date.'); return }
+
+    const labelFor = (t: 'cash' | 'upi' | 'card') => t === 'upi' ? 'QR' : t === 'card' ? 'Card' : 'Cash'
+    let depositMethodStr: string = depositForm.paymentMethod
+    if (depositForm.paymentMethod === 'split') {
+      const p1Amt = Number(posDepositSplitP1Amount) || 0
+      if (!posDepositSplitP1Amount.trim() || p1Amt <= 0) {
+        setError('Enter Payment 1 amount for split deposit.')
+        return
+      }
+      if (p1Amt >= depositAmount) {
+        setError('Payment 1 amount must be less than the deposit amount received.')
+        return
+      }
+      if (posDepositSplitP1Type === posDepositSplitP2Type) {
+        setError('Payment 1 and Payment 2 must use different payment methods.')
+        return
+      }
+      const p2Amt = Math.round((depositAmount - p1Amt) * 100) / 100
+      depositMethodStr = `Split (${labelFor(posDepositSplitP1Type)} ₹${p1Amt} + ${labelFor(posDepositSplitP2Type)} ₹${p2Amt})`
+    }
+    const rpcMethod: AdvancePaymentMethod = depositForm.paymentMethod === 'split' ? posDepositSplitP1Type : (depositForm.paymentMethod as AdvancePaymentMethod)
+
     setSaving(true); setError('')
     try {
       const productsSnapshot = items.map((item) => {
@@ -921,12 +946,22 @@ export default function Pos(props: PosProps = {}) {
         category: Array.from(new Set(items.map(item => item.category).filter(Boolean))).join(', '),
         description: items.map(item => `${item.qty}× ${item.name}${item.note ? ` — ${item.note}` : ''}`).join('\n'),
         totalAmount: total, depositAmount, expectedDeliveryDate: depositForm.expectedDeliveryDate,
-        remarks: effectiveRemarks, referenceNumber: depositForm.referenceNumber, paymentMethod: depositForm.paymentMethod, createdByName: role || 'Staff',
+        remarks: effectiveRemarks, referenceNumber: depositForm.referenceNumber, paymentMethod: rpcMethod, createdByName: role || 'Staff',
         products: productsSnapshot,
         branch,
       })
+
+      if (depositForm.paymentMethod === 'split') {
+        try {
+          await supabase.from('advance_order_payments').update({
+            payment_method: depositMethodStr
+          }).eq('advance_order_id', created.id).eq('payment_type', 'deposit')
+        } catch { /* best effort */ }
+      }
+
       setDepositCreated(created)
       setDepositOpen(false)
+      setPosDepositSplitP1Amount('')
       clearAll()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create deposit order')
@@ -2172,7 +2207,70 @@ export default function Pos(props: PosProps = {}) {
               <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Deposit received *</span><input required autoFocus type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()} min="0.01" max={Math.max(0, total - 0.01)} step="0.01" value={depositForm.amount} onChange={e => setDepositForm({...depositForm, amount:e.target.value})} className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-violet-600"/></label>
               <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Remaining balance</span><div className="rounded-xl bg-red-50 px-3 py-2.5 text-sm font-black text-red-700">{formatCurrency(Math.max(0,total-Number(depositForm.amount||0)))}</div></label>
               <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Expected delivery *</span><input required type="date" value={depositForm.expectedDeliveryDate} onChange={e => setDepositForm({...depositForm, expectedDeliveryDate:e.target.value})} className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-violet-600"/></label>
-              <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Payment method *</span><select value={depositForm.paymentMethod} onChange={e => setDepositForm({...depositForm,paymentMethod:e.target.value as AdvancePaymentMethod})} className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-violet-600"><option value="cash">Cash</option><option value="upi">QR</option><option value="card">Card</option></select></label>
+              <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Payment method *</span>
+                <select value={depositForm.paymentMethod} onChange={e => setDepositForm({...depositForm,paymentMethod:e.target.value as AdvancePaymentMethod | 'split'})} className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-violet-600">
+                  <option value="cash">Cash</option>
+                  <option value="upi">QR</option>
+                  <option value="card">Card</option>
+                  <option value="split">Split (Multiple Methods)</option>
+                </select>
+              </label>
+              {depositForm.paymentMethod === 'split' && (
+                <div className="sm:col-span-2 border border-violet-200 rounded-2xl p-4 bg-violet-50/60 space-y-3">
+                  <p className="text-[11px] font-black text-violet-800 uppercase tracking-wider">
+                    Deposit Split Payment — {posDepositSplitP1Type === 'cash' ? 'Cash' : posDepositSplitP1Type === 'upi' ? 'QR' : 'Card'} + {posDepositSplitP2Type === 'cash' ? 'Cash' : posDepositSplitP2Type === 'upi' ? 'QR' : 'Card'} (₹)
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <span className="block text-[10px] font-black text-gray-600 uppercase tracking-wider mb-1">Payment 1</span>
+                      <div className="flex gap-2 items-center">
+                        <select
+                          value={posDepositSplitP1Type}
+                          onChange={e => {
+                            const val = e.target.value as 'cash' | 'upi' | 'card'
+                            setPosDepositSplitP1Type(val)
+                            if (val === posDepositSplitP2Type) setPosDepositSplitP2Type(val === 'cash' ? 'upi' : 'cash')
+                          }}
+                          className="h-10 px-2.5 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase outline-none focus:border-violet-600"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="upi">QR</option>
+                          <option value="card">Card</option>
+                        </select>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={posDepositSplitP1Amount}
+                          onChange={e => setPosDepositSplitP1Amount(e.target.value)}
+                          placeholder="0.00"
+                          className="flex-1 h-10 px-3 bg-white border border-gray-200 rounded-xl text-sm font-black text-right outline-none focus:border-violet-600"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-black text-gray-600 uppercase tracking-wider mb-1">Payment 2 (Automatic)</span>
+                      <div className="flex gap-2 items-center">
+                        <select
+                          value={posDepositSplitP2Type}
+                          onChange={e => {
+                            const val = e.target.value as 'cash' | 'upi' | 'card'
+                            setPosDepositSplitP2Type(val)
+                            if (val === posDepositSplitP1Type) setPosDepositSplitP1Type(val === 'cash' ? 'upi' : 'cash')
+                          }}
+                          className="h-10 px-2.5 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase outline-none focus:border-violet-600"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="upi">QR</option>
+                          <option value="card">Card</option>
+                        </select>
+                        <div className="flex-1 h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-black text-gray-800 text-right flex items-center justify-end">
+                          {formatCurrency(Math.max(0, (Number(depositForm.amount) || 0) - (Number(posDepositSplitP1Amount) || 0)))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Delivery address</span><textarea value={depositForm.address} onChange={e => setDepositForm({...depositForm,address:e.target.value})} className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-violet-600" rows={2}/></label>
               <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Reference Number</span><input value={depositForm.referenceNumber} onChange={e => setDepositForm({...depositForm,referenceNumber:e.target.value})} className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-violet-600" placeholder="e.g. PO-001, booking ref (optional)"/></label>
               <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#6B7280]">Remarks</span><textarea value={depositForm.remarks} onChange={e => setDepositForm({...depositForm,remarks:e.target.value})} className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-violet-600" rows={2}/></label>

@@ -403,7 +403,7 @@ export default function Dashboard() {
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const [openCategoryMenuId, setOpenCategoryMenuId] = useState<string | number | null>(null)
   const [coupons, setCoupons] = useState<DashboardCoupon[]>([])
-  const [couponForm, setCouponForm] = useState({ code: '', percentage: 10, expiry_date: '', usage_limit: '', min_order_value: '' })
+  const [couponForm, setCouponForm] = useState<{ code: string; percentage: number | string; expiry_date: string; usage_limit: string; min_order_value: string }>({ code: '', percentage: 10, expiry_date: '', usage_limit: '', min_order_value: '' })
   const [couponSaveError, setCouponSaveError] = useState('')
   const [couponSaveSuccess, setCouponSaveSuccess] = useState('')
   const [editingCouponId, setEditingCouponId] = useState<number | null>(null)
@@ -5054,7 +5054,10 @@ export default function Dashboard() {
                           className="w-full rounded-xl border border-gray-300 bg-[#FAFAFA] px-3.5 py-2.5 text-[13px] font-bold text-[#111111] outline-none transition-all focus:border-[#7A1220] focus:bg-white focus:ring-1 focus:ring-[#7A1220]"
                           placeholder="10"
                           value={couponForm.percentage}
-                          onChange={e => setCouponForm(f => ({ ...f, percentage: Number(e.target.value) }))}
+                          onChange={e => {
+                            const val = e.target.value
+                            setCouponForm(f => ({ ...f, percentage: val === '' ? '' : Number(val) }))
+                          }}
                         />
                       </div>
                       <div className="space-y-1.5">

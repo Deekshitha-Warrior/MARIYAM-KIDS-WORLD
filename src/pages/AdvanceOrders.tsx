@@ -33,7 +33,7 @@ const STATUS_STYLES: Record<AdvanceStatus, string> = {
   pending_deposit: 'bg-amber-50 text-amber-700 border-amber-200', ready_for_delivery: 'bg-blue-50 text-blue-700 border-blue-200',
   waiting_final_payment: 'bg-violet-50 text-violet-700 border-violet-200', completed: 'bg-emerald-50 text-emerald-700 border-emerald-200', cancelled: 'bg-red-50 text-red-700 border-red-200',
 }
-const initialForm = { customerName: '', phone: '', address: '', productName: '', category: '', description: '', totalAmount: '', depositAmount: '', expectedDeliveryDate: '', status: 'pending_deposit' as AdvanceStatus, remarks: '', reference_number: '', paymentMethod: 'cash' as AdvancePaymentMethod }
+const initialForm = { customerName: '', phone: '', address: '', productName: '', category: '', description: '', totalAmount: '', depositAmount: '', expectedDeliveryDate: '', status: 'pending_deposit' as AdvanceStatus, remarks: '', reference_number: '', paymentMethod: 'cash' as AdvancePaymentMethod | 'split' }
 
 type AdvanceOrdersProps = {
   onOrderCompleted?: (order?: AdvanceOrder) => void
@@ -53,6 +53,9 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   const [notice, setNotice] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [form, setForm] = useState(initialForm)
+  const [createSplitP1Type, setCreateSplitP1Type] = useState<'cash' | 'upi' | 'card'>('cash')
+  const [createSplitP1Amount, setCreateSplitP1Amount] = useState('')
+  const [createSplitP2Type, setCreateSplitP2Type] = useState<'cash' | 'upi' | 'card'>('upi')
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -158,10 +161,37 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
     event.preventDefault(); setSaving(true); setError(''); setNotice('')
     const total = Number(form.totalAmount); const deposit = Number(form.depositAmount)
     if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(deposit) || deposit <= 0 || deposit >= total) { setError('Deposit must be greater than ₹0 and less than the total order amount.'); setSaving(false); return }
+
+    const labelFor = (t: 'cash' | 'upi' | 'card') => t === 'upi' ? 'QR' : t === 'card' ? 'Card' : 'Cash'
+    let depositMethodStr: string = form.paymentMethod
+    if (form.paymentMethod === 'split') {
+      const p1Amt = Number(createSplitP1Amount) || 0
+      if (!createSplitP1Amount.trim() || p1Amt <= 0) {
+        setError('Enter Payment 1 amount for split deposit')
+        setSaving(false)
+        return
+      }
+      if (p1Amt >= deposit) {
+        setError('Payment 1 amount must be less than the deposit amount received — select a single payment method instead')
+        setSaving(false)
+        return
+      }
+      if (createSplitP1Type === createSplitP2Type) {
+        setError('Payment 1 and Payment 2 must use different payment methods')
+        setSaving(false)
+        return
+      }
+      const p2Amt = Math.round((deposit - p1Amt) * 100) / 100
+      depositMethodStr = `Split (${labelFor(createSplitP1Type)} ₹${p1Amt} + ${labelFor(createSplitP2Type)} ₹${p2Amt})`
+    }
+
+    const rpcMethod: AdvancePaymentMethod = form.paymentMethod === 'split' ? createSplitP1Type : (form.paymentMethod as AdvancePaymentMethod)
+
     try {
       const matchedProd = products.find(p => p.name.trim().toLowerCase() === form.productName.trim().toLowerCase())
       const created = await createAdvanceOrder({
         ...form,
+        paymentMethod: rpcMethod,
         totalAmount: total,
         depositAmount: deposit,
         referenceNumber: form.reference_number,
@@ -180,7 +210,16 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
         }],
         branch
       })
-      setOrders(current => [created, ...current]); setForm(initialForm); setCreateOpen(false); setNotice(`${created.deposit_id} created. Deposit is tracked separately and has not been added to revenue.`)
+
+      if (form.paymentMethod === 'split') {
+        try {
+          await supabase.from('advance_order_payments').update({
+            payment_method: depositMethodStr
+          }).eq('advance_order_id', created.id).eq('payment_type', 'deposit')
+        } catch { /* best effort */ }
+      }
+
+      setOrders(current => [created, ...current]); setForm(initialForm); setCreateSplitP1Amount(''); setCreateOpen(false); setNotice(`${created.deposit_id} created. Deposit is tracked separately and has not been added to revenue.`)
 
       // Redirect to WhatsApp with advance deposit receipt
       const advanceMsg = buildAdvanceDepositWhatsAppMessage({
@@ -191,7 +230,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
         depositAmount: created.deposit_amount,
         remainingBalance: created.remaining_balance,
         expectedDeliveryDate: created.expected_delivery_date,
-        paymentMethod: form.paymentMethod,
+        paymentMethod: depositMethodStr,
         branch: created.branch,
       })
       window.open(toWhatsAppUrl(created.phone, advanceMsg), '_blank', 'noopener,noreferrer')
@@ -500,7 +539,74 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
             <Field label="Total Order Amount *"><input required min="0.01" step="0.01" type="number" className={inputClass} value={form.totalAmount} onChange={e=>setForm({...form,totalAmount:e.target.value})}/></Field>
             <Field label="Deposit Amount Received *"><input required min="0" step="0.01" type="number" className={inputClass} value={form.depositAmount} onChange={e=>setForm({...form,depositAmount:e.target.value})}/></Field>
             <Field label="Remaining Balance (automatic)"><div className="rounded-xl bg-violet-50 px-4 py-3 font-black text-violet-800">{formatCurrency(Math.max(0, Number(form.totalAmount||0)-Number(form.depositAmount||0)))}</div></Field>
-            <Field label="Deposit Payment Method"><select className={inputClass} value={form.paymentMethod} onChange={e=>setForm({...form,paymentMethod:e.target.value as AdvancePaymentMethod})}><option value="cash">Cash</option><option value="upi">QR</option><option value="card">Card</option></select></Field>
+            <Field label="Deposit Payment Method">
+              <select
+                className={inputClass}
+                value={form.paymentMethod}
+                onChange={e => setForm({ ...form, paymentMethod: e.target.value as AdvancePaymentMethod | 'split' })}
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">QR</option>
+                <option value="card">Card</option>
+                <option value="split">Split (Multiple Methods)</option>
+              </select>
+            </Field>
+            {form.paymentMethod === 'split' && (
+              <div className="md:col-span-2 border border-violet-200 rounded-2xl p-4 bg-violet-50/60 space-y-3">
+                <p className="text-[11px] font-black text-violet-800 uppercase tracking-wider">
+                  Deposit Split Payment — {createSplitP1Type === 'cash' ? 'Cash' : createSplitP1Type === 'upi' ? 'QR' : 'Card'} + {createSplitP2Type === 'cash' ? 'Cash' : createSplitP2Type === 'upi' ? 'QR' : 'Card'} (₹)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="block text-[10px] font-black text-gray-600 uppercase tracking-wider mb-1">Payment 1</span>
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={createSplitP1Type}
+                        onChange={e => {
+                          const val = e.target.value as 'cash' | 'upi' | 'card'
+                          setCreateSplitP1Type(val)
+                          if (val === createSplitP2Type) setCreateSplitP2Type(val === 'cash' ? 'upi' : 'cash')
+                        }}
+                        className="h-10 px-2.5 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase outline-none focus:border-violet-600"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="upi">QR</option>
+                        <option value="card">Card</option>
+                      </select>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={createSplitP1Amount}
+                        onChange={e => setCreateSplitP1Amount(e.target.value)}
+                        placeholder="0.00"
+                        className="flex-1 h-10 px-3 bg-white border border-gray-200 rounded-xl text-sm font-black text-right outline-none focus:border-violet-600"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-black text-gray-600 uppercase tracking-wider mb-1">Payment 2 (Automatic)</span>
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={createSplitP2Type}
+                        onChange={e => {
+                          const val = e.target.value as 'cash' | 'upi' | 'card'
+                          setCreateSplitP2Type(val)
+                          if (val === createSplitP1Type) setCreateSplitP1Type(val === 'cash' ? 'upi' : 'cash')
+                        }}
+                        className="h-10 px-2.5 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase outline-none focus:border-violet-600"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="upi">QR</option>
+                        <option value="card">Card</option>
+                      </select>
+                      <div className="flex-1 h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-sm font-black text-gray-800 text-right flex items-center justify-end">
+                        {formatCurrency(Math.max(0, (Number(form.depositAmount) || 0) - (Number(createSplitP1Amount) || 0)))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <Field label="Expected Delivery Date *"><input required type="date" className={inputClass} value={form.expectedDeliveryDate} onChange={e=>setForm({...form,expectedDeliveryDate:e.target.value})}/></Field>
             <Field label="Order Status"><select disabled className={inputClass} value="pending_deposit"><option value="pending_deposit">Pending Deposit</option></select></Field>
             <div className="md:col-span-2"><Field label="Reference Number"><input className={inputClass} value={form.reference_number} onChange={e=>setForm({...form,reference_number:e.target.value})} placeholder="e.g. PO-001, booking ref (optional)"/></Field></div>
