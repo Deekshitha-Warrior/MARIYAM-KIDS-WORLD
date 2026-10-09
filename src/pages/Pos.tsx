@@ -789,8 +789,8 @@ export default function Pos(props: PosProps = {}) {
   const handleNewSale = () => {
     try {
       clearAll()
+      void fetchProducts(branch, true)
     } catch { /* best effort */ }
-    window.location.reload()
   }
 
   // A bill is built from one branch's catalog, stock and coupons. If the admin
