@@ -83,33 +83,48 @@ const saveLocalPayments = (payments: AdvancePayment[]) => {
   } catch { /* ignore */ }
 }
 
-const normalizeOrder = (row: Record<string, unknown>): AdvanceOrder => ({
-  ...row,
-  id: String(row.id || ''),
-  deposit_id: String(row.deposit_id || ''),
-  customer_name: String(row.customer_name || ''),
-  phone: String(row.phone || ''),
-  address: String(row.address || ''),
-  product_name: String(row.product_name || ''),
-  products: Array.isArray(row.products) ? (row.products as Array<Record<string, unknown>>) : [],
-  category: String(row.category || ''),
-  description: String(row.description || ''),
-  total_amount: Number(row.total_amount || 0),
-  deposit_amount: Number(row.deposit_amount || 0),
-  remaining_balance: Number(row.remaining_balance ?? (Number(row.total_amount || 0) - Number(row.deposit_amount || 0))),
-  expected_delivery_date: String(row.expected_delivery_date || ''),
-  status: String(row.status || 'pending_deposit') as AdvanceStatus,
-  remarks: String(row.remarks || ''),
-  reference_number: String(row.reference_number || ''),
-  created_by_name: String(row.created_by_name || ''),
-  created_at: String(row.created_at || new Date().toISOString()),
-  updated_at: String(row.updated_at || new Date().toISOString()),
-  completed_at: row.completed_at ? String(row.completed_at) : null,
-  completed_order_id: row.completed_order_id ? String(row.completed_order_id) : null,
-  invoice_number: row.invoice_number ? String(row.invoice_number) : null,
-  final_payment_method: row.final_payment_method ? String(row.final_payment_method) : null,
-  branch: row.branch === 'pos2' ? 'pos2' : 'pos1',
-})
+const normalizeOrder = (row: Record<string, unknown>): AdvanceOrder => {
+  const totalAmount = Number(row.total_amount || 0)
+  const depositAmount = Number(row.deposit_amount || 0)
+  const status = String(row.status || 'pending_deposit') as AdvanceStatus
+  const calculatedBalance = Math.max(0, Math.round((totalAmount - depositAmount) * 100) / 100)
+
+  let remainingBalance: number
+  if (status === 'completed' || status === 'cancelled') {
+    remainingBalance = 0
+  } else {
+    const rawBal = row.remaining_balance !== undefined && row.remaining_balance !== null ? Number(row.remaining_balance) : null
+    remainingBalance = (rawBal !== null && rawBal > 0) ? rawBal : calculatedBalance
+  }
+
+  return {
+    ...row,
+    id: String(row.id || ''),
+    deposit_id: String(row.deposit_id || ''),
+    customer_name: String(row.customer_name || ''),
+    phone: String(row.phone || ''),
+    address: String(row.address || ''),
+    product_name: String(row.product_name || ''),
+    products: Array.isArray(row.products) ? (row.products as Array<Record<string, unknown>>) : [],
+    category: String(row.category || ''),
+    description: String(row.description || ''),
+    total_amount: totalAmount,
+    deposit_amount: depositAmount,
+    remaining_balance: remainingBalance,
+    expected_delivery_date: String(row.expected_delivery_date || ''),
+    status,
+    remarks: String(row.remarks || ''),
+    reference_number: String(row.reference_number || ''),
+    created_by_name: String(row.created_by_name || ''),
+    created_at: String(row.created_at || new Date().toISOString()),
+    updated_at: String(row.updated_at || new Date().toISOString()),
+    completed_at: row.completed_at ? String(row.completed_at) : null,
+    completed_order_id: row.completed_order_id ? String(row.completed_order_id) : null,
+    invoice_number: row.invoice_number ? String(row.invoice_number) : null,
+    final_payment_method: row.final_payment_method ? String(row.final_payment_method) : null,
+    branch: row.branch === 'pos2' ? 'pos2' : 'pos1',
+  }
+}
 
 const rpcRow = (data: unknown) => (Array.isArray(data) ? data[0] : data) as Record<string, unknown>
 
@@ -488,11 +503,16 @@ export async function createAdvanceOrder(input: {
         console.error('[createAdvanceOrder] Supabase error:', error.message)
       } else if (data) {
         createdOrder = normalizeOrder(rpcRow(data))
-        // Patch reference_number (not in RPC params)
+        // Ensure remaining_balance is computed and persisted if DB returned 0 or null
+        const expectedBal = Math.max(0, Math.round((createdOrder.total_amount - createdOrder.deposit_amount) * 100) / 100)
+        createdOrder.remaining_balance = expectedBal
+
+        const patchPayload: Record<string, unknown> = { remaining_balance: expectedBal }
         if (input.referenceNumber.trim()) {
-          await supabase.from('advance_orders').update({ reference_number: input.referenceNumber.trim() }).eq('id', createdOrder.id)
+          patchPayload.reference_number = input.referenceNumber.trim()
           createdOrder.reference_number = input.referenceNumber.trim()
         }
+        await supabase.from('advance_orders').update(patchPayload).eq('id', createdOrder.id)
       }
     } catch (err) { console.error('[createAdvanceOrder] Exception:', err) }
   }

@@ -111,7 +111,7 @@ We have successfully received your initial advance payment!
 👔 Product: ${input.productName}
 💵 Total Order Amount: ₹${input.totalAmount}
 💰 Advance Paid: ₹${input.depositAmount}${input.paymentMethod ? ` (${input.paymentMethod.toLowerCase() === 'upi' ? 'QR' : input.paymentMethod.toUpperCase()})` : ''}
-🔴 Balance to Pay on Delivery: ₹${input.remainingBalance}
+🔴 Balance to Pay on Delivery: ₹${(Number(input.remainingBalance) > 0 ? input.remainingBalance : Math.max(0, Math.round((Number(input.totalAmount || 0) - Number(input.depositAmount || 0)) * 100) / 100))}
 📅 Expected Delivery Date: ${deliveryDateFormatted}
 
 Your order is being prepared with utmost care. We will have everything ready on or before ${deliveryDateFormatted}!

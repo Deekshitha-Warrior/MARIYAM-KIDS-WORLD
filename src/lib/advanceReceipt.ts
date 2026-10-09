@@ -44,7 +44,12 @@ export function advanceReceiptPdf(order: AdvanceOrder) {
   let y = 66
   rows.forEach(([label, value]) => { doc.setFont('helvetica', 'bold'); doc.setTextColor('#6b7280'); doc.text(label.toUpperCase(), 16, y); doc.setFont('helvetica', 'normal'); doc.setTextColor('#111827'); doc.text(String(value), 64, y, { maxWidth: 126 }); y += 10 })
   y += 4; doc.setFillColor('#FBFAF6'); doc.roundedRect(16, y, 178, 42, 3, 3, 'F')
-  const money = [[ 'Total order amount', order.total_amount ], [ 'Deposit paid', order.deposit_amount ], [ 'Remaining balance', order.remaining_balance ]] as const
+  const totalAmount = Number(order.total_amount || 0)
+  const depositAmount = Number(order.deposit_amount || 0)
+  const balanceDue = (order.status !== 'completed' && (!order.remaining_balance || order.remaining_balance <= 0))
+    ? Math.max(0, Math.round((totalAmount - depositAmount) * 100) / 100)
+    : Number(order.remaining_balance || 0)
+  const money = [[ 'Total order amount', totalAmount ], [ 'Deposit paid', depositAmount ], [ 'Remaining balance', balanceDue ]] as const
   money.forEach(([label, value], index) => { const rowY = y + 11 + index * 11; doc.setFont('helvetica', index === 2 ? 'bold' : 'normal'); doc.setTextColor(index === 2 ? '#B48811' : '#374151'); doc.text(label, 22, rowY); doc.text(pdfMoney(value), 188, rowY, { align: 'right' }) })
   doc.setFont('helvetica', 'bold'); doc.setTextColor('#b45309'); doc.setFontSize(9); doc.text('This receipt records an advance payment only. It is not a final invoice.', 105, y + 55, { align: 'center' })
   return new File([doc.output('blob')], `Advance-Receipt-${order.deposit_id}.pdf`, { type: 'application/pdf' })
@@ -74,6 +79,12 @@ export function printAdvanceReceipt(order: AdvanceOrder) {
     const depositPayment = (() => {
       return paymentLabel || 'Cash'
     })()
+
+    const totalAmount = Number(order.total_amount || 0)
+    const depositAmount = Number(order.deposit_amount || 0)
+    const balanceDue = (order.status !== 'completed' && (!order.remaining_balance || order.remaining_balance <= 0))
+      ? Math.max(0, Math.round((totalAmount - depositAmount) * 100) / 100)
+      : Number(order.remaining_balance || 0)
 
     const html = `<!doctype html><html lang="en" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" spellcheck="false"><head><title>Advance Receipt ${esc(order.deposit_id)}</title>
 <meta charset="utf-8">
@@ -127,9 +138,9 @@ ${order.category ? `<div class="r"><span class="label">Category</span><span>${es
 <div class="r"><span class="label">Delivery</span><span>${esc(new Date(`${order.expected_delivery_date}T00:00:00`).toLocaleDateString('en-IN'))}</span></div>
 <div class="r"><span class="label">Payment</span><span>${esc(depositPayment)}</span></div>
 <div class="line"></div>
-<div class="r"><span>Total Amount</span><span class="bold">${esc(formatCurrency(order.total_amount))}</span></div>
-<div class="r"><span>Deposit Paid</span><span class="bold">${esc(formatCurrency(order.deposit_amount))}</span></div>
-<div class="r balance-row"><span>Balance Due</span><span>${esc(formatCurrency(order.remaining_balance))}</span></div>
+<div class="r"><span>Total Amount</span><span class="bold">${esc(formatCurrency(totalAmount))}</span></div>
+<div class="r"><span>Deposit Paid</span><span class="bold">${esc(formatCurrency(depositAmount))}</span></div>
+<div class="r balance-row"><span>Balance Due</span><span>${esc(formatCurrency(balanceDue))}</span></div>
 <div class="line"></div>
 <div class="warn">ADVANCE PAYMENT ONLY &mdash; NOT A FINAL INVOICE</div>
 </body></html>`
