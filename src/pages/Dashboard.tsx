@@ -3092,22 +3092,6 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Mathematical Reconciliation Banner */}
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-200/80 text-xs">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-black text-[#111111]">Reconciliation Check:</span>
-                      <span className="text-gray-600">
-                        Cash ({formatCurrency(analytics.directCashTotal)}) + QR ({formatCurrency(analytics.directQrTotal)}) + Card ({formatCurrency(analytics.directCardTotal)}) + Split ({formatCurrency(analytics.splitCollected)}) =
-                      </span>
-                      <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                        {formatCurrency(analytics.directCashTotal + analytics.directQrTotal + analytics.directCardTotal + analytics.splitCollected)} (100% matched)
-                      </span>
-                    </div>
-                    <div className="text-[11px] font-bold text-gray-500">
-                      Drawer Net: Cash {formatCurrency(analytics.cashCollected)} · QR {formatCurrency(analytics.qrCollected)} · Card {formatCurrency(analytics.cardCollected)}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -3351,22 +3335,6 @@ export default function Dashboard() {
                           Cash {formatCurrency(analytics.todaySplitCashPart || 0)} + QR {formatCurrency(analytics.todaySplitQrPart || 0)}
                         </p>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Mathematical Reconciliation Banner */}
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl bg-gray-50 border border-gray-200/80 text-xs">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-black text-[#111111]">Reconciliation Check:</span>
-                      <span className="text-gray-600">
-                        Cash ({formatCurrency(analytics.todayDirectCashTotal || 0)}) + QR ({formatCurrency(analytics.todayDirectQrTotal || 0)}) + Card ({formatCurrency(analytics.todayDirectCardTotal || 0)}) + Split ({formatCurrency(analytics.todaySplitCollected || 0)}) =
-                      </span>
-                      <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                        {formatCurrency((analytics.todayDirectCashTotal || 0) + (analytics.todayDirectQrTotal || 0) + (analytics.todayDirectCardTotal || 0) + (analytics.todaySplitCollected || 0))} (100% matched)
-                      </span>
-                    </div>
-                    <div className="text-[11px] font-bold text-gray-500">
-                      Drawer Net: Cash {formatCurrency(analytics.todayCashCollected || 0)} · QR {formatCurrency(analytics.todayQrCollected || 0)} · Card {formatCurrency(analytics.todayCardCollected || 0)}
                     </div>
                   </div>
                 </div>
