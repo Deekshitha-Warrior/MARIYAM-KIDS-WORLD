@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { isSupabaseConfigured } from '../../lib/supabase'
+import { inventoryService } from '../../services/inventoryService'
 import type { PosBranch } from '../../store/store'
 import { posAccent, branchLabel, branchLogo } from '../../lib/branchTheme'
 import { formatCurrency } from '../../lib/retail'
@@ -31,21 +32,20 @@ export default function ConsolidatedStock({ onNavigate }: ConsolidatedStockProps
     setLoading(true)
     try {
       const results = await Promise.all(BRANCHES.map(async (branch) => {
-        const { data: products } = await supabase
-          .from('products')
-          .select('price, stock_quantity, low_stock_alert')
-          .eq('branch', branch)
-          .eq('is_active', true)
-
-        const rows = products || []
-        const valuation = rows.reduce((sum, p) => sum + (Number(p.price) || 0) * (Number(p.stock_quantity) || 0), 0)
-        const outOfStock = rows.filter((p) => (Number(p.stock_quantity) || 0) <= 0).length
-        const lowStock = rows.filter((p) => {
-          const qty = Number(p.stock_quantity) || 0
-          const threshold = Number(p.low_stock_alert) > 0 ? Number(p.low_stock_alert) : 5
+        const inventoryItems = await inventoryService.fetchInventoryItems(branch)
+        const activeItems = (inventoryItems || []).filter((i) => i.is_active)
+        const valuation = activeItems.reduce((sum, i) => sum + (Number(i.price) || 0) * (Number(i.stock) || 0), 0)
+        const outOfStock = activeItems.filter((i) => (Number(i.stock) || 0) <= 0).length
+        const lowStock = activeItems.filter((i) => {
+          const qty = Number(i.stock) || 0
+          const threshold = Number(i.low_stock_threshold) > 0 ? Number(i.low_stock_threshold) : 5
           return qty > 0 && qty <= threshold
         }).length
-        const inStock = rows.filter((p) => (Number(p.stock_quantity) || 0) > 0).length
+        const inStock = activeItems.filter((i) => {
+          const qty = Number(i.stock) || 0
+          const threshold = Number(i.low_stock_threshold) > 0 ? Number(i.low_stock_threshold) : 5
+          return qty > threshold
+        }).length
 
         return [branch, { valuation, inStock, lowStock, outOfStock }] as [PosBranch, BranchStock]
       }))

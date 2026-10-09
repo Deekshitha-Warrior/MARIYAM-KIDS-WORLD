@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Store, Phone, MapPin, ShoppingCart, Boxes, AlertTriangle, FileText } from 'lucide-react'
-import { useAdminAuthStore, useProductStore, useSettingsStore, resolveBranch, type PosBranch } from '../../store/store'
+import { useAdminAuthStore, useSettingsStore, resolveBranch, type PosBranch } from '../../store/store'
+import { inventoryService } from '../../services/inventoryService'
 import { BRAND_EN } from '../../lib/brand'
 import { branchLogo, branchLabel } from '../../lib/branchTheme'
 import type { TabKey } from '../../pages/Dashboard'
@@ -18,12 +19,18 @@ export default function BranchHub({ onNavigate }: BranchHubProps) {
   const activeBranch = useAdminAuthStore((s) => s.activeBranch)
   const branch = resolveBranch(activeBranch)
   const accent = posAccent(branch)
-  const products = useProductStore((s) => s.products)
   const { settings, fetchSettings } = useSettingsStore()
+  const [lowStockCount, setLowStockCount] = useState(0)
 
-  useEffect(() => { void fetchSettings(branch) }, [fetchSettings, branch])
-
-  const lowStockCount = products.filter((p) => p.isActive && (Number(p.stockQuantity) || 0) <= 5).length
+  useEffect(() => {
+    void fetchSettings(branch)
+    inventoryService.fetchInventoryItems(branch)
+      .then((items) => {
+        const count = items.filter((i) => i.is_active && i.stock <= (i.low_stock_threshold || 5)).length
+        setLowStockCount(count)
+      })
+      .catch((err) => console.warn('Failed to load branch stock in BranchHub', err))
+  }, [fetchSettings, branch])
 
   const quickOps: { label: string; tab: TabKey; icon: React.ReactNode; primary?: boolean }[] = [
     { label: 'Open Store Dashboard & POS', tab: 'billing', icon: <ShoppingCart size={15} />, primary: true },

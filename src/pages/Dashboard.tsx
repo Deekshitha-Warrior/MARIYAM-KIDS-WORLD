@@ -258,11 +258,11 @@ const computePaymentModeTotals = (ordersList: Array<{ total?: unknown; payment_m
       directCashTotal += total
       cashCollected += total
       cashBillsCount += 1
-    } else if (pm === 'qr' || pm === 'upi' || pm.includes('qr') || pm.includes('upi')) {
+    } else if (pm === 'qr' || pm === 'upi' || pm.includes('qr') || pm.includes('upi') || pm.includes('online') || pm.includes('gpay') || pm.includes('phonepe') || pm.includes('paytm')) {
       directQrTotal += total
       qrCollected += total
       qrBillsCount += 1
-    } else if (pm === 'card' || pm.includes('card')) {
+    } else if (pm === 'card' || pm.includes('card') || pm.includes('debit') || pm.includes('credit')) {
       directCardTotal += total
       cardCollected += total
       cardBillsCount += 1
@@ -304,7 +304,7 @@ const emptyForm = {
 }
 
 const exportCSV = (orders: DashboardOrder[], branch?: PosBranch) => {
-  const header = ['Order Ref', 'Customer', 'Phone', 'Date', 'Total (INR)', 'Order Type', 'Status']
+  const header = ['Order Ref', 'Customer', 'Phone', 'Date', 'Total (INR)', 'Order Type', 'Payment Mode', 'Status']
   const rows = orders.map(o => {
     let dateStr = ''
     try {
@@ -319,6 +319,7 @@ const exportCSV = (orders: DashboardOrder[], branch?: PosBranch) => {
       dateStr,
       getOrderTotal(o).toFixed(2),
       o.order_type,
+      o.payment_mode || 'Cash',
       o.status,
     ]
   })
@@ -1194,11 +1195,15 @@ export default function Dashboard() {
         if (paymentMethodFilter === 'split') {
           if (!pm.includes('split')) return false
         } else if (paymentMethodFilter === 'cash') {
-          if (!pm.includes('cash') || pm.includes('split')) return false
+          const isExplicitNonCash = pm.includes('split') || pm.includes('qr') || pm.includes('upi') || pm.includes('card') || pm.includes('debit') || pm.includes('credit') || pm.includes('online') || pm.includes('gpay') || pm.includes('phonepe') || pm.includes('paytm')
+          if (isExplicitNonCash && !pm.includes('cash')) return false
+          if (pm.includes('split')) return false
         } else if (paymentMethodFilter === 'qr') {
-          if ((!pm.includes('qr') && !pm.includes('upi')) || pm.includes('split')) return false
+          const isQrUpi = pm.includes('qr') || pm.includes('upi') || pm.includes('online') || pm.includes('gpay') || pm.includes('phonepe') || pm.includes('paytm')
+          if (!isQrUpi || pm.includes('split')) return false
         } else if (paymentMethodFilter === 'card') {
-          if (!pm.includes('card') || pm.includes('split')) return false
+          const isCard = pm.includes('card') || pm.includes('debit') || pm.includes('credit')
+          if (!isCard || pm.includes('split')) return false
         }
       }
       return true
@@ -1529,12 +1534,13 @@ export default function Dashboard() {
   const activeHistoryFiltersCount = useMemo(() => {
     let count = 0
     if (billTypeFilter !== 'all') count++
+    if (paymentMethodFilter !== 'all') count++
     if (datePreset || search.dateFrom || search.dateTo) count++
     if (search.invoiceNo.trim()) count++
     if (search.customerName.trim()) count++
     if (search.phone.trim()) count++
     return count
-  }, [billTypeFilter, datePreset, search])
+  }, [billTypeFilter, paymentMethodFilter, datePreset, search])
 
   // Order search - all settled bills (online_request excluded; advance_order included)
   const runSearch = async (e?: FormEvent) => {
@@ -2377,13 +2383,13 @@ export default function Dashboard() {
                 <div className="bg-white rounded-2xl border border-[#E5E7EB]/30 p-5 shadow-sm">
                   <h3 className="text-base font-black text-[#111111] mb-4">Low Stock Alerts</h3>
                   <div className="space-y-3">
-                    {products.filter(p => p.stock <= (p.lowStockAlert || 5)).slice(0, 10).map((p, i) => (
+                    {products.filter(p => !p.hasVariants && p.category?.trim().toLowerCase() !== 'unregistered' && p.stock <= (p.lowStockAlert || 5)).slice(0, 10).map((p, i) => (
                       <div key={i} className="flex justify-between items-center bg-red-50 border border-red-100 p-3 rounded-xl">
                         <p className="text-[13px] font-bold text-red-900">{p.name}</p>
                         <p className="text-[14px] font-black text-red-700">{p.stock} left</p>
                       </div>
                     ))}
-                    {products.filter(p => p.stock <= (p.lowStockAlert || 5)).length === 0 && (
+                    {products.filter(p => !p.hasVariants && p.category?.trim().toLowerCase() !== 'unregistered' && p.stock <= (p.lowStockAlert || 5)).length === 0 && (
                       <p className="text-[13px] text-[#374151]">No low stock alerts.</p>
                     )}
                   </div>
@@ -4046,6 +4052,17 @@ export default function Dashboard() {
                       <button type="button" onClick={() => setBillTypeFilter('all')} className="hover:text-red-600 cursor-pointer"><X size={11} /></button>
                     </span>
                   )}
+                  {paymentMethodFilter !== 'all' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-900 border border-purple-200 text-[11px] font-semibold">
+                      Payment: {
+                        paymentMethodFilter === 'cash' ? l('Cash Only', 'ரொக்கம்') :
+                        paymentMethodFilter === 'qr' ? l('QR / UPI', 'QR / UPI') :
+                        paymentMethodFilter === 'card' ? l('Card', 'கார்டு') :
+                        l('Split Payment', 'பிரிவு கட்டணம்')
+                      }
+                      <button type="button" onClick={() => setPaymentMethodFilter('all')} className="hover:text-red-600 cursor-pointer"><X size={11} /></button>
+                    </span>
+                  )}
                   {datePreset && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-semibold">
                       Date: {datePreset === 'today' ? 'Today' : datePreset === 'week' ? 'This Week' : datePreset === 'month' ? 'This Month' : datePreset === 'year' ? 'This Year' : 'Custom'}
@@ -4108,6 +4125,20 @@ export default function Dashboard() {
                         <div className="min-w-0">
                           <p className="text-[#9BAB9A] uppercase text-[10px] sm:text-[11px] font-black">Total</p>
                           <p className="font-black text-[#111111]">{formatCurrency(getOrderTotal(o))}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[#9BAB9A] uppercase text-[10px] sm:text-[11px] font-black">Payment</p>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            (o.payment_mode || '').toLowerCase().includes('split')
+                              ? 'bg-purple-100 text-purple-700'
+                              : (o.payment_mode || '').toLowerCase() === 'cash' || !o.payment_mode
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : (o.payment_mode || '').toLowerCase() === 'card'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {o.payment_mode ? (o.payment_mode.toLowerCase().includes('split') ? 'SPLIT' : o.payment_mode) : 'Cash'}
+                          </span>
                         </div>
                         <div>
                           <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Coupon</p>
@@ -4173,7 +4204,7 @@ export default function Dashboard() {
                 <table className="w-full text-left text-[13px]">
                   <thead className="bg-[#F9FAFB] text-[10px] uppercase tracking-wider text-[#374151]">
                     <tr>
-                      {['Invoice No', 'Customer Name', 'Phone', 'Bill Type', 'Coupon', 'Discount', 'Delivery', 'Total', 'Date', 'Status', 'Actions', 'Details'].map(h => (
+                      {['Invoice No', 'Customer Name', 'Phone', 'Bill Type', 'Payment', 'Coupon', 'Discount', 'Delivery', 'Total', 'Date', 'Status', 'Actions', 'Details'].map(h => (
                         <th key={h} className="px-2 py-3 font-black text-center">{h}</th>
                       ))}
                     </tr>
@@ -4202,6 +4233,19 @@ export default function Dashboard() {
                           <td className="max-w-[100px] truncate px-2 py-3 text-[11px] font-semibold text-[#111111]">{o.customer_name}</td>
                           <td className="whitespace-nowrap px-2 py-3 text-[11px] text-[#374151]">{formatPhoneForDisplay(o.phone)}</td>
                           <td className="px-2 py-3"><span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase ${billTypeClass}`}>{billTypeLabel}</span></td>
+                          <td className="px-2 py-3">
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide ${
+                              (o.payment_mode || '').toLowerCase().includes('split')
+                                ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                                : (o.payment_mode || '').toLowerCase() === 'cash' || !o.payment_mode
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : (o.payment_mode || '').toLowerCase() === 'card'
+                                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            }`}>
+                              {o.payment_mode ? (o.payment_mode.toLowerCase().includes('split') ? 'SPLIT' : o.payment_mode.toUpperCase()) : 'CASH'}
+                            </span>
+                          </td>
                           <td className="px-2 py-3 text-[11px]">
                             {o.coupon_code ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{o.coupon_code}</span> : <span className="text-[#9BAB9A]">—</span>}
                           </td>
@@ -4259,7 +4303,7 @@ export default function Dashboard() {
                         </tr>
                         {historyExpandedId === o.id && (
                           <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]/40">
-                            <td colSpan={12} className="px-4 py-4">
+                            <td colSpan={13} className="px-4 py-4">
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[12px]">
                                 <div>
                                   <p className="text-[10px] font-black uppercase text-[#9BAB9A] tracking-wider mb-1">Reference No</p>
@@ -4303,7 +4347,7 @@ export default function Dashboard() {
                       )
                     })}
                     {filteredSearchResults.length === 0 && (
-                      <tr><td colSpan={12} className="px-4 py-8 text-center text-[#374151]">{l('No matching bills', 'பில்கள் இல்லை')}</td></tr>
+                      <tr><td colSpan={13} className="px-4 py-8 text-center text-[#374151]">{l('No matching bills', 'பில்கள் இல்லை')}</td></tr>
                     )}
                   </tbody>
                 </table>

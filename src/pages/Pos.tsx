@@ -783,6 +783,13 @@ export default function Pos(props: PosProps = {}) {
     searchRef.current?.focus()
   }
 
+  const handleNewSale = () => {
+    try {
+      clearAll()
+    } catch { /* best effort */ }
+    window.location.reload()
+  }
+
   // A bill is built from one branch's catalog, stock and coupons. If the admin
   // switches branch mid-bill, it must not be saved under the other branch.
   const billBranchRef = useRef(branch)
@@ -1197,7 +1204,7 @@ export default function Pos(props: PosProps = {}) {
               <h1 className="text-xl font-bold text-textMain">{l('Bill Generated Successfully', 'பில் உருவாக்கப்பட்டது')}</h1>
               <p className="text-xs text-textMuted mt-0.5">Transaction recorded and inventory updated</p>
             </div>
-            <button onClick={clearAll}
+            <button onClick={handleNewSale}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#111111] hover:bg-[#3d4f3a] text-white font-bold text-sm shadow-sm cursor-pointer">
               <Plus size={15} /> New Sale
             </button>
@@ -1269,7 +1276,7 @@ export default function Pos(props: PosProps = {}) {
               className="flex flex-col md:flex-row items-center justify-center gap-2 py-3 px-2 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-[12px] md:text-sm transition-colors text-center leading-tight">
               <MessageCircle size={16} className="shrink-0" /> WhatsApp Invoice
             </button>
-            <button onClick={clearAll}
+            <button onClick={handleNewSale}
               className="flex flex-col md:flex-row items-center justify-center gap-2 py-3 px-2 rounded-xl bg-[#111111] hover:bg-[#3d4f3a] text-white font-bold text-[12px] md:text-sm transition-colors text-center leading-tight">
               <RefreshCw size={16} className="shrink-0" /> New Sale
             </button>

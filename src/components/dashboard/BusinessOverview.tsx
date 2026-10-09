@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { RefreshCw, TrendingUp, Receipt, Boxes, AlertTriangle, Store } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { inventoryService } from '../../services/inventoryService'
 import type { PosBranch } from '../../store/store'
 import { posAccent, branchLabel, branchLogo, branchShortLabel } from '../../lib/branchTheme'
 import { formatCurrency } from '../../lib/retail'
@@ -35,9 +36,9 @@ export default function BusinessOverview({ onNavigate }: BusinessOverviewProps) 
       todayStart.setHours(0, 0, 0, 0)
 
       const results = await Promise.all(BRANCHES.map(async (branch) => {
-        const [{ data: orders }, { data: products }] = await Promise.all([
+        const [{ data: orders }, inventoryItems] = await Promise.all([
           supabase.from('orders').select('total, created_at, status, order_type').eq('branch', branch).gte('created_at', todayStart.toISOString()).limit(2000),
-          supabase.from('products').select('name, price, stock_quantity, low_stock_alert, is_active').eq('branch', branch).eq('is_active', true),
+          inventoryService.fetchInventoryItems(branch),
         ])
 
         // Same definition as POS Analytics: completed/paid bills, excluding website (online) requests
@@ -47,15 +48,16 @@ export default function BusinessOverview({ onNavigate }: BusinessOverviewProps) 
           return (status === 'completed' || status === 'paid') && type !== 'online_request' && type !== 'whatsapp_request'
         })
         const todaySales = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0)
-        const stockValue = (products || []).reduce((sum, p) => sum + (Number(p.price) || 0) * (Number(p.stock_quantity) || 0), 0)
-        const low = (products || []).filter((p) => (Number(p.stock_quantity) || 0) <= (Number(p.low_stock_alert) > 0 ? Number(p.low_stock_alert) : 5))
+        const activeItems = (inventoryItems || []).filter((i) => i.is_active)
+        const stockValue = activeItems.reduce((sum, i) => sum + (Number(i.price) || 0) * (Number(i.stock) || 0), 0)
+        const low = activeItems.filter((i) => (Number(i.stock) || 0) <= (Number(i.low_stock_threshold) > 0 ? Number(i.low_stock_threshold) : 5))
 
         return [branch, {
           todaySales,
           bills: validOrders.length,
           stockValue,
           lowStock: low.length,
-          lowStockItems: low.slice(0, 3).map((p) => p.name),
+          lowStockItems: low.slice(0, 3).map((i) => i.variant_name ? `${i.name} (${i.variant_name})` : i.name),
         }] as [PosBranch, BranchStats]
       }))
 
