@@ -7,7 +7,7 @@ import {
   Package, Search, RefreshCw, ShieldCheck, ShieldOff, Trophy,
   MessageCircle, ChevronDown, Eye, FileText, Printer, MoreVertical, X, Layers, Receipt,
   SlidersHorizontal, Tag, Ticket, Percent, CheckCircle2, Info, Sparkles,
-  Globe, Users, Store, ArrowLeft,
+  Globe, Users, Store, ArrowLeft, Banknote, QrCode, CreditCard, GitFork,
 } from 'lucide-react'
 
 // Custom Malaysian Ringgit icon — replaces the generic dollar-sign icon
@@ -140,6 +140,155 @@ const getOrderTotal = (order: { total: unknown; items: unknown; shipping?: unkno
     - toNumber(order.discount_amount, 0)
     - toNumber(order.manual_discount_amount, 0)
   )
+}
+
+interface PaymentModeTotals {
+  cashCollected: number
+  qrCollected: number
+  cardCollected: number
+  splitCollected: number
+  cashBillsCount: number
+  qrBillsCount: number
+  cardBillsCount: number
+  splitBillsCount: number
+  splitCashPart: number
+  splitQrPart: number
+  splitCardPart: number
+  directCashTotal: number
+  directQrTotal: number
+  directCardTotal: number
+}
+
+const computePaymentModeTotals = (ordersList: Array<{ total?: unknown; payment_mode?: unknown; payment_method?: unknown }>): PaymentModeTotals => {
+  let cashCollected = 0
+  let qrCollected = 0
+  let cardCollected = 0
+  let splitCollected = 0
+
+  let cashBillsCount = 0
+  let qrBillsCount = 0
+  let cardBillsCount = 0
+  let splitBillsCount = 0
+
+  let splitCashPart = 0
+  let splitQrPart = 0
+  let splitCardPart = 0
+
+  let directCashTotal = 0
+  let directQrTotal = 0
+  let directCardTotal = 0
+
+  for (const o of ordersList) {
+    const total = toNumber(o.total, 0)
+    const rawMode = String(o.payment_mode || o.payment_method || '').trim()
+    const pm = rawMode.toLowerCase()
+
+    if (pm.includes('split')) {
+      splitCollected += total
+      splitBillsCount += 1
+
+      let pCash = 0
+      let pQr = 0
+      let pCard = 0
+
+      // Match payment method name and numeric amount
+      // e.g. "Split (Cash ₹30,238.00 + QR ₹9,165.22)" or "Split (Cash ₹500 + QR ₹200)"
+      const matches = Array.from(rawMode.matchAll(/(cash|qr|upi|card)[^\d]*?([\d,]+(?:\.\d+)?)/gi))
+
+      if (matches.length >= 2) {
+        matches.forEach(m => {
+          const type = m[1].toLowerCase()
+          const amt = parseFloat(m[2].replace(/,/g, '')) || 0
+          if (type === 'cash') pCash += amt
+          else if (type === 'qr' || type === 'upi') pQr += amt
+          else if (type === 'card') pCard += amt
+        })
+      } else if (matches.length === 1) {
+        const type = matches[0][1].toLowerCase()
+        const amt = parseFloat(matches[0][2].replace(/,/g, '')) || 0
+        const rem = Math.max(0, total - amt)
+        if (type === 'cash') {
+          pCash = amt
+          if (pm.includes('qr') || pm.includes('upi')) pQr = rem
+          else if (pm.includes('card')) pCard = rem
+        } else if (type === 'qr' || type === 'upi') {
+          pQr = amt
+          if (pm.includes('cash')) pCash = rem
+          else if (pm.includes('card')) pCard = rem
+        } else if (type === 'card') {
+          pCard = amt
+          if (pm.includes('cash')) pCash = rem
+          else if (pm.includes('qr') || pm.includes('upi')) pQr = rem
+        }
+      } else {
+        const hasCash = pm.includes('cash')
+        const hasQr = pm.includes('qr') || pm.includes('upi')
+        const hasCard = pm.includes('card')
+        if (hasCash && hasQr) {
+          pCash = Math.round((total / 2) * 100) / 100
+          pQr = Math.round((total - pCash) * 100) / 100
+        } else if (hasCash && hasCard) {
+          pCash = Math.round((total / 2) * 100) / 100
+          pCard = Math.round((total - pCash) * 100) / 100
+        } else if (hasQr && hasCard) {
+          pQr = Math.round((total / 2) * 100) / 100
+          pCard = Math.round((total - pQr) * 100) / 100
+        } else {
+          pCash = total
+        }
+      }
+
+      // Reconcile rounding to ensure sum of parts equals order total exactly
+      const parsedSum = pCash + pQr + pCard
+      if (parsedSum > 0 && Math.abs(parsedSum - total) > 0.001) {
+        const diff = total - parsedSum
+        if (pCash >= pQr && pCash >= pCard) pCash += diff
+        else if (pQr >= pCash && pQr >= pCard) pQr += diff
+        else pCard += diff
+      }
+
+      splitCashPart += pCash
+      splitQrPart += pQr
+      splitCardPart += pCard
+
+      cashCollected += pCash
+      qrCollected += pQr
+      cardCollected += pCard
+    } else if (pm === 'cash' || pm.includes('cash')) {
+      directCashTotal += total
+      cashCollected += total
+      cashBillsCount += 1
+    } else if (pm === 'qr' || pm === 'upi' || pm.includes('qr') || pm.includes('upi')) {
+      directQrTotal += total
+      qrCollected += total
+      qrBillsCount += 1
+    } else if (pm === 'card' || pm.includes('card')) {
+      directCardTotal += total
+      cardCollected += total
+      cardBillsCount += 1
+    } else {
+      directCashTotal += total
+      cashCollected += total
+      cashBillsCount += 1
+    }
+  }
+
+  return {
+    cashCollected: Math.round(cashCollected * 100) / 100,
+    qrCollected: Math.round(qrCollected * 100) / 100,
+    cardCollected: Math.round(cardCollected * 100) / 100,
+    splitCollected: Math.round(splitCollected * 100) / 100,
+    cashBillsCount,
+    qrBillsCount,
+    cardBillsCount,
+    splitBillsCount,
+    splitCashPart: Math.round(splitCashPart * 100) / 100,
+    splitQrPart: Math.round(splitQrPart * 100) / 100,
+    splitCardPart: Math.round(splitCardPart * 100) / 100,
+    directCashTotal: Math.round(directCashTotal * 100) / 100,
+    directQrTotal: Math.round(directQrTotal * 100) / 100,
+    directCardTotal: Math.round(directCardTotal * 100) / 100,
+  }
 }
 
 const emptyForm = {
@@ -915,9 +1064,55 @@ export default function Dashboard() {
       .sort((a, b) => b[1] - a[1]).slice(0, 8)
       .map(([name, count]) => ({ name, count }))
 
+    // Compute payment collections for the selected period
+    const paymentTotals = computePaymentModeTotals(billableCompleted.map(o => ({
+      total: getOrderTotal(o),
+      payment_mode: o.payment_mode,
+      payment_method: o.payment_method,
+    })))
+
+    // Compute payment collections for today
+    const todayPaymentTotals = computePaymentModeTotals(todayOrders.map(o => ({
+      total: getOrderTotal(o),
+      payment_mode: o.payment_mode,
+      payment_method: o.payment_method,
+    })))
+
     return {
       totalCompletedRevenue: completedRevenue,
       averageRevenuePerBill,
+      // Payment collections for the selected period (Cash, QR, Card, Split)
+      cashCollected: paymentTotals.cashCollected,
+      qrCollected: paymentTotals.qrCollected,
+      cardCollected: paymentTotals.cardCollected,
+      splitCollected: paymentTotals.splitCollected,
+      cashBillsCount: paymentTotals.cashBillsCount,
+      qrBillsCount: paymentTotals.qrBillsCount,
+      cardBillsCount: paymentTotals.cardBillsCount,
+      splitBillsCount: paymentTotals.splitBillsCount,
+      splitCashPart: paymentTotals.splitCashPart,
+      splitQrPart: paymentTotals.splitQrPart,
+      splitCardPart: paymentTotals.splitCardPart,
+      directCashTotal: paymentTotals.directCashTotal,
+      directQrTotal: paymentTotals.directQrTotal,
+      directCardTotal: paymentTotals.directCardTotal,
+
+      // Today's payment collections
+      todayCashCollected: todayPaymentTotals.cashCollected,
+      todayQrCollected: todayPaymentTotals.qrCollected,
+      todayCardCollected: todayPaymentTotals.cardCollected,
+      todaySplitCollected: todayPaymentTotals.splitCollected,
+      todayCashBillsCount: todayPaymentTotals.cashBillsCount,
+      todayQrBillsCount: todayPaymentTotals.qrBillsCount,
+      todayCardBillsCount: todayPaymentTotals.cardBillsCount,
+      todaySplitBillsCount: todayPaymentTotals.splitBillsCount,
+      todaySplitCashPart: todayPaymentTotals.splitCashPart,
+      todaySplitQrPart: todayPaymentTotals.splitQrPart,
+      todaySplitCardPart: todayPaymentTotals.splitCardPart,
+      todayDirectCashTotal: todayPaymentTotals.directCashTotal,
+      todayDirectQrTotal: todayPaymentTotals.directQrTotal,
+      todayDirectCardTotal: todayPaymentTotals.directCardTotal,
+
       todaySales,
       todayCompletedOrdersCount,
       todayItemsSold,
@@ -2794,6 +2989,93 @@ export default function Dashboard() {
                   ))}
                 </div>
 
+                {/* ── 4 Payment Mode Collection Tiles ── */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <div>
+                      <h3 className="text-[16px] font-black text-[#111111] tracking-tight">Payment Mode Collections</h3>
+                      <p className="text-[12px] text-[#6B7280]">Real-time breakdown across Cash, QR, Card &amp; Split payment modes</p>
+                    </div>
+                    <span className="text-[12px] font-extrabold text-[#7A1220] bg-red-50 border border-red-100/80 px-3 py-1 rounded-xl self-start sm:self-auto shadow-xs">
+                      Total Collected: {formatCurrency(analytics.totalCompletedRevenue)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* 1. Cash Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">Cash Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <Banknote size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.cashCollected)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Cash: ${formatCurrency(analytics.directCashTotal)} · Cash from Split: ${formatCurrency(analytics.splitCashPart)} (${analytics.cashBillsCount} direct bills)`}>
+                        Cash incl. split payments
+                      </p>
+                    </div>
+
+                    {/* 2. QR Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">QR Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <QrCode size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.qrCollected)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct QR: ${formatCurrency(analytics.directQrTotal)} · QR from Split: ${formatCurrency(analytics.splitQrPart)} (${analytics.qrBillsCount} direct bills)`}>
+                        QR / UPI incl. split payments
+                      </p>
+                    </div>
+
+                    {/* 3. Card Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">Card Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <CreditCard size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.cardCollected)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Card: ${formatCurrency(analytics.directCardTotal)} · Card from Split: ${formatCurrency(analytics.splitCardPart)} (${analytics.cardBillsCount} direct bills)`}>
+                        Card incl. split payments
+                      </p>
+                    </div>
+
+                    {/* 4. Split Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">Split Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <GitFork size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.splitCollected)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`${analytics.splitBillsCount} split bills: Cash portion ${formatCurrency(analytics.splitCashPart)}, QR portion ${formatCurrency(analytics.splitQrPart)}, Card portion ${formatCurrency(analytics.splitCardPart)}`}>
+                        {analytics.splitBillsCount} split payment bill{analytics.splitBillsCount === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   <div className="xl:col-span-2 bg-white rounded-card border border-borderLight p-6 shadow-soft">
                     <div className="flex items-center justify-between gap-4 mb-4">
@@ -2938,6 +3220,93 @@ export default function Dashboard() {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* ── Today's 4 Payment Mode Collection Tiles ── */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <div>
+                      <h3 className="text-[16px] font-black text-[#111111] tracking-tight">Today's Payment Collections</h3>
+                      <p className="text-[12px] text-[#6B7280]">Breakdown across Cash, QR, Card &amp; Split payment modes for today</p>
+                    </div>
+                    <span className="text-[12px] font-extrabold text-[#10B981] bg-emerald-50 border border-emerald-100/80 px-3 py-1 rounded-xl self-start sm:self-auto shadow-xs">
+                      Today's Total: {formatCurrency(analytics.todaySales)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* 1. Cash Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">Cash Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <Banknote size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.todayCashCollected || 0)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Cash: ${formatCurrency(analytics.todayDirectCashTotal || 0)} · Split: ${formatCurrency(analytics.todaySplitCashPart || 0)}`}>
+                        Cash incl. split payments
+                      </p>
+                    </div>
+
+                    {/* 2. QR Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">QR Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <QrCode size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.todayQrCollected || 0)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct QR: ${formatCurrency(analytics.todayDirectQrTotal || 0)} · Split: ${formatCurrency(analytics.todaySplitQrPart || 0)}`}>
+                        QR / UPI incl. split payments
+                      </p>
+                    </div>
+
+                    {/* 3. Card Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">Card Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <CreditCard size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.todayCardCollected || 0)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`Direct Card: ${formatCurrency(analytics.todayDirectCardTotal || 0)} · Split: ${formatCurrency(analytics.todaySplitCardPart || 0)}`}>
+                        Card incl. split payments
+                      </p>
+                    </div>
+
+                    {/* 4. Split Collected */}
+                    <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-[13px] font-bold text-[#111111]">Split Collected</p>
+                          <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200/60 text-[#B48811] flex items-center justify-center shrink-0">
+                            <GitFork size={16} />
+                          </div>
+                        </div>
+                        <p className="text-[24px] sm:text-[26px] font-black text-[#111111] tracking-tight my-1">
+                          {formatCurrency(analytics.todaySplitCollected || 0)}
+                        </p>
+                      </div>
+                      <p className="text-[12px] text-[#6B7280] leading-snug mt-2" title={`${analytics.todaySplitBillsCount || 0} split bills: Cash ${formatCurrency(analytics.todaySplitCashPart || 0)} · QR ${formatCurrency(analytics.todaySplitQrPart || 0)} · Card ${formatCurrency(analytics.todaySplitCardPart || 0)}`}>
+                        {analytics.todaySplitBillsCount || 0} split payment bill{(analytics.todaySplitBillsCount || 0) === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Top products today */}

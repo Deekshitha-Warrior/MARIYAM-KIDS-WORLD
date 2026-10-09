@@ -39,6 +39,15 @@ export interface AnalyticsExportData {
   totalCouponOrders: number
   couponUsageRate: number
   couponDailyTrend?: Array<{ day: string; date: string; orders: number; discounts: number }>
+  // Payment collections
+  cashCollected?: number
+  qrCollected?: number
+  cardCollected?: number
+  splitCollected?: number
+  todayCashCollected?: number
+  todayQrCollected?: number
+  todayCardCollected?: number
+  todaySplitCollected?: number
 }
 
 export type AnalyticsTabKey = 'revenue' | 'today' | 'products' | 'categories' | 'coupons' | string
@@ -93,6 +102,14 @@ export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, da
     rows.push(['Top Performing Product', data.bestProduct])
     rows.push([])
 
+    rows.push(['--- PAYMENT MODE COLLECTIONS ---'])
+    rows.push(['Payment Mode', 'Collected Amount (INR)'])
+    rows.push(['Cash Collected (incl. split)', (data.cashCollected || 0).toFixed(2)])
+    rows.push(['QR Collected (incl. split)', (data.qrCollected || 0).toFixed(2)])
+    rows.push(['Card Collected (incl. split)', (data.cardCollected || 0).toFixed(2)])
+    rows.push(['Split Collected', (data.splitCollected || 0).toFixed(2)])
+    rows.push([])
+
     rows.push(['--- WEEKLY REVENUE TREND ---'])
     rows.push(['Day', 'Date', 'Revenue (INR)'])
     data.weeklySales.forEach((item) => {
@@ -112,6 +129,14 @@ export function exportAnalyticsToCSV({ data, activeTab, datePreset, dateFrom, da
     rows.push(['Today\'s Completed Orders', String(data.todayCompletedOrdersCount)])
     rows.push(['Today\'s Items Sold', String(Math.round(data.todayItemsSold))])
     rows.push(['Today\'s Average Order Value (INR)', data.todayAvgOrderValue.toFixed(2)])
+    rows.push([])
+
+    rows.push(['--- TODAY\'S PAYMENT MODE COLLECTIONS ---'])
+    rows.push(['Payment Mode', 'Collected Amount (INR)'])
+    rows.push(['Cash Collected (incl. split)', (data.todayCashCollected || data.cashCollected || 0).toFixed(2)])
+    rows.push(['QR Collected (incl. split)', (data.todayQrCollected || data.qrCollected || 0).toFixed(2)])
+    rows.push(['Card Collected (incl. split)', (data.todayCardCollected || data.cardCollected || 0).toFixed(2)])
+    rows.push(['Split Collected', (data.todaySplitCollected || data.splitCollected || 0).toFixed(2)])
     rows.push([])
 
     rows.push(['--- TODAY\'S HOURLY SALES TREND ---'])
@@ -275,6 +300,30 @@ export async function exportAnalyticsToPDF({
           <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #666; margin-bottom: 4px; letter-spacing: 0.3px;">Total Items Sold</div>
           <div style="font-size: 16px; font-weight: 900; color: #7A1220; line-height: 1.2;">${Math.round(data.totalProductsSold)} Pcs</div>
           <div style="font-size: 8px; color: #6366F1; font-weight: 700; margin-top: 4px;">Top: ${data.bestProduct.slice(0, 14)}</div>
+        </div>
+      </div>
+
+      <!-- Payment Collections Breakdown (4 Tiles) -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+        <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Cash Collected</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.cashCollected || 0)}</div>
+          <div style="font-size: 7.5px; color: #666;">Cash incl. split</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">QR Collected</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.qrCollected || 0)}</div>
+          <div style="font-size: 7.5px; color: #666;">QR / UPI incl. split</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Card Collected</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.cardCollected || 0)}</div>
+          <div style="font-size: 7.5px; color: #666;">Card incl. split</div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
+          <div style="font-size: 8px; font-weight: 800; color: #555; text-transform: uppercase;">Split Collected</div>
+          <div style="font-size: 14px; font-weight: 900; color: #111; margin: 3px 0 1px 0;">${formatCurrency(data.splitCollected || 0)}</div>
+          <div style="font-size: 7.5px; color: #666;">Split payment bills</div>
         </div>
       </div>
 
