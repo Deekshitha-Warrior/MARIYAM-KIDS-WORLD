@@ -36,12 +36,6 @@ export const InventoryTable: React.FC = () => {
   const isAdmin = role === 'admin'
   const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
   const [activeTab, setActiveTab] = useState<InventoryTab>('stock')
-
-  useEffect(() => {
-    if (!isAdmin && (activeTab === 'products' || activeTab === 'categories')) {
-      setActiveTab('stock')
-    }
-  }, [isAdmin, activeTab])
   const { products: storeProducts, fetchProducts } = useProductStore()
   const [items, setItems] = useState<InventoryStockItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -215,33 +209,29 @@ export const InventoryTable: React.FC = () => {
             <Box size={14} /> Stock Management
           </button>
 
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('products')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === 'products'
-                  ? 'bg-[#7A1220] text-white shadow-sm'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              <Package size={14} /> Add / Edit Products
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('products')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'products'
+                ? 'bg-[#7A1220] text-white shadow-sm'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <Package size={14} /> Add / Edit Products
+          </button>
 
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('categories')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === 'categories'
-                  ? 'bg-[#7A1220] text-white shadow-sm'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-              }`}
-            >
-              <Tag size={14} /> Categories
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('categories')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'categories'
+                ? 'bg-[#7A1220] text-white shadow-sm'
+                : 'text-gray-600 hover:text-black hover:bg-gray-100'
+            }`}
+          >
+            <Tag size={14} /> Categories
+          </button>
 
           <button
             type="button"
@@ -256,20 +246,18 @@ export const InventoryTable: React.FC = () => {
           </button>
         </div>
 
-        {/* Global Add Barcode CTA (admin only) */}
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedForReceive(null)
-              setShowReceiveModal(true)
-            }}
-            className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-[#7A1220] border border-white/30 text-white text-xs font-black hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap"
-            title="Generate & print barcodes for items"
-          >
-            <Printer size={15} /> Add Barcode
-          </button>
-        )}
+        {/* Global Add Barcode CTA (admin & staff) */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedForReceive(null)
+            setShowReceiveModal(true)
+          }}
+          className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-[#7A1220] border border-white/30 text-white text-xs font-black hover:bg-[#1A1A1A] transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap"
+          title="Generate & print barcodes for items"
+        >
+          <Printer size={15} /> Add Barcode
+        </button>
       </div>
 
       {/* TAB 1: STOCK MANAGEMENT VIEW */}
@@ -508,18 +496,16 @@ export const InventoryTable: React.FC = () => {
                           {/* Actions */}
                           <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Adjust Stock (Admin Only) */}
-                              {isAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => setAdjustModalItem(item)}
-                                  className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors cursor-pointer shrink-0"
-                                  title="Adjust Stock"
-                                >
-                                  <SlidersHorizontal size={13} className="inline mr-1" />
-                                  Adjust
-                                </button>
-                              )}
+                              {/* Adjust Stock */}
+                              <button
+                                type="button"
+                                onClick={() => setAdjustModalItem(item)}
+                                className="px-2.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 text-[11px] font-bold transition-colors cursor-pointer shrink-0"
+                                title="Adjust Stock"
+                              >
+                                <SlidersHorizontal size={13} className="inline mr-1" />
+                                Adjust
+                              </button>
 
                               {/* Stock History */}
                               <button
@@ -587,7 +573,7 @@ export const InventoryTable: React.FC = () => {
       )}
 
       {/* TAB 2: ADD / EDIT PRODUCTS VIEW */}
-      {isAdmin && activeTab === 'products' && (
+      {activeTab === 'products' && (
         <div className="animate-in fade-in duration-150">
           <AddEditProductView
             initialProductId={editProductId}
@@ -597,7 +583,7 @@ export const InventoryTable: React.FC = () => {
       )}
 
       {/* TAB 3: CATEGORIES MANAGEMENT VIEW */}
-      {isAdmin && activeTab === 'categories' && (
+      {activeTab === 'categories' && (
         <div className="animate-in fade-in duration-150">
           <CategoryManagerView />
         </div>
@@ -610,8 +596,8 @@ export const InventoryTable: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Vyapar Barcode Generator Workspace (Admin Only) */}
-      {isAdmin && showReceiveModal && (
+      {/* Modal: Vyapar Barcode Generator Workspace */}
+      {showReceiveModal && (
         <CreateBarcodeModal
           isOpen={showReceiveModal}
           onClose={() => setShowReceiveModal(false)}
@@ -636,8 +622,8 @@ export const InventoryTable: React.FC = () => {
         />
       )}
 
-      {/* Modal: Adjust Stock (Admin Only) */}
-      {isAdmin && adjustModalItem && (
+      {/* Modal: Adjust Stock */}
+      {adjustModalItem && (
         <AdjustStockModal
           isOpen={!!adjustModalItem}
           onClose={() => setAdjustModalItem(null)}
