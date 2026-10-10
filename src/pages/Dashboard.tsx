@@ -61,6 +61,7 @@ import StaffMemberships from '../components/dashboard/StaffMemberships'
 import StoreSettingsView from '../components/dashboard/StoreSettingsView'
 import AdvanceOrders from './AdvanceOrders'
 import { cancelAdvanceOrderByCompletedOrderId, type AdvanceOrder } from '../services/advanceOrderService'
+import { deleteOrderWithStockRollback } from '../services/orderService'
 import { InventoryTable } from '../components/inventory/InventoryTable'
 import { ExpensesView } from '../components/expenses/ExpensesView'
 import CenexaFooter from '../components/common/CenexaFooter'
@@ -1251,27 +1252,36 @@ export default function Dashboard() {
   }
 
   const deleteOrder = async (orderId: string, invoiceNo: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete order "${invoiceNo || orderId}"?\n\nThis will cancel the order and return all purchased item quantities back to inventory stock.`
+    )
+    if (!confirmed) return
+
     if (role === 'staff') {
-      const pwd = window.prompt(`Enter admin password to delete order ${invoiceNo}:`)
+      const pwd = window.prompt(`Enter admin password to confirm deletion of order ${invoiceNo || orderId}:`)
       if (pwd !== '192267') {
         alert('Incorrect password. Deletion cancelled.')
         return
       }
-    } else {
-      if (!window.confirm(`Are you sure you want to completely delete order ${invoiceNo}? This cannot be undone.`)) return
     }
-    // Clear FK reference and cancel linked advance order in advance_orders
-    await cancelAdvanceOrderByCompletedOrderId(orderId)
-    const { error } = await supabase.from('orders').delete().eq('id', orderId).eq('branch', branch)
-    if (error) {
-      alert(`Error deleting order: ${error.message}`)
-      return
+
+    try {
+      await deleteOrderWithStockRollback(orderId, branch, invoiceNo)
+      // Track deleted ID so re-searches don't bring it back
+      deletedOrderIds.current.add(orderId)
+      setOrders(prev => prev.filter(o => o.id !== orderId))
+      setSearchResults(prev => prev.filter(o => o.id !== orderId))
+      setOrderItems(prev => prev.filter(item => item.order_id !== orderId))
+
+      // Refresh product stock and variant stock immediately
+      void fetchProducts(branch, true)
+      void refetchVariants(branch)
+
+      alert(`Order ${invoiceNo || orderId} has been deleted and cancelled. Stock has been rolled back to inventory.`)
+    } catch (err) {
+      console.error('Error deleting order:', err)
+      alert(`Error deleting order: ${err instanceof Error ? err.message : String(err)}`)
     }
-    // Track deleted ID so re-searches don't bring it back
-    deletedOrderIds.current.add(orderId)
-    setOrders(prev => prev.filter(o => o.id !== orderId))
-    setSearchResults(prev => prev.filter(o => o.id !== orderId))
-    setOrderItems(prev => prev.filter(item => item.order_id !== orderId))
   }
 
   const getOrderWhatsAppPreview = (order: DashboardOrder) => {

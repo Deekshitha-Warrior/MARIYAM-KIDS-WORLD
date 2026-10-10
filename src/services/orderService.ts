@@ -215,3 +215,259 @@ export const createOrderWithStock = async (input: CreateOrderInput): Promise<Cre
     createdAt: new Date().toISOString(),
   }
 }
+
+/**
+ * Deletes an order from the database and rolls back all deducted item quantities
+ * to their respective products and variants, creating RETURN inventory movements.
+ */
+export const deleteOrderWithStockRollback = async (
+  orderId: string,
+  branch?: PosBranch,
+  invoiceNo?: string,
+): Promise<{ success: boolean }> => {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured')
+  }
+
+  // 1. Fetch order metadata
+  const { data: orderRow, error: fetchErr } = await supabase
+    .from('orders')
+    .select('id, invoice_no, branch, items, coupon_code')
+    .eq('id', orderId)
+    .maybeSingle()
+
+  if (fetchErr) {
+    throw new Error(`Failed to load order: ${fetchErr.message}`)
+  }
+
+  const targetBranch: PosBranch = (orderRow?.branch as PosBranch) || branch || 'pos1'
+  const targetInvoiceNo = invoiceNo || orderRow?.invoice_no || orderId
+
+  // 2. Fetch order items from order_items table
+  const { data: dbItems } = await supabase
+    .from('order_items')
+    .select('id, product_id, variant_id, product_name, name, quantity, is_manual, source')
+    .eq('order_id', orderId)
+
+  // 3. Collect items to restock
+  let rawItems: Array<Record<string, unknown>> = []
+  if (dbItems && dbItems.length > 0) {
+    rawItems = dbItems as Array<Record<string, unknown>>
+  } else if (orderRow?.items) {
+    let parsed: unknown = orderRow.items
+    if (typeof parsed === 'string') {
+      try { parsed = JSON.parse(parsed) } catch { parsed = [] }
+    }
+    if (Array.isArray(parsed)) {
+      rawItems = parsed.filter((it): it is Record<string, unknown> => typeof it === 'object' && it !== null)
+    }
+  }
+
+  // 4. Rollback stock for each item
+  for (const item of rawItems) {
+    const qty = Math.max(0, Number(item.quantity ?? item.qty) || 0)
+    if (qty <= 0) continue
+
+    const isPureManual = (item.is_manual === true || item.source === 'manual') &&
+      !item.variant_id && !item.variantId && !item.product_id && !item.productId && !item.id
+
+    if (isPureManual) continue
+
+    const variantId = item.variant_id || item.variantId ? String(item.variant_id || item.variantId) : null
+    const rawProdId = item.product_id || item.productId || (item.id && !variantId ? item.id : null)
+
+    if (variantId) {
+      const { data: vRow } = await supabase
+        .from('product_variants')
+        .select('id, product_id, stock')
+        .eq('id', variantId)
+        .eq('branch', targetBranch)
+        .maybeSingle()
+
+      if (vRow) {
+        const currentStock = Number(vRow.stock) || 0
+        const newStock = currentStock + qty
+
+        await supabase
+          .from('product_variants')
+          .update({ stock: newStock, updated_at: new Date().toISOString() })
+          .eq('id', vRow.id)
+          .eq('branch', targetBranch)
+
+        const parentProdId = vRow.product_id
+        if (parentProdId) {
+          const { data: siblings } = await supabase
+            .from('product_variants')
+            .select('stock')
+            .eq('product_id', parentProdId)
+            .eq('branch', targetBranch)
+
+          if (siblings && siblings.length > 0) {
+            const totalStock = siblings.reduce((sum, s) => sum + (Number(s.stock) || 0), 0)
+            await supabase
+              .from('products')
+              .update({
+                stock_quantity: totalStock,
+                stock: Math.floor(totalStock),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', parentProdId)
+              .eq('branch', targetBranch)
+          }
+        }
+
+        try {
+          let barcodeId: string | null = null
+          const { data: bRow } = await supabase
+            .from('barcode_registry')
+            .select('id')
+            .eq('variant_id', vRow.id)
+            .eq('branch', targetBranch)
+            .limit(1)
+            .maybeSingle()
+          if (bRow) barcodeId = bRow.id
+
+          await supabase.from('inventory_movements').insert({
+            product_id: parentProdId,
+            variant_id: vRow.id,
+            barcode_id: barcodeId,
+            movement_type: 'RETURN',
+            quantity_delta: qty,
+            quantity_before: currentStock,
+            quantity_after: newStock,
+            reference_type: 'order',
+            reference_id: targetInvoiceNo,
+            note: `Order Cancelled / Deleted (${targetInvoiceNo})`,
+            branch: targetBranch,
+          })
+        } catch (movErr) {
+          console.warn('[deleteOrderWithStockRollback] variant movement log error:', movErr)
+        }
+      }
+    } else {
+      // Standalone product
+      let pRow: { id: string | number; stock_quantity?: number | null; stock?: number | null } | null = null
+
+      if (rawProdId) {
+        const { data } = await supabase
+          .from('products')
+          .select('id, stock_quantity, stock')
+          .eq('id', rawProdId)
+          .eq('branch', targetBranch)
+          .maybeSingle()
+        pRow = data
+      }
+
+      if (!pRow && (item.name || item.product_name)) {
+        const prodName = String(item.name || item.product_name).trim()
+        if (prodName) {
+          const { data } = await supabase
+            .from('products')
+            .select('id, stock_quantity, stock')
+            .ilike('name', prodName)
+            .eq('branch', targetBranch)
+            .maybeSingle()
+          pRow = data
+        }
+      }
+
+      if (pRow) {
+        const currentStock = Number(pRow.stock_quantity ?? pRow.stock) || 0
+        const newStock = currentStock + qty
+
+        await supabase
+          .from('products')
+          .update({
+            stock_quantity: newStock,
+            stock: Math.floor(newStock),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', pRow.id)
+          .eq('branch', targetBranch)
+
+        try {
+          let barcodeId: string | null = null
+          const { data: bRow } = await supabase
+            .from('barcode_registry')
+            .select('id')
+            .eq('product_id', pRow.id)
+            .is('variant_id', null)
+            .eq('branch', targetBranch)
+            .limit(1)
+            .maybeSingle()
+          if (bRow) barcodeId = bRow.id
+
+          await supabase.from('inventory_movements').insert({
+            product_id: pRow.id,
+            variant_id: null,
+            barcode_id: barcodeId,
+            movement_type: 'RETURN',
+            quantity_delta: qty,
+            quantity_before: currentStock,
+            quantity_after: newStock,
+            reference_type: 'order',
+            reference_id: targetInvoiceNo,
+            note: `Order Cancelled / Deleted (${targetInvoiceNo})`,
+            branch: targetBranch,
+          })
+        } catch (movErr) {
+          console.warn('[deleteOrderWithStockRollback] product movement log error:', movErr)
+        }
+      }
+    }
+  }
+
+  // 5. Rollback coupon usage if applicable
+  if (orderRow?.coupon_code) {
+    try {
+      const { data: cRow } = await supabase
+        .from('coupons')
+        .select('id, usage_count')
+        .eq('code', orderRow.coupon_code)
+        .eq('branch', targetBranch)
+        .maybeSingle()
+      if (cRow && Number(cRow.usage_count) > 0) {
+        await supabase
+          .from('coupons')
+          .update({
+            usage_count: Math.max(0, Number(cRow.usage_count) - 1),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', cRow.id)
+      }
+    } catch (cErr) {
+      console.warn('[deleteOrderWithStockRollback] coupon usage rollback error:', cErr)
+    }
+  }
+
+  // 6. Cancel linked advance order if one exists
+  try {
+    const { cancelAdvanceOrderByCompletedOrderId } = await import('./advanceOrderService')
+    await cancelAdvanceOrderByCompletedOrderId(orderId)
+  } catch (advErr) {
+    console.warn('[deleteOrderWithStockRollback] advance order link cancel error:', advErr)
+  }
+
+  // 7. Delete order items
+  await supabase.from('order_items').delete().eq('order_id', orderId)
+
+  // 8. Delete order
+  const { error: delErr } = await supabase
+    .from('orders')
+    .delete()
+    .eq('id', orderId)
+    .eq('branch', targetBranch)
+
+  if (delErr) {
+    const { error: fallbackDelErr } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId)
+    if (fallbackDelErr) {
+      throw new Error(`Failed to delete order: ${fallbackDelErr.message}`)
+    }
+  }
+
+  return { success: true }
+}
+

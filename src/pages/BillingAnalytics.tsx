@@ -19,6 +19,7 @@ import {
 import CompactAnalytics from '../components/dashboard/CompactAnalytics'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { cancelAdvanceOrderByCompletedOrderId } from '../services/advanceOrderService'
+import { deleteOrderWithStockRollback } from '../services/orderService'
 
 // Custom Malaysian Ringgit icon
 const RMIcon = ({ size = 16, className = '' }: { size?: number; className?: string }) => (
@@ -269,19 +270,23 @@ export default function BillingAnalytics() {
   const isAdmin = user?.role === 'admin'
 
   const deleteOrder = async (orderId: string, invoiceNo?: string) => {
-    if (!window.confirm(`Are you sure you want to delete bill ${invoiceNo || orderId}? This will remove it permanently and update revenue.`)) return
-    try {
-      await supabase.from('order_items').delete().eq('order_id', orderId)
-      const { error } = await supabase.from('orders').delete().eq('id', orderId).eq('branch', branch)
-      if (error) throw error
+    const confirmed = window.confirm(
+      `Are you sure you want to delete bill "${invoiceNo || orderId}"?\n\nThis will cancel the order and return all purchased item quantities back to inventory stock.`
+    )
+    if (!confirmed) return
 
-      await cancelAdvanceOrderByCompletedOrderId(orderId)
+    try {
+      await deleteOrderWithStockRollback(orderId, branch, invoiceNo)
 
       setOrders((prev) => prev.filter((o) => o.id !== orderId))
       setOrderItems((prev) => prev.filter((item) => item.order_id !== orderId))
+
+      void fetchProducts(branch, true)
+
+      alert(`Order ${invoiceNo || orderId} has been deleted and cancelled. Stock has been rolled back to inventory.`)
     } catch (err) {
       console.error('Failed to delete order:', err)
-      alert('Failed to delete order. Please try again.')
+      alert(`Failed to delete order: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 

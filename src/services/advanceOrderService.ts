@@ -382,7 +382,8 @@ export async function deleteAdvanceOrder(orderId: string): Promise<void> {
     const { error } = await supabase.from('advance_orders').delete().eq('id', orderId)
     if (error) throw new Error(error.message)
     if (completedOrderId) {
-      await supabase.from('orders').delete().eq('id', completedOrderId)
+      const { deleteOrderWithStockRollback } = await import('./orderService')
+      await deleteOrderWithStockRollback(completedOrderId, (adv?.branch as PosBranch) || 'pos1', adv?.invoice_number || adv?.deposit_id)
     }
   }
   
@@ -392,7 +393,8 @@ export async function deleteAdvanceOrder(orderId: string): Promise<void> {
   if (target?.completed_order_id) {
     completedOrderId = completedOrderId || target.completed_order_id
     if (isSupabaseConfigured) {
-      await supabase.from('orders').delete().eq('id', target.completed_order_id)
+      const { deleteOrderWithStockRollback } = await import('./orderService')
+      await deleteOrderWithStockRollback(target.completed_order_id, (target.branch as PosBranch) || 'pos1', target.invoice_number || target.deposit_id)
     }
   }
   const filtered = localOrders.filter(o => o.id !== orderId)
