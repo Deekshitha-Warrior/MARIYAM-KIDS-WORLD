@@ -72,6 +72,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   const [splitP1Type, setSplitP1Type] = useState<'cash' | 'upi' | 'card'>('cash')
   const [splitP1Amount, setSplitP1Amount] = useState('')
   const [splitP2Type, setSplitP2Type] = useState<'cash' | 'upi' | 'card'>('upi')
+  const [completedSuccessOrder, setCompletedSuccessOrder] = useState<AdvanceOrder | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -332,13 +333,25 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
           gst_enabled: bd.totalGst > 0,
           total: paymentOrder.total_amount,
         }).eq('id', result.order_id).eq('branch', branch)
-        if (paymentForm.method === 'split') {
-          await supabase.from('advance_orders').update({ final_payment_method: finalMethodStr }).eq('id', paymentOrder.id).eq('branch', branch)
-        }
+        await supabase.from('advance_orders').update({
+          status: 'completed',
+          remaining_balance: 0,
+          completed_at: result.completed_at,
+          completed_order_id: result.order_id,
+          invoice_number: result.invoice_no,
+          final_payment_method: finalMethodStr
+        }).eq('id', paymentOrder.id).eq('branch', branch)
       } catch { /* best effort db update */ }
 
       const completed: AdvanceOrder = { ...paymentOrder, status: 'completed', remaining_balance: 0, completed_at: result.completed_at, completed_order_id: result.order_id, invoice_number: result.invoice_no, final_payment_method: finalMethodStr }
-      setOrders(rows => rows.map(row => row.id === completed.id ? completed : row)); onOrderCompleted?.(completed); setPaymentOrder(null); setPaymentForm({ method: 'cash', remarks: '' }); setSplitP1Amount(''); setNotice(`${result.invoice_no} generated once. The full ${formatCurrency(completed.total_amount)} is now recognized as revenue.`)
+      setOrders(rows => rows.map(row => row.id === completed.id ? completed : row))
+      onOrderCompleted?.(completed)
+      setPaymentOrder(null)
+      setPaymentForm({ method: 'cash', remarks: '' })
+      setSplitP1Amount('')
+      setSelected(prev => (prev && prev.id === completed.id ? completed : prev))
+      setCompletedSuccessOrder(completed)
+      setNotice(`${result.invoice_no} generated once. The full ${formatCurrency(completed.total_amount)} is now recognized as revenue.`)
 
       // Redirect to WhatsApp with final invoice URL
       whatsappInvoice(completed)
@@ -390,6 +403,9 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
       couponDiscount: bd.couponDiscount,
       manualDiscount: bd.manualDiscount,
       totalGst: bd.totalGst,
+      depositAmount: bd.depositPaid,
+      balancePaid: bd.balancePaid,
+      remainingBalance: bd.remainingBalance,
       paymentMode: order.final_payment_method || 'Paid'
     })
   }
@@ -1031,6 +1047,98 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
               Close
             </button>
           </div>
+        </div>
+      </div>,
+      document.body
+    )}
+
+    {completedSuccessOrder && createPortal(
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+        <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border-2 border-emerald-400 space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={26} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Payment Received
+                </span>
+                <span className="text-xs font-mono font-bold text-gray-500">#{completedSuccessOrder.invoice_number}</span>
+              </div>
+              <h3 className="text-lg font-black text-gray-900 mt-0.5">Order Settled & Complete</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCompletedSuccessOrder(null)}
+              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="rounded-2xl bg-[#F8F7F4] p-3.5 border border-gray-100 space-y-2 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Customer:</span>
+              <span className="font-bold text-gray-900">{completedSuccessOrder.customer_name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Product:</span>
+              <span className="font-bold text-gray-900">{completedSuccessOrder.product_name}</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-gray-200/60 pt-2 font-bold text-gray-700">
+              <span>Total Amount:</span>
+              <span className="font-black text-gray-900 text-sm">{formatCurrency(completedSuccessOrder.total_amount)}</span>
+            </div>
+            <div className="flex justify-between items-center text-violet-700 font-bold">
+              <span>Deposit Paid:</span>
+              <span>{formatCurrency(completedSuccessOrder.deposit_amount)}</span>
+            </div>
+            <div className="flex justify-between items-center text-emerald-700 font-extrabold text-sm border-t border-dashed border-gray-200 pt-1.5">
+              <span>Final Balance Received:</span>
+              <span>{formatCurrency(Math.max(0, completedSuccessOrder.total_amount - completedSuccessOrder.deposit_amount))}</span>
+            </div>
+            <div className="flex justify-between items-center font-black text-emerald-800 text-xs">
+              <span>Remaining Balance:</span>
+              <span>₹0.00 (Fully Settled)</span>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-gray-500 text-center">
+            The official Tax Invoice has been generated. You can print the receipt or download the updated PDF now.
+          </p>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => printFinal(completedSuccessOrder)}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 py-2.5 text-xs font-bold text-gray-800 transition shadow-xs cursor-pointer"
+            >
+              <Printer size={15} /> Print Receipt
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadFile(invoiceFile(completedSuccessOrder))}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 py-2.5 text-xs font-bold text-violet-700 transition shadow-xs cursor-pointer"
+            >
+              <Download size={15} /> Download PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => whatsappInvoice(completedSuccessOrder)}
+              className="col-span-2 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 text-xs font-bold text-white transition shadow-xs cursor-pointer"
+            >
+              <MessageCircle size={15} /> Share Invoice on WhatsApp
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCompletedSuccessOrder(null)}
+            className="w-full rounded-xl bg-gray-100 hover:bg-gray-200 py-2 text-xs font-bold text-gray-700 transition cursor-pointer"
+          >
+            Done
+          </button>
         </div>
       </div>,
       document.body

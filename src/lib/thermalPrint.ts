@@ -29,6 +29,9 @@ export interface ThermalReceiptData {
   storePhone?: string
   storeAddress?: string
   storeEmail?: string
+  depositAmount?: number
+  balancePaid?: number
+  remainingBalance?: number
 }
 
 export function printThermalReceipt(data: ThermalReceiptData) {
@@ -219,6 +222,22 @@ export function printThermalReceipt(data: ThermalReceiptData) {
               <td class="text-left">Total</td>
               <td class="text-right">${formatCurrency(data.total)}</td>
             </tr>
+            ${(data.depositAmount !== undefined && data.depositAmount > 0) ? `
+              <tr style="font-size: 11px; border-top: 1px dashed #555;">
+                <td class="text-left font-bold" style="padding-top: 3px;">Deposit Paid</td>
+                <td class="text-right font-bold" style="padding-top: 3px;">${formatCurrency(data.depositAmount)}</td>
+              </tr>
+              ${(data.balancePaid !== undefined && data.balancePaid > 0) ? `
+                <tr style="font-size: 11px;">
+                  <td class="text-left font-bold">Balance Paid</td>
+                  <td class="text-right font-bold">${formatCurrency(data.balancePaid)}</td>
+                </tr>
+              ` : ''}
+              <tr style="font-size: 12px; font-weight: bold; border-top: 1px dashed #555;">
+                <td class="text-left" style="padding-top: 3px;">${(data.remainingBalance && data.remainingBalance > 0) ? 'Balance Due' : 'Remaining Balance'}</td>
+                <td class="text-right" style="padding-top: 3px;">${formatCurrency(data.remainingBalance || 0)}</td>
+              </tr>
+            ` : ''}
           </table>
         </div>
 
