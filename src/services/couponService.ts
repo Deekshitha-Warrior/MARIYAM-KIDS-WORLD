@@ -36,13 +36,26 @@ export async function validateCoupon(
   }
 
   try {
-    const { data, error: dbErr } = await supabase
+    let { data, error: dbErr } = await supabase
       .from('coupons')
       .select(COUPON_COLUMNS)
       .eq('is_active', true)
       .eq('branch', branch)
       .ilike('code', code)
-      .single()
+      .maybeSingle()
+
+    if (!data) {
+      const fallback = await supabase
+        .from('coupons')
+        .select(COUPON_COLUMNS)
+        .eq('is_active', true)
+        .ilike('code', code)
+        .maybeSingle()
+      if (fallback.data) {
+        data = fallback.data
+        dbErr = null
+      }
+    }
 
     if (dbErr || !data) return { data: null, error: 'Invalid or expired coupon code' }
 

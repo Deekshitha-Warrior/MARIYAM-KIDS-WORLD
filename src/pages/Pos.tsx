@@ -225,10 +225,19 @@ export default function Pos(props: PosProps = {}) {
     void fetchVariants(branch)
     if (!isSupabaseConfigured) return
 
-    supabase.from('coupons').select('code').eq('branch', branch).eq('is_active', true).order('created_at', { ascending: false }).limit(20)
+    supabase.from('coupons').select('code').or(`branch.eq.${branch},branch.is.null,branch.eq.pos1`).eq('is_active', true).order('created_at', { ascending: false }).limit(20)
       .then(({ data, error }) => {
         if (error) console.error('Failed to fetch coupons', error)
-        else if (data) setAvailableCoupons(data)
+        else if (data) {
+          const seen = new Set<string>()
+          const unique = data.filter(c => {
+            const u = c.code.toUpperCase()
+            if (seen.has(u)) return false
+            seen.add(u)
+            return true
+          })
+          setAvailableCoupons(unique)
+        }
       })
 
     const productChannel = supabase.channel('pos-live')
@@ -822,13 +831,26 @@ export default function Pos(props: PosProps = {}) {
         return
       }
 
-      const { data, error: dbErr } = await supabase
+      let { data, error: dbErr } = await supabase
         .from('coupons')
         .select('*')
         .eq('branch', branch)
         .eq('is_active', true)
         .ilike('code', code)
-        .single()
+        .maybeSingle()
+
+      if (!data) {
+        const fallback = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('is_active', true)
+          .ilike('code', code)
+          .maybeSingle()
+        if (fallback.data) {
+          data = fallback.data
+          dbErr = null
+        }
+      }
 
       if (dbErr || !data) {
         setCouponError('Invalid or expired coupon code')
@@ -1082,6 +1104,8 @@ export default function Pos(props: PosProps = {}) {
         payment_method: paymentMode,
         discount_amount: couponDiscount,
         manual_discount_amount: manualDiscountAmount,
+        coupon_code: effectiveCouponCode || null,
+        coupon_percentage: isValidCoupon ? (appliedCoupon?.percentage || 0) : 0,
         delivery_charge: Number(shipping || 0),
         remarks: remarks.trim(),
         reference_number: referenceNumber.trim(),

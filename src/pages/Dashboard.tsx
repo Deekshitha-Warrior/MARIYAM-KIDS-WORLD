@@ -551,26 +551,50 @@ export default function Dashboard() {
 
   const deletedOrderIds = React.useRef<Set<string>>(new Set())
 
-  const toDashboardOrder = (row: Record<string, unknown>): DashboardOrder => ({
-    id: String(row.id || ''), invoice_no: String(row.invoice_no || ''),
-    customer_name: String(row.customer_name || ''), phone: String(row.phone || ''),
-    address: String(row.address || ''),
-    created_at: String(row.created_at || ''), total: toNumber(row.total, 0),
-    status: String(row.status || 'pending'),
-    order_mode: normalizeOrderMode(row.order_mode),
-    order_type: normalizeOrderType(row.order_type),
-    user_id: typeof row.user_id === 'string' ? row.user_id : null,
-    items: row.items,
-    coupon_code: String(row.coupon_code || ''),
-    discount_amount: toNumber(row.discount_amount, 0),
-    manual_discount_amount: toNumber(row.manual_discount_amount, 0),
-    delivery_charge: toNumber(row.delivery_charge, 0),
-    total_gst: toNumber(row.total_gst ?? row.gst_amount, 0),
-    payment_mode: String(row.payment_mode || row.payment_method || ''),
-    invoice_pdf_url: String(row.invoice_pdf_url || ''),
-    remarks: row.remarks ? String(row.remarks) : undefined,
-    reference_number: row.reference_number ? String(row.reference_number) : undefined,
-  })
+  const toDashboardOrder = (row: Record<string, unknown>): DashboardOrder => {
+    let itemCoupon = ''
+    let itemDiscount = 0
+    let itemManualDiscount = 0
+    const rawItems = row.items
+    if (Array.isArray(rawItems)) {
+      for (const it of rawItems) {
+        if (it && typeof it === 'object') {
+          const rec = it as Record<string, unknown>
+          if (rec.coupon_code) itemCoupon = String(rec.coupon_code)
+          if (typeof rec._breakdown === 'object' && rec._breakdown !== null) {
+            const bd = rec._breakdown as Record<string, unknown>
+            if (bd.coupon_code) itemCoupon = String(bd.coupon_code)
+            if (bd.coupon_discount) itemDiscount = Math.max(itemDiscount, toNumber(bd.coupon_discount, 0))
+            if (bd.manual_discount) itemManualDiscount = Math.max(itemManualDiscount, toNumber(bd.manual_discount, 0))
+            if (bd.discount_amount && !bd.coupon_discount && !bd.manual_discount) {
+              itemManualDiscount = Math.max(itemManualDiscount, toNumber(bd.discount_amount, 0))
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      id: String(row.id || ''), invoice_no: String(row.invoice_no || ''),
+      customer_name: String(row.customer_name || ''), phone: String(row.phone || ''),
+      address: String(row.address || ''),
+      created_at: String(row.created_at || ''), total: toNumber(row.total, 0),
+      status: String(row.status || 'pending'),
+      order_mode: normalizeOrderMode(row.order_mode),
+      order_type: normalizeOrderType(row.order_type),
+      user_id: typeof row.user_id === 'string' ? row.user_id : null,
+      items: row.items,
+      coupon_code: String(row.coupon_code || itemCoupon || ''),
+      discount_amount: toNumber(row.discount_amount, itemDiscount),
+      manual_discount_amount: toNumber(row.manual_discount_amount, itemManualDiscount),
+      delivery_charge: toNumber(row.delivery_charge, 0),
+      total_gst: toNumber(row.total_gst ?? row.gst_amount, 0),
+      payment_mode: String(row.payment_mode || row.payment_method || ''),
+      invoice_pdf_url: String(row.invoice_pdf_url || ''),
+      remarks: row.remarks ? String(row.remarks) : undefined,
+      reference_number: row.reference_number ? String(row.reference_number) : undefined,
+    }
+  }
 
   // Load dashboard data
   const loadData = useCallback(async () => {
@@ -1229,10 +1253,19 @@ export default function Dashboard() {
     if (!isSupabaseConfigured) return
     const { data } = await supabase
       .from('coupons')
-      .select('id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value')
-      .eq('branch', branch)
+      .select('id, code, percentage, is_active, expiry_date, usage_limit, usage_count, min_order_value, branch')
+      .or(`branch.eq.${branch},branch.is.null,branch.eq.pos1`)
       .order('created_at', { ascending: false })
-    setCoupons((data || []) as DashboardCoupon[])
+    
+    // Deduplicate by code
+    const seen = new Set<string>()
+    const unique = ((data || []) as DashboardCoupon[]).filter(c => {
+      const u = c.code.toUpperCase()
+      if (seen.has(u)) return false
+      seen.add(u)
+      return true
+    })
+    setCoupons(unique)
   }, [branch])
 
   const toggleUserRole = async (u: ProfileUser) => {
@@ -2448,7 +2481,7 @@ export default function Dashboard() {
                     <div className="bg-[#F9FAFB] p-4 rounded-xl flex justify-between items-center">
                       <span className="text-[13px] font-bold text-[#374151]">Discounts Applied</span>
                       <span className="text-[16px] font-black text-[#10B981]">
-                        {formatCurrency(searchResults.reduce((acc, o) => acc + (toNumber(o.discount_amount, 0)), 0))}
+                        {formatCurrency(searchResults.reduce((acc, o) => acc + (toNumber(o.discount_amount, 0) + toNumber(o.manual_discount_amount, 0)), 0))}
                       </span>
                     </div>
                   </div>
@@ -4180,7 +4213,11 @@ export default function Dashboard() {
                         </div>
                         <div>
                           <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Discount</p>
-                          <p className="font-semibold text-emerald-700">{o.discount_amount > 0 ? `-${formatCurrency(o.discount_amount)}` : '—'}</p>
+                          <p className="font-semibold text-emerald-700">
+                            {((o.discount_amount || 0) + (o.manual_discount_amount || 0)) > 0
+                              ? `-${formatCurrency((o.discount_amount || 0) + (o.manual_discount_amount || 0))}`
+                              : '—'}
+                          </p>
                         </div>
                         <div>
                           <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Delivery</p>
@@ -4284,7 +4321,13 @@ export default function Dashboard() {
                             {o.coupon_code ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{o.coupon_code}</span> : <span className="text-[#9BAB9A]">—</span>}
                           </td>
                           <td className="px-2 py-3 text-[11px]">
-                            {o.discount_amount > 0 ? <span className="font-bold text-emerald-700">-{formatCurrency(o.discount_amount)}</span> : <span className="text-[#9BAB9A]">—</span>}
+                            {((o.discount_amount || 0) + (o.manual_discount_amount || 0)) > 0 ? (
+                              <span className="font-bold text-emerald-700">
+                                -{formatCurrency((o.discount_amount || 0) + (o.manual_discount_amount || 0))}
+                              </span>
+                            ) : (
+                              <span className="text-[#9BAB9A]">—</span>
+                            )}
                           </td>
                           <td className="px-2 py-3 text-[11px]">
                             {o.delivery_charge > 0 ? <span className="font-bold text-[#111111]">{formatCurrency(o.delivery_charge)}</span> : <span className="text-[#9BAB9A]">—</span>}

@@ -204,7 +204,7 @@ const exportCSV = (orders: BillingOrder[]) => {
       formatPhoneForCSV(order.phone),
       billType,
       order.coupon_code || '',
-      toNumber(order.discount_amount, 0).toFixed(2),
+      (toNumber(order.discount_amount, 0) + toNumber(order.manual_discount_amount, 0)).toFixed(2),
       toNumber(order.delivery_charge, 0).toFixed(2),
       getBillingOrderTotal(order).toFixed(2),
       dateStr,
@@ -290,27 +290,51 @@ export default function BillingAnalytics() {
     }
   }
 
-  const toBillingOrder = (row: Record<string, unknown>): BillingOrder => ({
-    id: String(row.id || ''),
-    invoice_no: String(row.invoice_no || ''),
-    customer_name: String(row.customer_name || ''),
-    phone: String(row.phone || ''),
-    address: String(row.address || ''),
-    created_at: String(row.created_at || ''),
-    total: toNumber(row.total, 0),
-    subtotal: toNumber(row.subtotal, 0),
-    shipping: toNumber(row.shipping ?? row.delivery_charge, 0),
-    total_gst: toNumber(row.total_gst ?? row.gst_amount, 0),
-    manual_discount_amount: toNumber(row.manual_discount_amount, 0),
-    status: String(row.status || 'pending'),
-    order_mode: normalizeOrderMode(row.order_mode),
-    order_type: normalizeOrderType(row.order_type),
-    payment_mode: String(row.payment_mode || row.payment_method || ''),
-    items: row.items,
-    coupon_code: String(row.coupon_code || ''),
-    discount_amount: toNumber(row.discount_amount, 0),
-    delivery_charge: toNumber(row.delivery_charge, 0),
-  })
+  const toBillingOrder = (row: Record<string, unknown>): BillingOrder => {
+    let itemCoupon = ''
+    let itemDiscount = 0
+    let itemManualDiscount = 0
+    const rawItems = row.items
+    if (Array.isArray(rawItems)) {
+      for (const it of rawItems) {
+        if (it && typeof it === 'object') {
+          const rec = it as Record<string, unknown>
+          if (rec.coupon_code) itemCoupon = String(rec.coupon_code)
+          if (typeof rec._breakdown === 'object' && rec._breakdown !== null) {
+            const bd = rec._breakdown as Record<string, unknown>
+            if (bd.coupon_code) itemCoupon = String(bd.coupon_code)
+            if (bd.coupon_discount) itemDiscount = Math.max(itemDiscount, toNumber(bd.coupon_discount, 0))
+            if (bd.manual_discount) itemManualDiscount = Math.max(itemManualDiscount, toNumber(bd.manual_discount, 0))
+            if (bd.discount_amount && !bd.coupon_discount && !bd.manual_discount) {
+              itemManualDiscount = Math.max(itemManualDiscount, toNumber(bd.discount_amount, 0))
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      id: String(row.id || ''),
+      invoice_no: String(row.invoice_no || ''),
+      customer_name: String(row.customer_name || ''),
+      phone: String(row.phone || ''),
+      address: String(row.address || ''),
+      created_at: String(row.created_at || ''),
+      total: toNumber(row.total, 0),
+      subtotal: toNumber(row.subtotal, 0),
+      shipping: toNumber(row.shipping ?? row.delivery_charge, 0),
+      total_gst: toNumber(row.total_gst ?? row.gst_amount, 0),
+      manual_discount_amount: toNumber(row.manual_discount_amount, itemManualDiscount),
+      status: String(row.status || 'pending'),
+      order_mode: normalizeOrderMode(row.order_mode),
+      order_type: normalizeOrderType(row.order_type),
+      payment_mode: String(row.payment_mode || row.payment_method || ''),
+      items: row.items,
+      coupon_code: String(row.coupon_code || itemCoupon || ''),
+      discount_amount: toNumber(row.discount_amount, itemDiscount),
+      delivery_charge: toNumber(row.delivery_charge, 0),
+    }
+  }
 
   const applyAnalyticsPreset = (preset: 'all' | 'today' | 'week' | 'month' | 'year' | 'custom') => {
     setAnalyticsDatePreset(preset)
@@ -894,7 +918,15 @@ export default function BillingAnalytics() {
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${billTypeClass}`}>{billTypeLabel}</span>
                         </td>
                         <td className="px-3 py-3">{order.coupon_code ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{order.coupon_code}</span> : <span className="text-[#9BAB9A]">—</span>}</td>
-                        <td className="px-3 py-3">{order.discount_amount > 0 ? <span className="font-bold text-green-700">-{formatCurrency(order.discount_amount)}</span> : <span className="text-[#9BAB9A]">—</span>}</td>
+                        <td className="px-3 py-3">
+                          {((order.discount_amount || 0) + (order.manual_discount_amount || 0)) > 0 ? (
+                            <span className="font-bold text-green-700">
+                              -{formatCurrency((order.discount_amount || 0) + (order.manual_discount_amount || 0))}
+                            </span>
+                          ) : (
+                            <span className="text-[#9BAB9A]">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-3">{order.delivery_charge > 0 ? <span className="font-bold">{formatCurrency(order.delivery_charge)}</span> : <span className="text-[#9BAB9A]">—</span>}</td>
                         <td className="whitespace-nowrap px-3 py-3 font-bold">{formatCurrency(getBillingOrderTotal(order))}</td>
                         <td className="whitespace-nowrap px-3 py-3 text-[#374151]">{new Date(order.created_at).toLocaleDateString('en-IN')}</td>
