@@ -925,7 +925,22 @@ export default function Pos(props: PosProps = {}) {
 
     setSaving(true); setError('')
     try {
-      const productsSnapshot = items.map((item) => {
+      const deliveryChargeAmt = Math.max(0, Number(shipping || 0) || 0)
+      const totalDiscountAmt = Math.max(0, Math.round((couponDiscount + manualDiscountAmount) * 100) / 100)
+      const breakdownMetadata = {
+        subtotal,
+        discount_amount: totalDiscountAmt,
+        coupon_discount: couponDiscount,
+        manual_discount: manualDiscountAmount,
+        coupon_code: effectiveCouponCode || null,
+        shipping: deliveryChargeAmt,
+        delivery_charge: deliveryChargeAmt,
+        total_gst: totalGst,
+        gst_amount: totalGst,
+        gst_enabled: billGstEnabled,
+      }
+
+      const productsSnapshot = items.map((item, idx) => {
         const itemLineTotal = Math.round(((Number(item.basePrice) || 0) * (item.qty || 1)) * 100) / 100
         return {
           product_id: item.parentProductId || toProductId(item.id), variant_id: item.variantId || null,
@@ -934,11 +949,17 @@ export default function Pos(props: PosProps = {}) {
           base_quantity: item.baseQuantity, base_price: Number(item.basePrice) || 0, line_total: itemLineTotal,
           source: 'advance_order', note: item.note || null,
           is_manual: item.source === 'manual' || item.category === 'Unregistered',
+          ...(idx === 0 ? { _breakdown: breakdownMetadata } : {})
         }
       })
+      const breakdownNotes: string[] = []
+      if (totalDiscountAmt > 0) breakdownNotes.push(`Discount: ₹${totalDiscountAmt.toFixed(2)}`)
+      if (deliveryChargeAmt > 0) breakdownNotes.push(`Delivery: ₹${deliveryChargeAmt.toFixed(2)}`)
+      if (billGstEnabled && totalGst > 0) breakdownNotes.push(`GST: ₹${totalGst.toFixed(2)}`)
+
       const effectiveRemarks = [
         depositForm.remarks.trim(),
-        billGstEnabled && totalGst > 0 ? `GST: ₹${totalGst.toFixed(2)}` : '',
+        ...breakdownNotes,
       ].filter(Boolean).join(' | ')
       const created = await createAdvanceOrder({
         customerName: customer.name.trim(), phone: customer.phone.trim(), address: depositForm.address.trim(),

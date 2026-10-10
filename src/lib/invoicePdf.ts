@@ -22,6 +22,9 @@ export type InvoicePdfData = {
   gstAmount?: number
   couponCode?: string | null
   paymentMode?: string
+  depositAmount?: number
+  balancePaid?: number
+  remainingBalance?: number
 }
 
 // jsPDF's built-in Helvetica font does not include the ₹ Unicode glyph (U+20B9).
@@ -195,6 +198,31 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   doc.setTextColor(primaryColor)
   doc.text('TOTAL', 142, y + 6, { align: 'right' })
   doc.text(money(data.total), right - 3, y + 6, { align: 'right' })
+
+  if ((data.depositAmount || 0) > 0) {
+    y += 13
+    doc.setDrawColor(borderColor)
+    doc.setLineWidth(0.3)
+    doc.line(120, y - 4, right - 3, y - 4)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor('#374151')
+    doc.text('Deposit Paid', 142, y, { align: 'right' })
+    doc.text(money(data.depositAmount || 0), right - 3, y, { align: 'right' })
+
+    const balPaid = data.balancePaid !== undefined ? data.balancePaid : Math.max(0, data.total - (data.depositAmount || 0))
+    if (balPaid > 0) {
+      y += 5
+      doc.text('Balance Paid', 142, y, { align: 'right' })
+      doc.text(money(balPaid), right - 3, y, { align: 'right' })
+    }
+
+    y += 5
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor((data.remainingBalance || 0) > 0 ? primaryColor : '#059669')
+    doc.text('Remaining Balance', 142, y, { align: 'right' })
+    doc.text(money(data.remainingBalance || 0), right - 3, y, { align: 'right' })
+  }
 
   y = 275
   doc.setDrawColor(borderColor)

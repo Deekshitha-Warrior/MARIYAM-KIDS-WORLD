@@ -5,6 +5,8 @@ import type { AdvanceOrder } from '../services/advanceOrderService'
 import { getBranchProfile } from './branchProfile'
 import { formatPhoneForDisplay } from './phone'
 
+import { getAdvanceOrderBreakdown } from './advanceOrderBreakdown'
+
 const esc = (value: string) => value.replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char] || char))
 
 // jsPDF's built-in Helvetica font does not include the ₹ Unicode glyph (U+20B9).
@@ -21,7 +23,7 @@ export function advanceReceiptPdf(order: AdvanceOrder) {
   const isPos2 = order.branch === 'pos2'
   const brandInitial = isPos2 ? 'T' : 'M'
   const brandColor = isPos2 ? '#1D4ED8' : '#7A1220'
-  doc.setFillColor('#7A1220'); doc.rect(0, 0, 210, 5, 'F')
+  doc.setFillColor(isPos2 ? '#1D4ED8' : '#7A1220'); doc.rect(0, 0, 210, 5, 'F')
   doc.setFillColor(isPos2 ? '#EFF6FF' : '#FDF2F8')
   doc.setDrawColor(brandColor)
   doc.setLineWidth(0.8)
@@ -43,15 +45,59 @@ export function advanceReceiptPdf(order: AdvanceOrder) {
   ]
   let y = 66
   rows.forEach(([label, value]) => { doc.setFont('helvetica', 'bold'); doc.setTextColor('#6b7280'); doc.text(label.toUpperCase(), 16, y); doc.setFont('helvetica', 'normal'); doc.setTextColor('#111827'); doc.text(String(value), 64, y, { maxWidth: 126 }); y += 10 })
-  y += 4; doc.setFillColor('#FBFAF6'); doc.roundedRect(16, y, 178, 42, 3, 3, 'F')
-  const totalAmount = Number(order.total_amount || 0)
-  const depositAmount = Number(order.deposit_amount || 0)
-  const balanceDue = (order.status !== 'completed' && (!order.remaining_balance || order.remaining_balance <= 0))
-    ? Math.max(0, Math.round((totalAmount - depositAmount) * 100) / 100)
-    : Number(order.remaining_balance || 0)
-  const money = [[ 'Total order amount', totalAmount ], [ 'Deposit paid', depositAmount ], [ 'Remaining balance', balanceDue ]] as const
-  money.forEach(([label, value], index) => { const rowY = y + 11 + index * 11; doc.setFont('helvetica', index === 2 ? 'bold' : 'normal'); doc.setTextColor(index === 2 ? '#B48811' : '#374151'); doc.text(label, 22, rowY); doc.text(pdfMoney(value), 188, rowY, { align: 'right' }) })
-  doc.setFont('helvetica', 'bold'); doc.setTextColor('#b45309'); doc.setFontSize(9); doc.text('This receipt records an advance payment only. It is not a final invoice.', 105, y + 55, { align: 'center' })
+
+  const bd = getAdvanceOrderBreakdown(order)
+  const isCompleted = order.status === 'completed'
+
+  const moneyRows: Array<{ label: string; value: string; isBold?: boolean; color?: string; lineBefore?: boolean }> = [
+    { label: 'Subtotal', value: pdfMoney(bd.subtotal) },
+  ]
+  if (bd.discountAmount > 0) {
+    moneyRows.push({ label: `Discount${bd.couponCode ? ` (${bd.couponCode})` : ''}`, value: `-${pdfMoney(bd.discountAmount)}`, color: '#059669' })
+  }
+  if (bd.deliveryCharge > 0) {
+    moneyRows.push({ label: 'Delivery charges', value: `+${pdfMoney(bd.deliveryCharge)}` })
+  }
+  if (bd.totalGst > 0) {
+    moneyRows.push({ label: `CGST${bd.cgstPercent > 0 ? ` (${bd.cgstPercent}%)` : ''}`, value: `+${pdfMoney(bd.cgstAmount)}` })
+    moneyRows.push({ label: `SGST${bd.sgstPercent > 0 ? ` (${bd.sgstPercent}%)` : ''}`, value: `+${pdfMoney(bd.sgstAmount)}` })
+  }
+  moneyRows.push({ label: 'Total order amount', value: pdfMoney(bd.total), isBold: true, color: '#111827', lineBefore: true })
+  moneyRows.push({ label: 'Deposit paid', value: pdfMoney(bd.depositPaid), isBold: true, color: brandColor })
+
+  if (isCompleted) {
+    moneyRows.push({ label: 'Balance paid', value: pdfMoney(bd.balancePaid), isBold: true, color: '#059669' })
+    moneyRows.push({ label: 'Remaining balance', value: pdfMoney(0), isBold: true, color: '#059669' })
+  } else {
+    moneyRows.push({ label: 'Remaining balance', value: pdfMoney(bd.remainingBalance), isBold: true, color: '#B48811' })
+  }
+
+  y += 4
+  const boxHeight = 10 + moneyRows.length * 8.5
+  doc.setFillColor('#FBFAF6')
+  doc.roundedRect(16, y, 178, boxHeight, 3, 3, 'F')
+
+  moneyRows.forEach((row, index) => {
+    const rowY = y + 8 + index * 8.5
+    if (row.lineBefore) {
+      doc.setDrawColor('#E5E7EB')
+      doc.setLineWidth(0.3)
+      doc.line(22, rowY - 5, 188, rowY - 5)
+    }
+    doc.setFont('helvetica', row.isBold ? 'bold' : 'normal')
+    doc.setFontSize(row.isBold ? 10 : 9)
+    doc.setTextColor(row.color || '#374151')
+    doc.text(row.label, 22, rowY)
+    doc.text(row.value, 188, rowY, { align: 'right' })
+  })
+
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(isCompleted ? '#059669' : '#b45309')
+  doc.setFontSize(9)
+  const footerNote = isCompleted
+    ? 'This order has been completed and final invoice generated.'
+    : 'This receipt records an advance payment only. It is not a final invoice.'
+  doc.text(footerNote, 105, y + boxHeight + 9, { align: 'center' })
   return new File([doc.output('blob')], `Advance-Receipt-${order.deposit_id}.pdf`, { type: 'application/pdf' })
 }
 
@@ -80,11 +126,8 @@ export function printAdvanceReceipt(order: AdvanceOrder) {
       return paymentLabel || 'Cash'
     })()
 
-    const totalAmount = Number(order.total_amount || 0)
-    const depositAmount = Number(order.deposit_amount || 0)
-    const balanceDue = (order.status !== 'completed' && (!order.remaining_balance || order.remaining_balance <= 0))
-      ? Math.max(0, Math.round((totalAmount - depositAmount) * 100) / 100)
-      : Number(order.remaining_balance || 0)
+    const bd = getAdvanceOrderBreakdown(order)
+    const isCompleted = order.status === 'completed'
 
     const html = `<!doctype html><html lang="en" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" spellcheck="false"><head><title>Advance Receipt ${esc(order.deposit_id)}</title>
 <meta charset="utf-8">
@@ -125,7 +168,7 @@ export function printAdvanceReceipt(order: AdvanceOrder) {
 <div class="c" style="font-size:10px;color:#555;">${esc(getBranchProfile(order.branch).phone)}</div>
 <div class="line"></div>
 <div class="c big">ADVANCE RECEIPT</div>
-<div class="c" style="font-size:10px;">Not a final tax invoice</div>
+<div class="c" style="font-size:10px;">${isCompleted ? 'Final invoice generated' : 'Not a final tax invoice'}</div>
 <div class="line"></div>
 <div><span class="bold">${esc(order.deposit_id)}</span></div>
 <div style="font-size:10px;color:#555;">${new Date(order.created_at).toLocaleString('en-IN')}</div>
@@ -138,11 +181,24 @@ ${order.category ? `<div class="r"><span class="label">Category</span><span>${es
 <div class="r"><span class="label">Delivery</span><span>${esc(new Date(`${order.expected_delivery_date}T00:00:00`).toLocaleDateString('en-IN'))}</span></div>
 <div class="r"><span class="label">Payment</span><span>${esc(depositPayment)}</span></div>
 <div class="line"></div>
-<div class="r"><span>Total Amount</span><span class="bold">${esc(formatCurrency(totalAmount))}</span></div>
-<div class="r"><span>Deposit Paid</span><span class="bold">${esc(formatCurrency(depositAmount))}</span></div>
-<div class="r balance-row"><span>Balance Due</span><span>${esc(formatCurrency(balanceDue))}</span></div>
+<div class="r"><span>Subtotal</span><span>${esc(formatCurrency(bd.subtotal))}</span></div>
+${bd.discountAmount > 0 ? `<div class="r"><span>Discount${bd.couponCode ? ` (${esc(bd.couponCode)})` : ''}</span><span>-${esc(formatCurrency(bd.discountAmount))}</span></div>` : ''}
+${bd.deliveryCharge > 0 ? `<div class="r"><span>Delivery Charges</span><span>+${esc(formatCurrency(bd.deliveryCharge))}</span></div>` : ''}
+${bd.totalGst > 0 ? `
+<div class="r"><span>CGST${bd.cgstPercent > 0 ? ` (${bd.cgstPercent}%)` : ''}</span><span>+${esc(formatCurrency(bd.cgstAmount))}</span></div>
+<div class="r"><span>SGST${bd.sgstPercent > 0 ? ` (${bd.sgstPercent}%)` : ''}</span><span>+${esc(formatCurrency(bd.sgstAmount))}</span></div>
+` : ''}
 <div class="line"></div>
-<div class="warn">ADVANCE PAYMENT ONLY &mdash; NOT A FINAL INVOICE</div>
+<div class="r"><span>Total Amount</span><span class="bold">${esc(formatCurrency(bd.total))}</span></div>
+<div class="r"><span>Deposit Paid</span><span class="bold">${esc(formatCurrency(bd.depositPaid))}</span></div>
+${isCompleted ? `
+<div class="r"><span>Balance Paid</span><span class="bold">${esc(formatCurrency(bd.balancePaid))}</span></div>
+<div class="r balance-row"><span>Remaining Balance</span><span>${esc(formatCurrency(0))}</span></div>
+` : `
+<div class="r balance-row"><span>Balance Due</span><span>${esc(formatCurrency(bd.remainingBalance))}</span></div>
+`}
+<div class="line"></div>
+<div class="warn">${isCompleted ? 'ADVANCE ORDER COMPLETED &mdash; FINAL INVOICE ISSUED' : 'ADVANCE PAYMENT ONLY &mdash; NOT A FINAL INVOICE'}</div>
 </body></html>`
 
     doc.open()

@@ -15,6 +15,8 @@ import {
   type AdvanceOrder, type AdvancePayment, type AdvancePaymentMethod, type AdvanceStatus, type AdvanceTimeline,
 } from '../services/advanceOrderService'
 
+import { getAdvanceOrderBreakdown } from '../lib/advanceOrderBreakdown'
+
 // Custom Malaysian Ringgit icon
 const RMIcon = ({ size = 20, className = '' }: { size?: number; className?: string }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-label="Indian Rupee">
@@ -315,12 +317,19 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
       )
 
       try {
+        const bd = getAdvanceOrderBreakdown(paymentOrder)
         await supabase.from('orders').update({
           payment_mode: finalMethodStr,
           payment_method: finalMethodStr,
-          discount_amount: 0,
-          manual_discount_amount: 0,
-          coupon_code: null,
+          subtotal: bd.subtotal,
+          shipping: bd.deliveryCharge,
+          delivery_charge: bd.deliveryCharge,
+          discount_amount: bd.couponDiscount,
+          manual_discount_amount: bd.manualDiscount,
+          coupon_code: bd.couponCode || null,
+          total_gst: bd.totalGst,
+          gst_amount: bd.totalGst,
+          gst_enabled: bd.totalGst > 0,
           total: paymentOrder.total_amount,
         }).eq('id', result.order_id).eq('branch', branch)
         if (paymentForm.method === 'split') {
@@ -337,8 +346,53 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
   }
 
   const productRows = (order: AdvanceOrder) => order.products.length ? order.products : [{ name: order.product_name, quantity: 1, base_price: order.total_amount, line_total: order.total_amount, unit: 'piece', unit_type: 'unit' }]
-  const invoiceFile = (order: AdvanceOrder) => invoicePdfFile({ invoiceNo: order.invoice_number || order.deposit_id, date: order.completed_at || new Date().toISOString(), customerName: order.customer_name, phone: order.phone, address: order.address, branch: order.branch, items: productRows(order), subtotal: order.total_amount, shipping: 0, total: order.total_amount, paymentMode: order.final_payment_method || 'Paid' })
-  const printFinal = (order: AdvanceOrder) => printThermalReceipt({ invoiceNo: order.invoice_number || order.deposit_id, date: order.completed_at || new Date().toISOString(), customerName: order.customer_name, phone: order.phone, branch: order.branch, items: productRows(order).map(item => ({ name: String(item.name || 'Product'), qty: Number(item.quantity || 1), unit: String(item.unit || 'piece'), price: Number(item.base_price || 0), line_total: Number(item.line_total || 0) })), subtotal: order.total_amount, shipping: 0, total: order.total_amount, paymentMode: order.final_payment_method || 'Paid' })
+  const invoiceFile = (order: AdvanceOrder) => {
+    const bd = getAdvanceOrderBreakdown(order)
+    return invoicePdfFile({
+      invoiceNo: order.invoice_number || order.deposit_id,
+      date: order.completed_at || new Date().toISOString(),
+      customerName: order.customer_name,
+      phone: order.phone,
+      address: order.address,
+      branch: order.branch,
+      items: productRows(order),
+      subtotal: bd.subtotal,
+      shipping: bd.deliveryCharge,
+      total: bd.total,
+      discountAmount: bd.couponDiscount,
+      manualDiscountAmount: bd.manualDiscount,
+      gstAmount: bd.totalGst,
+      couponCode: bd.couponCode,
+      depositAmount: bd.depositPaid,
+      balancePaid: bd.balancePaid,
+      remainingBalance: bd.remainingBalance,
+      paymentMode: order.final_payment_method || 'Paid'
+    })
+  }
+  const printFinal = (order: AdvanceOrder) => {
+    const bd = getAdvanceOrderBreakdown(order)
+    return printThermalReceipt({
+      invoiceNo: order.invoice_number || order.deposit_id,
+      date: order.completed_at || new Date().toISOString(),
+      customerName: order.customer_name,
+      phone: order.phone,
+      branch: order.branch,
+      items: productRows(order).map(item => ({
+        name: String(item.name || 'Product'),
+        qty: Number(item.quantity || 1),
+        unit: String(item.unit || 'piece'),
+        price: Number(item.base_price || 0),
+        line_total: Number(item.line_total || 0)
+      })),
+      subtotal: bd.subtotal,
+      shipping: bd.deliveryCharge,
+      total: bd.total,
+      couponDiscount: bd.couponDiscount,
+      manualDiscount: bd.manualDiscount,
+      totalGst: bd.totalGst,
+      paymentMode: order.final_payment_method || 'Paid'
+    })
+  }
   
   const whatsappDepositReceipt = (order: AdvanceOrder) => {
     const message = buildAdvanceDepositWhatsAppMessage({
@@ -757,6 +811,7 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
 
           {/* Scrollable Drawer Body */}
           <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain p-6 space-y-6">
+            {/* General Info Grid */}
             <div className="grid grid-cols-2 gap-3">
               {[
                 ['Customer', selected.customer_name],
@@ -764,9 +819,6 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
                 ['Address', selected.address || '-'],
                 ['Product', selected.product_name],
                 ['Category', selected.category || '-'],
-                ['Total', formatCurrency(selected.total_amount)],
-                ['Deposit Paid', formatCurrency(selected.deposit_amount)],
-                ['Remaining Balance', formatCurrency(selected.remaining_balance)],
                 ['Delivery Date', new Date(`${selected.expected_delivery_date}T00:00:00`).toLocaleDateString('en-IN')],
                 ['Created Date', new Date(selected.created_at).toLocaleDateString('en-IN')],
                 ['Created Time', new Date(selected.created_at).toLocaleTimeString('en-IN')],
@@ -781,6 +833,97 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
                 </div>
               ))}
             </div>
+
+            {/* Financial Breakdown Section */}
+            {(() => {
+              const bd = getAdvanceOrderBreakdown(selected)
+              const isCompleted = selected.status === 'completed'
+              const brandColor = selected.branch === 'pos2' ? '#1D4ED8' : '#7A1220'
+              return (
+                <div className="rounded-2xl border-2 border-[#E8D399] bg-gradient-to-b from-[#FFFDF7] to-white p-4 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: brandColor }} />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-[#111827]">Financial Breakdown & Balance</h4>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${isCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                      {isCompleted ? 'Fully Settled' : 'Advance Active'}
+                    </span>
+                  </div>
+
+                  {/* 2-Column Financial Details Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                    <div className="rounded-xl bg-gray-50/80 p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Subtotal</p>
+                      <p className="mt-0.5 text-sm font-extrabold text-gray-900">{formatCurrency(bd.subtotal)}</p>
+                    </div>
+
+                    <div className="rounded-xl bg-gray-50/80 p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Delivery Charges</p>
+                      <p className="mt-0.5 text-sm font-extrabold text-gray-900">
+                        {bd.deliveryCharge > 0 ? formatCurrency(bd.deliveryCharge) : 'Free (₹0)'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-gray-50/80 p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">Discount</p>
+                      <p className={`mt-0.5 text-sm font-extrabold ${bd.discountAmount > 0 ? 'text-emerald-700' : 'text-gray-900'}`}>
+                        {bd.discountAmount > 0 ? `-${formatCurrency(bd.discountAmount)}` : '₹0.00'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-gray-50/80 p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                        CGST {bd.cgstPercent > 0 ? `(${bd.cgstPercent}%)` : ''}
+                      </p>
+                      <p className="mt-0.5 text-sm font-extrabold text-gray-900">
+                        {bd.cgstAmount > 0 ? `+${formatCurrency(bd.cgstAmount)}` : '₹0.00'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-gray-50/80 p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider">
+                        SGST {bd.sgstPercent > 0 ? `(${bd.sgstPercent}%)` : ''}
+                      </p>
+                      <p className="mt-0.5 text-sm font-extrabold text-gray-900">
+                        {bd.sgstAmount > 0 ? `+${formatCurrency(bd.sgstAmount)}` : '₹0.00'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-amber-50/80 p-2.5 border border-amber-200">
+                      <p className="text-[10px] font-black text-amber-800 uppercase tracking-wider">Total Amount</p>
+                      <p className="mt-0.5 text-base font-black text-[#111827]">{formatCurrency(bd.total)}</p>
+                    </div>
+                  </div>
+
+                  {/* Payment & Balance Status */}
+                  <div className="rounded-xl bg-[#F8F7F4] p-3 border border-[#E8D399]/70 space-y-2 mt-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-gray-600">Deposit Paid:</span>
+                      <span className="font-black text-blue-700 text-sm">{formatCurrency(bd.depositPaid)}</span>
+                    </div>
+
+                    {isCompleted ? (
+                      <>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-gray-600">Final Balance Paid:</span>
+                          <span className="font-black text-emerald-700 text-sm">{formatCurrency(bd.balancePaid)}</span>
+                        </div>
+                        <div className="border-t border-gray-200/80 pt-1.5 flex justify-between items-center text-xs">
+                          <span className="font-black text-emerald-800 uppercase tracking-wider">Remaining Balance:</span>
+                          <span className="font-black text-emerald-800 text-sm">₹0.00 (Fully Settled)</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="border-t border-gray-200/80 pt-1.5 flex justify-between items-center text-xs">
+                        <span className="font-black text-amber-800 uppercase tracking-wider">Remaining Balance Due:</span>
+                        <span className="font-black text-red-600 text-sm">{formatCurrency(bd.remainingBalance)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {selected.remarks && (
               <div className="rounded-xl border border-violet-200 bg-violet-50 p-3.5">
@@ -855,6 +998,14 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
           {/* Sticky Drawer Footer */}
           <div className="shrink-0 px-6 py-4 border-t border-gray-200 bg-[#FBFAF6] flex items-center justify-between gap-3">
             <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => selected.status === 'completed' ? printFinal(selected) : printAdvanceReceipt(selected)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-100 cursor-pointer transition shadow-xs"
+                title={selected.status === 'completed' ? 'Print Final Thermal Receipt' : 'Print Advance Receipt'}
+              >
+                <Printer size={14} /> Print
+              </button>
               <button
                 type="button"
                 onClick={() => downloadFile(selected.status === 'completed' ? invoiceFile(selected) : advanceReceiptPdf(selected))}

@@ -10,6 +10,7 @@ import { uploadInvoicePdf } from '../lib/storage'
 import { isUuid, normalizeStructuredOrderItem, formatInvoiceNo } from '../lib/retail'
 import { buildProfessionalWhatsAppMessage } from '../lib/whatsappMessage'
 import { toWhatsAppUrl } from '../lib/phone'
+import { getAdvanceOrderBreakdown } from '../lib/advanceOrderBreakdown'
 
 function buildLookupCandidates(id: string): string[] {
   const raw = decodeURIComponent(id || '').trim()
@@ -157,6 +158,7 @@ export default function DigitalInvoice() {
                     base_price: adv.total_amount,
                     line_total: adv.total_amount,
                   }]
+              const advBd = getAdvanceOrderBreakdown(adv)
               row = {
                 id: adv.completed_order_id || adv.id,
                 invoice_no: adv.invoice_number || adv.deposit_id,
@@ -164,13 +166,14 @@ export default function DigitalInvoice() {
                 phone: adv.phone,
                 address: adv.address || '',
                 items: advItems,
-                total: adv.total_amount,
-                subtotal: adv.total_amount,
-                delivery_charge: 0,
-                discount_amount: 0,
-                manual_discount_amount: 0,
-                total_gst: 0,
-                gst_amount: 0,
+                total: advBd.total,
+                subtotal: advBd.subtotal,
+                delivery_charge: advBd.deliveryCharge,
+                shipping: advBd.deliveryCharge,
+                discount_amount: advBd.couponDiscount,
+                manual_discount_amount: advBd.manualDiscount,
+                total_gst: advBd.totalGst,
+                gst_amount: advBd.totalGst,
                 status: adv.status,
                 payment_mode: adv.final_payment_method || 'Advance Payment',
                 created_at: adv.completed_at || adv.created_at,
@@ -233,9 +236,14 @@ export default function DigitalInvoice() {
   )
 
   const recordedGst = Number(invoice.total_gst || invoice.gst_amount || 0)
+  const basePreTax = itemsBaseTotal > 0 ? itemsBaseTotal : (invoice.subtotal ? Number(invoice.subtotal) : itemsLineTotal)
   const impliedGst = recordedGst > 0
     ? recordedGst
-    : (itemsLineTotal > itemsBaseTotal && itemsBaseTotal > 0 ? Math.round((itemsLineTotal - itemsBaseTotal) * 100) / 100 : 0)
+    : (itemsLineTotal > itemsBaseTotal && itemsBaseTotal > 0
+        ? Math.round((itemsLineTotal - itemsBaseTotal) * 100) / 100
+        : (Number(invoice.total || 0) > basePreTax + 0.05
+            ? Math.round((Number(invoice.total) - basePreTax) * 100) / 100
+            : 0))
 
   const subtotal = itemsBaseTotal > 0 && impliedGst > 0
     ? itemsBaseTotal
@@ -306,12 +314,12 @@ export default function DigitalInvoice() {
         address: invoice.address || '',
         branch: invoice.branch as any,
         items: invoice.items || [],
-        subtotal: invoiceItems.reduce((sum: number, item: any) => sum + (item.line_total || 0), 0),
-        shipping: invoice.shipping || 0,
-        total: invoice.total || 0,
-        discountAmount: invoice.discount_amount,
-        manualDiscountAmount: invoice.manual_discount_amount,
-        gstAmount: invoice.gst_amount,
+        subtotal: subtotal,
+        shipping: Number(invoice.shipping || invoice.delivery_charge || 0),
+        total: effectiveTotal,
+        discountAmount: cleanCouponDiscount,
+        manualDiscountAmount: cleanManualDiscount,
+        gstAmount: recordedGst > 0 ? recordedGst : impliedGst,
         couponCode: invoice.coupon_code,
         paymentMode: invoice.payment_mode,
       })

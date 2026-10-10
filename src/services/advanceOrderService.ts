@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { PosBranch } from '../store/store'
+import { getAdvanceOrderBreakdown } from '../lib/advanceOrderBreakdown'
 
 export type AdvanceStatus = 'pending_deposit' | 'ready_for_delivery' | 'waiting_final_payment' | 'completed' | 'cancelled'
 export type AdvancePaymentMethod = 'cash' | 'upi' | 'card'
@@ -724,6 +725,12 @@ export async function completeAdvanceOrder(
                     source: 'advance_order'
                   }]
 
+              const bd = getAdvanceOrderBreakdown(existing)
+              const effDiscount = couponPercentage > 0
+                ? Math.round((existing.total_amount * couponPercentage / 100) * 100) / 100
+                : bd.couponDiscount
+              const effManual = manualDiscountAmount > 0 ? manualDiscountAmount : bd.manualDiscount
+
               const { error: ordErr } = await supabase.from('orders').insert({
                 id: completedOrderId,
                 invoice_no: invoiceNo,
@@ -731,19 +738,22 @@ export async function completeAdvanceOrder(
                 phone: existing.phone,
                 address: existing.address || '',
                 items,
-                subtotal: existing.total_amount,
+                subtotal: bd.subtotal,
                 total: existing.total_amount,
                 status: 'completed',
                 order_mode: 'offline',
                 order_type: 'advance_order',
-                shipping: 0,
-                delivery_charge: 0,
-                discount_amount: 0,
-                manual_discount_amount: 0,
-                coupon_code: null,
-                coupon_percentage: 0,
+                shipping: bd.deliveryCharge,
+                delivery_charge: bd.deliveryCharge,
+                discount_amount: effDiscount,
+                manual_discount_amount: effManual,
+                coupon_code: couponCode || bd.couponCode || null,
+                coupon_percentage: couponPercentage || 0,
                 manual_discount_type: 'flat',
-                manual_discount_value: 0,
+                manual_discount_value: effManual,
+                total_gst: bd.totalGst,
+                gst_amount: bd.totalGst,
+                gst_enabled: bd.totalGst > 0,
                 payment_mode: paymentMethod.toLowerCase(),
                 payment_method: paymentMethod.toLowerCase(),
                 branch,
