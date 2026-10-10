@@ -943,7 +943,9 @@ export default function AdvanceOrders({ onOrderCompleted, onOrderDeleted }: Adva
 
             {selected.remarks && (
               <div className="rounded-xl border border-violet-200 bg-violet-50 p-3.5">
-                <p className="text-[10px] font-black uppercase text-violet-600">Remarks</p>
+                <p className="text-[10px] font-black uppercase text-violet-600">
+                  {selected.branch === 'pos1' ? 'Number of Kids' : 'Remarks'}
+                </p>
                 <p className="mt-1 text-sm text-[#273126] font-medium">{selected.remarks}</p>
               </div>
             )}

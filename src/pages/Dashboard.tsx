@@ -2613,7 +2613,7 @@ export default function Dashboard() {
                                       <div><span className="font-black text-[#374151]">{l('Phone', 'தொலைபேசி')}: </span><span className="font-bold text-[#111111]">{formatPhoneForDisplay(order.phone) || '-'}</span></div>
                                       <div className="flex-1"><span className="font-black text-[#374151]">{l('Address', 'முகவரி')}: </span><span className="text-[#111111]">{order.address || '-'}</span></div>
                                       {Boolean(order.remarks) && (
-                                        <div className="w-full mt-1 border-t border-blue-50 pt-2"><span className="font-black text-[#374151]">Remarks: </span><span className="font-bold text-[#111111]">{order.remarks}</span></div>
+                                        <div className="w-full mt-1 border-t border-blue-50 pt-2"><span className="font-black text-[#374151]">{branch === 'pos1' ? 'Number of Kids: ' : 'Remarks: '}</span><span className="font-bold text-[#111111]">{order.remarks}</span></div>
                                       )}
                                       {Boolean(order.reference_number) && (
                                         <div className="w-full mt-1 border-t border-blue-50 pt-2"><span className="font-black text-[#374151]">Ref Number: </span><span className="font-bold text-[#111111]">{order.reference_number}</span></div>
@@ -4184,7 +4184,7 @@ export default function Dashboard() {
                         )}
                         {((o as unknown as Record<string,unknown>).remarks as string) && (
                           <div className="col-span-2">
-                            <p className="text-[#9BAB9A] uppercase text-[11px] font-black">Remarks</p>
+                            <p className="text-[#9BAB9A] uppercase text-[11px] font-black">{branch === 'pos1' ? 'Number of Kids' : 'Remarks'}</p>
                             <p className="font-semibold text-[#374151] break-words">{(o as unknown as Record<string,unknown>).remarks as string}</p>
                           </div>
                         )}
@@ -4334,7 +4334,9 @@ export default function Dashboard() {
                                   <p className="font-semibold text-[#111111]">{(o as unknown as Record<string,unknown>).reference_number as string || '—'}</p>
                                 </div>
                                 <div>
-                                  <p className="text-[10px] font-black uppercase text-[#9BAB9A] tracking-wider mb-1">Remarks</p>
+                                  <p className="text-[10px] font-black uppercase text-[#9BAB9A] tracking-wider mb-1">
+                                    {branch === 'pos1' ? 'Number of Kids' : 'Remarks'}
+                                  </p>
                                   <p className="font-semibold text-[#374151] break-words">{(o as unknown as Record<string,unknown>).remarks as string || '—'}</p>
                                 </div>
                                 <div>
