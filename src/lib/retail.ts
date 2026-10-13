@@ -455,7 +455,7 @@ export const normalizeStructuredOrderItem = (raw: Record<string, unknown>): Stru
   )
 
   const unit = normalizeUnitLabel(raw.unit || raw.unit_label || raw.unitLabel, unitType)
-  const basePrice = toNumber(raw.base_price ?? raw.basePrice ?? raw.offerPrice ?? raw.price, 0)
+  const basePrice = toNumber(raw.base_price ?? raw.basePrice ?? raw.price ?? raw.offerPrice, 0)
   const quantity = normalizeSelectedQuantity(
     raw.quantity ?? raw.qty,
     unitType,

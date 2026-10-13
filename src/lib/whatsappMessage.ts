@@ -59,7 +59,8 @@ export const buildProfessionalWhatsAppMessage = (input: BuildWhatsAppMessageInpu
     ? input.items.map(item => `• ${item.name} (x${item.qty}) - ₹ ${Number(item.lineTotal || 0).toFixed(2)}`).join('\n')
     : ''
 
-  const profile = getBranchProfile(input.branch)
+  const effectiveBranch = (input.branch === 'pos2' || /^INV?5\d{7}/i.test(String(input.invoiceNumber || ''))) ? 'pos2' : (input.branch || 'pos1')
+  const profile = getBranchProfile(effectiveBranch)
 
   return `✨ *${profile.name}* ✨
 🛍️ *Official Purchase Invoice & Receipt* 🛍️

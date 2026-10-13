@@ -177,6 +177,7 @@ export default function DigitalInvoice() {
                 status: adv.status,
                 payment_mode: adv.final_payment_method || 'Advance Payment',
                 created_at: adv.completed_at || adv.created_at,
+                branch: adv.branch || (adv.invoice_number?.startsWith('5') ? 'pos2' : 'pos1'),
               }
             }
           } catch {

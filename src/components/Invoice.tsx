@@ -68,7 +68,8 @@ export const Invoice: React.FC<InvoiceProps> = ({
     catch { return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }
   })()
 
-  const isPos2 = branch === 'pos2'
+  const effectiveBranch: PosBranch = branch === 'pos2' || /^INV?5\d{7}/i.test(String(invoiceNo || '')) ? 'pos2' : (branch || 'pos1')
+  const isPos2 = effectiveBranch === 'pos2'
   const primaryColor = isPos2 ? '#1D4ED8' : '#DB2777'
   const borderColor = isPos2 ? '#BFDBFE' : '#FBCFE8'
   const cardBg = isPos2 ? '#EFF6FF' : '#FDF2F8'
@@ -76,7 +77,7 @@ export const Invoice: React.FC<InvoiceProps> = ({
   const headerBorder = isPos2 ? '#93C5FD' : '#F472B6'
   const statusColor = status === 'completed' ? (isPos2 ? '#2563EB' : '#EC4899') : status === 'cancelled' ? '#dc2626' : '#d97706'
   const effectiveDelivery = deliveryCharge || shipping
-  const profile = getBranchProfile(branch)
+  const profile = getBranchProfile(effectiveBranch)
 
   return (
     <div

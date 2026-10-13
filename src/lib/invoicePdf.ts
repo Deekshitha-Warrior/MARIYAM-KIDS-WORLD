@@ -42,7 +42,8 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   const pageWidth = 210
   const left = 16
   const right = 194
-  const isPos2 = data.branch === 'pos2'
+  const effectiveBranch: PosBranch = (data.branch === 'pos2' || /^INV?5\d{7}/i.test(String(data.invoiceNo || ''))) ? 'pos2' : (data.branch || 'pos1')
+  const isPos2 = effectiveBranch === 'pos2'
   const primaryColor = isPos2 ? '#1D4ED8' : '#DB2777' // Royal Blue for Taj Textiles, Deep Pink for Mariyam
   const borderColor = isPos2 ? '#60A5FA' : '#F472B6'
   const boxFill = isPos2 ? '#EFF6FF' : '#FDF2F8'
@@ -53,7 +54,7 @@ export function createInvoicePdf(data: InvoicePdfData): Blob {
   const muted = '#68717c'
   let y = 16
 
-  const profile = getBranchProfile(data.branch)
+  const profile = getBranchProfile(effectiveBranch)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)

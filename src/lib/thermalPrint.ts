@@ -36,9 +36,11 @@ export interface ThermalReceiptData {
 
 export function printThermalReceipt(data: ThermalReceiptData) {
   try {
-    const profile = getBranchProfile(data.branch)
-    const brandInitial = data.branch === 'pos2' ? 'T' : 'M'
-    const storeDisplayName = data.storeName || (data.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN)
+    const effectiveBranch: PosBranch = (data.branch === 'pos2' || /^INV?5\d{7}/i.test(String(data.invoiceNo || ''))) ? 'pos2' : (data.branch || 'pos1')
+    const isPos2 = effectiveBranch === 'pos2'
+    const profile = getBranchProfile(effectiveBranch)
+    const brandInitial = isPos2 ? 'T' : 'M'
+    const storeDisplayName = data.storeName || (isPos2 ? 'TAJ TEXTILES' : BRAND_EN)
     // Create an isolated print iframe protected from third-party extension observers
     const iframe = document.createElement('iframe')
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0.01;pointer-events:none;z-index:-1;'
@@ -242,7 +244,7 @@ export function printThermalReceipt(data: ThermalReceiptData) {
         </div>
 
         <div class="text-center mt-2" style="font-size: 11px;">
-          <div class="font-bold">Thank you for shopping at ${data.storeName || (data.branch === 'pos2' ? 'TAJ TEXTILES' : BRAND_EN)}!</div>
+          <div class="font-bold">Thank you for shopping at ${data.storeName || (isPos2 ? 'TAJ TEXTILES' : BRAND_EN)}!</div>
         </div>
       </body>
     </html>

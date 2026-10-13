@@ -94,7 +94,7 @@ const toProductId = (v: string | number): string | null => {
 }
 
 const makePosItem = (p: Product, qty?: number): PosItem => {
-  const basePrice = p.offerPrice || p.price
+  const basePrice = Number(p.price != null && !isNaN(Number(p.price)) && Number(p.price) > 0 ? p.price : (p.offerPrice || 0))
   const q = Math.max(1, Math.round(qty ?? 1))
   const packLabel = p.predefinedOptions[0]?.label ?? p.unitLabel
   const isUnregistered = p.category === 'Unregistered'

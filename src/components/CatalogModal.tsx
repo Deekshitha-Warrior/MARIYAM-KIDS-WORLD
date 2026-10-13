@@ -108,11 +108,13 @@ export default function CatalogModal({ isOpen, branch, onClose, onAdd }: Catalog
     const selectedCategory = allCategoryOptions.find(c => c.name_en.trim().toLowerCase() === editForm.category.trim().toLowerCase())
     if (!selectedCategory) { setEditError('Select a valid category'); setEditLoading(false); return }
     const categoryName = selectedCategory.name_en.trim()
+    const newPrice = Number(editForm.price)
     const { error } = await supabase.from('products').update({
       name: editForm.name.trim(),
       category: categoryName,
       category_id: selectedCategory.id,
-      price: Number(editForm.price),
+      price: newPrice,
+      offer_price: newPrice,
     }).eq('id', editingProduct.id).eq('branch', branch)
     if (error) { setEditError(error.message); setEditLoading(false); return }
     await fetchProducts(branch, true)

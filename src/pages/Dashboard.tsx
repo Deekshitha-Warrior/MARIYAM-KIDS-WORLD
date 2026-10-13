@@ -593,6 +593,9 @@ export default function Dashboard() {
       invoice_pdf_url: String(row.invoice_pdf_url || ''),
       remarks: row.remarks ? String(row.remarks) : undefined,
       reference_number: row.reference_number ? String(row.reference_number) : undefined,
+      branch: (row.branch === 'pos2' || row.branch === 'pos1')
+        ? (row.branch as PosBranch)
+        : (/^INV?5\d{7}/i.test(String(row.invoice_no || '')) ? 'pos2' : (branch || 'pos1')),
     }
   }
 
@@ -1343,7 +1346,7 @@ export default function Dashboard() {
       couponDiscount: order.discount_amount,
       shipping: order.delivery_charge,
       total: order.total,
-      branch: branch, // Branch passed through for branch-specific receipt details
+      branch: order.branch || branch, // Branch passed through for branch-specific receipt details
     })
     return { items, subtotal, message, fileName: `Invoice-${order.invoice_no || order.id}.pdf` }
   }
@@ -1378,7 +1381,7 @@ export default function Dashboard() {
       date: order.created_at,
       customerName: order.customer_name,
       phone: order.phone,
-      branch: order.branch,
+      branch: order.branch || branch,
       items: previewItems,
       subtotal,
       shipping,
@@ -1412,7 +1415,7 @@ export default function Dashboard() {
       customerName: order.customer_name,
       phone: order.phone,
       address: order.address,
-      branch: order.branch,
+      branch: order.branch || branch,
       items: preview.items as unknown as Array<Record<string, unknown>>,
       subtotal: preview.subtotal,
       shipping: order.delivery_charge,
@@ -5409,7 +5412,7 @@ export default function Dashboard() {
                     customerName={invoicePreviewOrder.customer_name}
                     phone={invoicePreviewOrder.phone}
                     address={invoicePreviewOrder.address}
-                    branch={invoicePreviewOrder.branch}
+                    branch={invoicePreviewOrder.branch || branch}
                     items={preview.items as unknown as import('../components/Invoice').InvoiceItem[]}
                     subtotal={preview.subtotal}
                     shipping={invoicePreviewOrder.delivery_charge}
