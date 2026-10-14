@@ -4,6 +4,7 @@ import { AlertTriangle, Volume2, VolumeX, Barcode, Package, ChevronRight } from 
 import { useAlarmStore } from '../../store/alarmStore'
 import { alarmSound } from '../../lib/alarmAudio'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
+import { useAdminAuthStore, useSettingsStore } from '../../store/store'
 
 export const LowStockAlarmModal: React.FC = () => {
   const isAlarmActive = useAlarmStore((state) => state.isAlarmActive)
@@ -11,7 +12,21 @@ export const LowStockAlarmModal: React.FC = () => {
   const silenceAlarm = useAlarmStore((state) => state.silenceAlarm)
   const [isAudioBlocked, setIsAudioBlocked] = useState(() => alarmSound.isBlocked())
 
-  useBodyScrollLock(isAlarmActive && lowStockItems.length > 0)
+  const role = useAdminAuthStore((state) => state.role)
+  const activeBranch = useAdminAuthStore((state) => state.activeBranch)
+  const staffBranch = useAdminAuthStore((state) => state.branch)
+  const settingsByBranch = useSettingsStore((state) => state.settingsByBranch)
+
+  const currentBranch = role === 'staff' ? staffBranch : activeBranch
+  const pos1Enabled = Boolean(settingsByBranch['pos1']?.lowStockAlertEnabled)
+  const pos2Enabled = Boolean(settingsByBranch['pos2']?.lowStockAlertEnabled)
+  const isAlertEnabled = currentBranch === 'pos1'
+    ? pos1Enabled
+    : currentBranch === 'pos2'
+    ? pos2Enabled
+    : (pos1Enabled || pos2Enabled)
+
+  useBodyScrollLock(isAlertEnabled && isAlarmActive && lowStockItems.length > 0)
 
   useEffect(() => {
     setIsAudioBlocked(alarmSound.isBlocked())
@@ -25,7 +40,7 @@ export const LowStockAlarmModal: React.FC = () => {
     void alarmSound.unlock()
   }
 
-  if (!isAlarmActive || lowStockItems.length === 0) return null
+  if (!isAlertEnabled || !isAlarmActive || lowStockItems.length === 0) return null
 
   return createPortal(
     <div

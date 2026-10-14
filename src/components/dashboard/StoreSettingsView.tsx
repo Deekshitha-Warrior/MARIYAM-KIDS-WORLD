@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Store, Phone, MapPin, Palette, RotateCcw, Save, Upload, Trash2, Loader2, Shield } from 'lucide-react'
+import { Store, Phone, MapPin, Palette, RotateCcw, Save, Upload, Trash2, Loader2, Shield, Bell, BellOff, Volume2, VolumeX } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAdminAuthStore, useSettingsStore, resolveBranch, type PosBranch } from '../../store/store'
 import { posAccent, branchShortLabel, branchLogo, getAdminThemeColor, setAdminThemeColor, applyActiveTheme } from '../../lib/branchTheme'
 import { normalizeHex } from '../../lib/color'
+import { alarmSound } from '../../lib/alarmAudio'
+import { useAlarmStore } from '../../store/alarmStore'
 
 // 20 curated elegant, deep, eye-friendly theme colors (rich wines, deep forest greens, executive navies, dark teals, royal plums, warm espresso & obsidian)
 const PRESET_COLORS = [
@@ -50,12 +52,88 @@ export default function StoreSettingsView() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [togglingBranch, setTogglingBranch] = useState<'pos1' | 'pos2' | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     void fetchSettings('pos1')
     void fetchSettings('pos2')
   }, [fetchSettings])
+
+  const handleToggleLowStockAlert = async (branch: 'pos1' | 'pos2') => {
+    if (role !== 'admin') return
+    const branchLabel = branch === 'pos1' ? 'Mariyam Kids World (POS 1)' : 'Taj Textiles (POS 2)'
+    const currentStatus = Boolean(settingsByBranch[branch]?.lowStockAlertEnabled)
+    const nextStatus = !currentStatus
+
+    const confirmed = window.confirm(
+      `Confirm Low Stock Alert Change:\n\n` +
+      `Are you sure you want to turn ${nextStatus ? 'ON' : 'OFF'} the low stock alert sound and popup for ${branchLabel}?\n\n` +
+      (nextStatus
+        ? 'When ON: The audible siren and restocking alert popup will trigger when inventory runs low.'
+        : 'When OFF: Both low stock alarm audio and popup are completely disabled for all SKUs.')
+    )
+
+    if (!confirmed) return
+
+    setTogglingBranch(branch)
+    try {
+      const flagStr = `low_stock_alert:${nextStatus}`
+
+      // Update in Supabase
+      const { error: err1 } = await supabase
+        .from('store_settings')
+        .update({
+          low_stock_alert_enabled: nextStatus,
+          website_url: flagStr,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('branch', branch)
+
+      if (err1) {
+        // Fallback update website_url if column low_stock_alert_enabled doesn't exist yet
+        const { error: err2 } = await supabase
+          .from('store_settings')
+          .update({
+            website_url: flagStr,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('branch', branch)
+        if (err2) throw err2
+      }
+
+      // Update zustand state immediately
+      useSettingsStore.setState((state) => ({
+        settingsByBranch: {
+          ...state.settingsByBranch,
+          [branch]: {
+            ...state.settingsByBranch[branch]!,
+            lowStockAlertEnabled: nextStatus,
+            websiteUrl: flagStr,
+          },
+        },
+      }))
+
+      if (!nextStatus) {
+        alarmSound.stopAlert()
+        useAlarmStore.getState().silenceAlarm()
+        useAlarmStore.setState({ lowStockItems: [], isAlarmActive: false, silencedItemIds: new Set() })
+      }
+
+      await fetchSettings(branch)
+
+      window.alert(
+        `Low stock alert sound and popup for ${branchLabel} is now turned ${nextStatus ? 'ON' : 'OFF'}.`
+      )
+    } catch (err) {
+      console.error('Failed to toggle low stock alert:', err)
+      window.alert(
+        `Failed to update setting: ${err instanceof Error ? err.message : 'Unknown error'}`
+      )
+    } finally {
+      setTogglingBranch(null)
+    }
+  }
 
   // Sync form when target or settingsByBranch changes
   useEffect(() => {
@@ -241,6 +319,152 @@ export default function StoreSettingsView() {
       {message && (
         <div className={`rounded-xl px-3.5 py-2.5 text-xs font-bold ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
           {message.text}
+        </div>
+      )}
+
+      {/* Admin Only — POS Low Stock Alert Sound & Popup Switches (Independent per branch) */}
+      {role === 'admin' && (
+        <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div>
+              <p className="text-base font-black text-[#1A0E0E] flex items-center gap-2">
+                <Bell size={18} className="text-amber-600" />
+                POS Low Stock Audio &amp; Popup Alert Settings
+              </p>
+              <p className="text-xs text-gray-500 font-medium mt-0.5">
+                Independent alert switches for each POS counter. Only accessible in Admin panel.
+              </p>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+              <Shield size={11} /> Admin Only
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* POS 1 — Mariyam Switch Card */}
+            {(() => {
+              const isEnabled = Boolean(settingsByBranch['pos1']?.lowStockAlertEnabled)
+              const isBusy = togglingBranch === 'pos1'
+              return (
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  isEnabled ? 'bg-emerald-50/50 border-emerald-200' : 'bg-[#FAFAFA] border-gray-200'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+                        <h4 className="font-black text-sm text-[#1A0E0E] truncate">
+                          Mariyam Kids World (POS 1)
+                        </h4>
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                        Audible siren alarm &amp; restocking popup for low inventory SKUs.
+                      </p>
+                      <div className="pt-1.5 flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          isEnabled
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-gray-200/80 text-gray-700 border border-gray-300'
+                        }`}>
+                          {isEnabled ? <Volume2 size={11} /> : <VolumeX size={11} />}
+                          {isEnabled ? 'Alerts ON' : 'Alerts OFF (Silenced)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Interactive Switch */}
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void handleToggleLowStockAlert('pos1')}
+                      className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${
+                        isEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+                      }`}
+                      role="switch"
+                      aria-checked={isEnabled}
+                      aria-label="Toggle Mariyam Low Stock Alert"
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                          isEnabled ? 'translate-x-6' : 'translate-x-0'
+                        }`}
+                      >
+                        {isBusy ? (
+                          <Loader2 size={12} className="animate-spin text-gray-500" />
+                        ) : isEnabled ? (
+                          <Volume2 size={12} className="text-emerald-600" />
+                        ) : (
+                          <VolumeX size={12} className="text-gray-400" />
+                        )}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* POS 2 — Taj Switch Card */}
+            {(() => {
+              const isEnabled = Boolean(settingsByBranch['pos2']?.lowStockAlertEnabled)
+              const isBusy = togglingBranch === 'pos2'
+              return (
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  isEnabled ? 'bg-emerald-50/50 border-emerald-200' : 'bg-[#FAFAFA] border-gray-200'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" />
+                        <h4 className="font-black text-sm text-[#1A0E0E] truncate">
+                          Taj Textiles (POS 2)
+                        </h4>
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                        Audible siren alarm &amp; restocking popup for low inventory SKUs.
+                      </p>
+                      <div className="pt-1.5 flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          isEnabled
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-gray-200/80 text-gray-700 border border-gray-300'
+                        }`}>
+                          {isEnabled ? <Volume2 size={11} /> : <VolumeX size={11} />}
+                          {isEnabled ? 'Alerts ON' : 'Alerts OFF (Silenced)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Interactive Switch */}
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void handleToggleLowStockAlert('pos2')}
+                      className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${
+                        isEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+                      }`}
+                      role="switch"
+                      aria-checked={isEnabled}
+                      aria-label="Toggle Taj Low Stock Alert"
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                          isEnabled ? 'translate-x-6' : 'translate-x-0'
+                        }`}
+                      >
+                        {isBusy ? (
+                          <Loader2 size={12} className="animate-spin text-gray-500" />
+                        ) : isEnabled ? (
+                          <Volume2 size={12} className="text-emerald-600" />
+                        ) : (
+                          <VolumeX size={12} className="text-gray-400" />
+                        )}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
         </div>
       )}
 

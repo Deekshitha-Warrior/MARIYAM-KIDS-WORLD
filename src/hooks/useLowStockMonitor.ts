@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { useAlarmStore, type LowStockItem } from '../store/alarmStore'
 import { alarmSound } from '../lib/alarmAudio'
+import { useSettingsStore } from '../store/store'
 
 /**
  * @param branch  Only products/variants of this branch raise the alarm ('pos1' | 'pos2').
@@ -15,16 +16,40 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
   const branchRef = useRef(branch)
   branchRef.current = branch
 
+  const pos1AlertEnabled = useSettingsStore((s) => s.settingsByBranch['pos1']?.lowStockAlertEnabled)
+  const pos2AlertEnabled = useSettingsStore((s) => s.settingsByBranch['pos2']?.lowStockAlertEnabled)
+
   const checkStockLevels = async (force: boolean = false) => {
     if (!enabled || (isCheckingRef.current && !force)) return
     isCheckingRef.current = true
 
     try {
-      // 1. Fetch non-variant active products (exclude Unregistered)
       const checkedBranch = branchRef.current
+      const settingsByBranch = useSettingsStore.getState().settingsByBranch
+      const pos1Enabled = Boolean(settingsByBranch['pos1']?.lowStockAlertEnabled)
+      const pos2Enabled = Boolean(settingsByBranch['pos2']?.lowStockAlertEnabled)
+
+      // If low stock alert is disabled for the branch being checked, do NOT sound alarm or popup
+      if (checkedBranch === 'pos1' && !pos1Enabled) {
+        alarmSound.stopAlert()
+        useAlarmStore.setState({ lowStockItems: [], isAlarmActive: false, silencedItemIds: new Set() })
+        return
+      }
+      if (checkedBranch === 'pos2' && !pos2Enabled) {
+        alarmSound.stopAlert()
+        useAlarmStore.setState({ lowStockItems: [], isAlarmActive: false, silencedItemIds: new Set() })
+        return
+      }
+      if (!checkedBranch && !pos1Enabled && !pos2Enabled) {
+        alarmSound.stopAlert()
+        useAlarmStore.setState({ lowStockItems: [], isAlarmActive: false, silencedItemIds: new Set() })
+        return
+      }
+
+      // 1. Fetch non-variant active products (exclude Unregistered)
       let prodQuery = supabase
         .from('products')
-        .select('id, name, stock_quantity, low_stock_alert, barcode, has_variants, category, category_id')
+        .select('id, name, stock_quantity, low_stock_alert, barcode, has_variants, category, category_id, branch')
         .eq('is_active', true)
         .eq('has_variants', false)
       if (checkedBranch) prodQuery = prodQuery.eq('branch', checkedBranch)
@@ -37,7 +62,7 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
       // 2. Fetch active variants
       let variantQuery = supabase
         .from('product_variants')
-        .select('id, variant_name, stock, barcode, product_id, is_active, products(name, category, category_id, is_active)')
+        .select('id, variant_name, stock, barcode, product_id, is_active, branch, products(name, category, category_id, is_active, branch)')
         .eq('is_active', true)
       if (checkedBranch) variantQuery = variantQuery.eq('branch', checkedBranch)
       const { data: variants, error: varErr } = await variantQuery
@@ -56,6 +81,11 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
         ) {
           continue
         }
+        // If checking all branches, respect each branch's independent switch
+        const pBranch = (p as { branch?: string }).branch
+        if (pBranch === 'pos1' && !pos1Enabled) continue
+        if (pBranch === 'pos2' && !pos2Enabled) continue
+
         const threshold = Number(p.low_stock_alert) > 0 ? Number(p.low_stock_alert) : 5
         const currentStock = Number(p.stock_quantity) || 0
 
@@ -85,6 +115,10 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
         ) {
           continue
         }
+        // If checking all branches, respect each branch's independent switch
+        const vBranch = (v as { branch?: string }).branch || parentProd?.branch
+        if (vBranch === 'pos1' && !pos1Enabled) continue
+        if (vBranch === 'pos2' && !pos2Enabled) continue
 
         const threshold = 5
         const currentStock = Number(v.stock) || 0
@@ -111,6 +145,23 @@ export function useLowStockMonitor(enabled: boolean = true, role?: string | null
       isCheckingRef.current = false
     }
   }
+
+  // React immediately when the low stock alert switches are toggled in Store Settings
+  useEffect(() => {
+    const isCurrentEnabled = branch === 'pos1'
+      ? Boolean(pos1AlertEnabled)
+      : branch === 'pos2'
+      ? Boolean(pos2AlertEnabled)
+      : Boolean(pos1AlertEnabled || pos2AlertEnabled)
+
+    if (!isCurrentEnabled) {
+      alarmSound.stopAlert()
+      useAlarmStore.setState({ lowStockItems: [], isAlarmActive: false, silencedItemIds: new Set() })
+    } else if (enabled) {
+      isCheckingRef.current = false
+      void checkStockLevels(true)
+    }
+  }, [pos1AlertEnabled, pos2AlertEnabled, branch, enabled])
 
   useEffect(() => {
     if (!enabled) {

@@ -40,7 +40,7 @@ const RMIcon = ({ size = 16, className = '' }: { size?: number; className?: stri
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { debounce } from '../lib/debounce'
-import { useAuthStore, useProductStore, useAdminAuthStore, resolveBranch, type Product, type PosBranch } from '../store/store'
+import { useAuthStore, useProductStore, useAdminAuthStore, useSettingsStore, resolveBranch, type Product, type PosBranch } from '../store/store'
 import { useAlarmStore } from '../store/alarmStore'
 import { alarmSound } from '../lib/alarmAudio'
 import { uploadProductImage } from '../lib/storage'
@@ -506,16 +506,27 @@ export default function Dashboard() {
       }
     }
     if (tabKey === 'inventory') {
-      // Reset silenced state and trigger alarm for inventory/barcode view
-      useAlarmStore.getState().resetSilencedState()
-      const lowItems = useAlarmStore.getState().lowStockItems
-      if (lowItems.length > 0) {
-        // Re-trigger the alarm with proper sound
-        alarmSound.stopAlert() // Clear any existing alert first
-        setTimeout(() => {
-          useAlarmStore.getState().setLowStockItems(lowItems)
-          alarmSound.startAlert()
-        }, 100)
+      const currentActiveBranch = useAdminAuthStore.getState().activeBranch
+      const pos1Enabled = Boolean(useSettingsStore.getState().settingsByBranch['pos1']?.lowStockAlertEnabled)
+      const pos2Enabled = Boolean(useSettingsStore.getState().settingsByBranch['pos2']?.lowStockAlertEnabled)
+      const isAlertEnabled = currentActiveBranch === 'pos1'
+        ? pos1Enabled
+        : currentActiveBranch === 'pos2'
+        ? pos2Enabled
+        : (pos1Enabled || pos2Enabled)
+
+      if (isAlertEnabled) {
+        // Reset silenced state and trigger alarm for inventory/barcode view
+        useAlarmStore.getState().resetSilencedState()
+        const lowItems = useAlarmStore.getState().lowStockItems
+        if (lowItems.length > 0) {
+          // Re-trigger the alarm with proper sound
+          alarmSound.stopAlert() // Clear any existing alert first
+          setTimeout(() => {
+            useAlarmStore.getState().setLowStockItems(lowItems)
+            alarmSound.startAlert()
+          }, 100)
+        }
       }
     }
     setTab(tabKey)
@@ -535,16 +546,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (tab === 'inventory') {
-      // Reset silenced state and trigger alarm when inventory tab becomes active
-      useAlarmStore.getState().resetSilencedState()
-      const lowItems = useAlarmStore.getState().lowStockItems
-      if (lowItems.length > 0) {
-        // Small delay to ensure the UI is ready and sound can play
-        const timer = setTimeout(() => {
-          useAlarmStore.getState().setLowStockItems(lowItems)
-          alarmSound.startAlert()
-        }, 50)
-        return () => clearTimeout(timer)
+      const currentActiveBranch = useAdminAuthStore.getState().activeBranch
+      const pos1Enabled = Boolean(useSettingsStore.getState().settingsByBranch['pos1']?.lowStockAlertEnabled)
+      const pos2Enabled = Boolean(useSettingsStore.getState().settingsByBranch['pos2']?.lowStockAlertEnabled)
+      const isAlertEnabled = currentActiveBranch === 'pos1'
+        ? pos1Enabled
+        : currentActiveBranch === 'pos2'
+        ? pos2Enabled
+        : (pos1Enabled || pos2Enabled)
+
+      if (isAlertEnabled) {
+        // Reset silenced state and trigger alarm when inventory tab becomes active
+        useAlarmStore.getState().resetSilencedState()
+        const lowItems = useAlarmStore.getState().lowStockItems
+        if (lowItems.length > 0) {
+          // Small delay to ensure the UI is ready and sound can play
+          const timer = setTimeout(() => {
+            useAlarmStore.getState().setLowStockItems(lowItems)
+            alarmSound.startAlert()
+          }, 50)
+          return () => clearTimeout(timer)
+        }
       }
     }
   }, [tab])

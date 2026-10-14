@@ -22,7 +22,7 @@ import { AdjustStockModal } from './AdjustStockModal'
 import { StockHistoryDrawer } from './StockHistoryDrawer'
 import { QuickPriceModal } from './QuickPriceModal'
 import { formatCurrency } from '../../lib/retail'
-import { useProductStore, useAdminAuthStore, resolveBranch } from '../../store/store'
+import { useProductStore, useAdminAuthStore, useSettingsStore, resolveBranch } from '../../store/store'
 import { useAlarmStore } from '../../store/alarmStore'
 import { alarmSound } from '../../lib/alarmAudio'
 import { CategoryManagerView } from './CategoryManagerView'
@@ -75,7 +75,9 @@ export const InventoryTable: React.FC = () => {
           category: i.category || undefined,
         }))
 
-      if (lowStockFlagged.length > 0) {
+      const targetBranch = branch === 'pos2' ? 'pos2' : 'pos1'
+      const isAlertEnabled = Boolean(useSettingsStore.getState().settingsByBranch[targetBranch]?.lowStockAlertEnabled)
+      if (isAlertEnabled && lowStockFlagged.length > 0) {
         useAlarmStore.getState().resetSilencedState()
         useAlarmStore.getState().setLowStockItems(lowStockFlagged)
         alarmSound.startAlert()

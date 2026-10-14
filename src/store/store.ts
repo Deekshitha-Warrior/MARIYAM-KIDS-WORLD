@@ -176,6 +176,7 @@ export interface StoreSettings {
   themeColor: string
   websiteUrl?: string
   gstEnabled: boolean
+  lowStockAlertEnabled?: boolean
 }
 
 interface SettingsState {
@@ -635,7 +636,10 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
         const ownerName = cleanIdentityField(data.owner_name) || BRAND_OWNER_NAME
         const phone = cleanIdentityField(data.phone) || BRAND_PHONE_DISPLAY
         const email = cleanIdentityField(data.email) || BRAND_EMAIL
-        const address = cleanIdentityField(data.address) || BRAND_ADDRESS
+        const address = cleanIdentityField(data.address) || (queryBranch === 'pos2' ? TAJ_BRAND_ADDRESS : BRAND_ADDRESS)
+        const isAlertEnabled = typeof data.low_stock_alert_enabled === 'boolean'
+          ? data.low_stock_alert_enabled
+          : String(data.website_url || '').toLowerCase().includes('low_stock_alert:true')
         const resolved: StoreSettings = {
           name,
           ownerName,
@@ -646,7 +650,9 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
           instagramId: data.instagram_id || '',
           logoUrl: data.logo_url || null,
           themeColor: data.theme_color || (queryBranch === 'pos2' ? '#B8860B' : '#8B1A1A'),
-          gstEnabled: data.gst_enabled
+          websiteUrl: data.website_url || '',
+          gstEnabled: data.gst_enabled,
+          lowStockAlertEnabled: isAlertEnabled,
         }
         set((state) => ({
           settings: resolved,
@@ -667,7 +673,8 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
       instagramId: '',
       logoUrl: TAJ_BRAND_LOGO,
       themeColor: '#2563EB',
-      gstEnabled: false
+      gstEnabled: false,
+      lowStockAlertEnabled: false,
     } : {
       name: BRAND_EN,
       ownerName: BRAND_OWNER_NAME,
@@ -678,7 +685,8 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
       instagramId: BRAND_INSTAGRAM,
       logoUrl: BRAND_LOGO_POS1,
       themeColor: '#EC4899',
-      gstEnabled: false
+      gstEnabled: false,
+      lowStockAlertEnabled: false,
     }
     set((state) => ({
       settings: fallback,
