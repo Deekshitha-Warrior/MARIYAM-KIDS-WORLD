@@ -132,6 +132,7 @@ export interface BarcodeRenderOptions {
   displayValue?: boolean
   fontSize?: number
   font?: string
+  fontOptions?: string
   textMargin?: number
   margin?: number
   lineColor?: string
@@ -151,15 +152,34 @@ export function renderBarcodeSvg(
   try {
     JsBarcode(svgElement, value.trim(), {
       format: 'CODE128',
-      width: options?.width ?? 1.5,
-      height: options?.height ?? 36,
+      width: options?.width ?? 2,
+      height: options?.height ?? 38,
       displayValue: options?.displayValue ?? true,
+      fontOptions: options?.fontOptions ?? 'bold',
       fontSize: options?.fontSize ?? 11,
-      font: options?.font ?? 'monospace',
+      font: options?.font ?? 'Arial, sans-serif',
       textMargin: options?.textMargin ?? 1,
-      margin: options?.margin ?? 4,
+      margin: options?.margin ?? 0,
       lineColor: options?.lineColor ?? '#000000',
       background: options?.background ?? '#ffffff',
+    })
+
+    // Force crisp, razor-sharp deep black rendering without anti-aliasing fuzziness
+    svgElement.setAttribute('shape-rendering', 'crispEdges')
+    svgElement.style.shapeRendering = 'crispEdges'
+
+    const rects = svgElement.querySelectorAll('rect')
+    rects.forEach((rect) => {
+      rect.setAttribute('fill', '#000000')
+      rect.setAttribute('shape-rendering', 'crispEdges')
+      rect.style.shapeRendering = 'crispEdges'
+    })
+
+    const texts = svgElement.querySelectorAll('text')
+    texts.forEach((text) => {
+      text.setAttribute('fill', '#000000')
+      text.setAttribute('font-weight', 'bold')
+      text.style.fontWeight = 'bold'
     })
   } catch (err) {
     console.error('[renderBarcodeSvg] Failed to generate barcode:', err)

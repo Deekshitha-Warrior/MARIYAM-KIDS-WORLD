@@ -40,7 +40,7 @@ export const BarcodeSheetPreviewModal: React.FC<BarcodeSheetPreviewModalProps> =
   const cardWidthPx = Math.max(130, Math.round(sizeConfig.widthMm * cardScale))
   const cardHeightPx = Math.max(85, Math.round(sizeConfig.heightMm * cardScale))
   const cardBarcodeHeightPx = Math.max(22, Math.round(cardHeightPx * 0.48))
-  const cardBarcodeWidth = Math.max(0.80, Math.min(1.85, Math.round(((cardWidthPx * 0.85) / 115) * 100) / 100))
+  const cardBarcodeWidth = Math.max(1.30, Math.min(2.40, Math.round(((cardWidthPx * 0.88) / 115) * 100) / 100))
 
   useEffect(() => {
     if (!isOpen || !containerRef.current) return
@@ -54,8 +54,10 @@ export const BarcodeSheetPreviewModal: React.FC<BarcodeSheetPreviewModalProps> =
           width: cardBarcodeWidth,
           height: cardBarcodeHeightPx,
           fontSize: Math.max(7, Math.round(cardHeightPx * 0.08)),
+          fontOptions: 'bold',
           displayValue: false,
           margin: 0,
+          lineColor: '#000000',
         })
       }
     })

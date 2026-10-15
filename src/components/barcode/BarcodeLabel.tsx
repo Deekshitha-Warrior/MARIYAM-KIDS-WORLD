@@ -29,10 +29,10 @@ export const BarcodeLabel: React.FC<BarcodeLabelProps> = ({
   const isLarge = heightMm >= 40
 
   // Dynamic calculation for barcode dimensions and typography (balanced proportions to prevent overlapping)
-  const barcodeHeightPx = Math.max(16, Math.round(heightMm * 0.32 * 3.7795))
+  const barcodeHeightPx = Math.max(22, Math.round(heightMm * 0.38 * 3.7795))
   const printableWidthPx = Math.max(30, (widthMm - 4) * 3.7795)
-  const barcodeBarWidth = Math.max(0.80, Math.min(1.70, Math.round((printableWidthPx / 120) * 100) / 100))
-  const barcodeFontSize = Math.max(6, Math.min(9.5, Math.round(heightMm * 0.20 * 10) / 10))
+  const barcodeBarWidth = Math.max(1.60, Math.min(2.50, Math.round((printableWidthPx / 100) * 100) / 100))
+  const barcodeFontSize = Math.max(7, Math.min(10, Math.round(heightMm * 0.22 * 10) / 10))
 
   useEffect(() => {
     if (svgRef.current && barcodeValue) {
@@ -41,9 +41,11 @@ export const BarcodeLabel: React.FC<BarcodeLabelProps> = ({
         height: barcodeHeightPx,
         fontSize: barcodeFontSize,
         font: 'Arial, sans-serif',
+        fontOptions: 'bold',
         margin: 0,
         textMargin: 1.5,
         displayValue: true,
+        lineColor: '#000000',
       })
     }
   }, [barcodeValue, widthMm, heightMm, barcodeHeightPx, barcodeBarWidth, barcodeFontSize])
