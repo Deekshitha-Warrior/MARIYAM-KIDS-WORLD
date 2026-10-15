@@ -4,6 +4,7 @@ import { X, Printer } from 'lucide-react'
 import {
   type BarcodeQueueItem,
   type LabelSizeConfig,
+  calculateSheetLayout,
   renderBarcodeSvg,
 } from '../../lib/barcode'
 
@@ -35,12 +36,25 @@ export const BarcodeSheetPreviewModal: React.FC<BarcodeSheetPreviewModalProps> =
       }
     })
 
+  // Calculate standard A4 vertical sheet layout & pagination
+  const layout = calculateSheetLayout(sizeConfig)
+
+  // Chunk labels into discrete printable sheets
+  const sheets: BarcodeQueueItem[][] = []
+  if (individualLabels.length === 0) {
+    sheets.push([])
+  } else {
+    for (let i = 0; i < individualLabels.length; i += layout.stickersPerSheet) {
+      sheets.push(individualLabels.slice(i, i + layout.stickersPerSheet))
+    }
+  }
+
   // Proportional card dimensions for preview sheet (matches physical label aspect ratio)
-  const cardScale = Math.min(4.8, 195 / sizeConfig.widthMm)
-  const cardWidthPx = Math.max(130, Math.round(sizeConfig.widthMm * cardScale))
-  const cardHeightPx = Math.max(85, Math.round(sizeConfig.heightMm * cardScale))
-  const cardBarcodeHeightPx = Math.max(22, Math.round(cardHeightPx * 0.48))
-  const cardBarcodeWidth = Math.max(0.80, Math.min(1.85, Math.round(((cardWidthPx * 0.85) / 115) * 100) / 100))
+  const cardScale = Math.min(3.5, 180 / (sizeConfig.widthMm * Math.max(1, layout.columns * 0.35)))
+  const cardWidthPx = Math.max(110, Math.round(sizeConfig.widthMm * cardScale))
+  const cardHeightPx = Math.max(75, Math.round(sizeConfig.heightMm * cardScale))
+  const cardBarcodeHeightPx = Math.max(20, Math.round(cardHeightPx * 0.45))
+  const cardBarcodeWidth = Math.max(0.75, Math.min(1.60, Math.round(((cardWidthPx * 0.85) / 115) * 100) / 100))
 
   useEffect(() => {
     if (!isOpen || !containerRef.current) return
@@ -95,9 +109,9 @@ export const BarcodeSheetPreviewModal: React.FC<BarcodeSheetPreviewModalProps> =
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-200 bg-[#7A1220] text-white shrink-0">
           <div>
-            <h3 className="text-sm sm:text-base font-black tracking-wide text-white">Print Preview</h3>
+            <h3 className="text-sm sm:text-base font-black tracking-wide text-white">Sticker Sheet Print Preview</h3>
             <p className="text-[11px] sm:text-xs text-[#D4AF37] font-semibold">
-              {individualLabels.length} Labels (1 Barcode Per Page • {sizeConfig.name} • {sizeConfig.widthMm} × {sizeConfig.heightMm} mm)
+              {individualLabels.length} {individualLabels.length === 1 ? 'Sticker' : 'Stickers'} • {sheets.length} {sheets.length === 1 ? 'Sheet' : 'Sheets'} ({layout.columns} Across × {layout.rowsPerPage} Down • {layout.stickersPerSheet} per sheet • A4 Portrait)
             </p>
           </div>
           <button
@@ -114,92 +128,107 @@ export const BarcodeSheetPreviewModal: React.FC<BarcodeSheetPreviewModalProps> =
           ref={containerRef}
           className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-gray-100/70 flex justify-center"
         >
-          <div className="flex flex-wrap items-center justify-center gap-4 w-full">
-            {individualLabels.map((label, idx) => (
-              <div key={`${label.id}-${idx}`} className="flex flex-col items-center">
-                <span className="text-[10px] font-bold text-gray-500 mb-1.5 font-mono">
-                  Page {idx + 1}
-                </span>
-                <div
-                  className="bg-white rounded-xl border border-gray-300 p-2.5 shadow-sm flex flex-col justify-between items-center text-center relative transition-all"
-                  style={{
-                    width: `${cardWidthPx}px`,
-                    height: `${cardHeightPx}px`,
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  {/* Header */}
-                  {label.header && (
-                    <span
-                      className="font-black uppercase tracking-wider text-gray-900 leading-none truncate max-w-[90%]"
-                      style={{ fontSize: `${Math.max(7.5, Math.round(cardHeightPx * 0.09))}px` }}
-                    >
-                      {label.header}
-                    </span>
-                  )}
-
-                {/* Barcode Graphic Box (occupies ~48% height) */}
-                <div
-                  className="w-full flex items-center justify-center overflow-hidden my-0.5"
-                  style={{ height: `${cardBarcodeHeightPx}px` }}
-                >
-                  <svg
-                    className="preview-barcode-svg max-w-[98%] max-h-full h-auto"
-                    data-barcode={label.barcodeValue}
-                  />
+          <div className="flex flex-col items-center gap-6 w-full max-w-3xl">
+            {sheets.map((sheetItems, sheetIdx) => (
+              <div key={`sheet-${sheetIdx}`} className="w-full flex flex-col items-center">
+                {/* Sheet Banner Info */}
+                <div className="flex items-center justify-between w-full px-1 mb-2 text-xs font-bold text-gray-600">
+                  <span className="font-mono bg-white border border-gray-300 text-gray-800 px-3 py-1 rounded-full shadow-xs">
+                    Sheet {sheetIdx + 1} of {sheets.length} (A4 Vertical)
+                  </span>
+                  <span className="text-[11px] text-gray-500">
+                    {sheetItems.length} of {layout.stickersPerSheet} stickers
+                  </span>
                 </div>
 
-                {/* Item Code Number */}
-                <span
-                  className="font-mono font-bold text-gray-800 tracking-wider leading-none"
-                  style={{ fontSize: `${Math.max(7, Math.round(cardHeightPx * 0.075))}px` }}
+                {/* Printable Sheet Box */}
+                <div
+                  className="bg-white rounded-2xl border-2 border-gray-300 p-4 sm:p-6 shadow-md w-full"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`,
+                    gap: '8px',
+                  }}
                 >
-                  {label.barcodeValue}
-                </span>
+                  {sheetItems.map((label, idx) => (
+                    <div
+                      key={`${label.id}-${sheetIdx}-${idx}`}
+                      className="bg-white rounded-xl border border-dashed border-gray-300 p-2 shadow-xs flex flex-col justify-between items-center text-center relative transition-all min-h-[90px]"
+                    >
+                      {/* Header */}
+                      {label.header && (
+                        <span
+                          className="font-black uppercase tracking-wider text-gray-900 leading-none truncate max-w-[95%]"
+                          style={{ fontSize: `${Math.max(7, Math.round(cardHeightPx * 0.085))}px` }}
+                        >
+                          {label.header}
+                        </span>
+                      )}
 
-                {/* Lines */}
-                {label.line1 && (
-                  <span
-                    className="font-bold text-gray-700 truncate max-w-full leading-tight"
-                    style={{ fontSize: `${Math.max(7, Math.round(cardHeightPx * 0.075))}px` }}
-                  >
-                    {label.line1}
-                  </span>
-                )}
-                {label.line2 && (
-                  <span
-                    className="font-semibold text-gray-600 truncate max-w-full leading-tight"
-                    style={{ fontSize: `${Math.max(6.5, Math.round(cardHeightPx * 0.07))}px` }}
-                  >
-                    {label.line2}
-                  </span>
-                )}
-                {label.line3 && (
-                  <span
-                    className="font-black text-[#7A1220] truncate max-w-full leading-none"
-                    style={{ fontSize: `${Math.max(8, Math.round(cardHeightPx * 0.095))}px` }}
-                  >
-                    {label.line3}
-                  </span>
-                )}
-                {label.line4 && (
-                  <span
-                    className="text-gray-500 truncate max-w-full leading-none"
-                    style={{ fontSize: `${Math.max(6, Math.round(cardHeightPx * 0.065))}px` }}
-                  >
-                    {label.line4}
-                  </span>
-                )}
+                      {/* Barcode Graphic Box */}
+                      <div
+                        className="w-full flex items-center justify-center overflow-hidden my-0.5"
+                        style={{ height: `${cardBarcodeHeightPx}px` }}
+                      >
+                        <svg
+                          className="preview-barcode-svg max-w-[98%] max-h-full h-auto"
+                          data-barcode={label.barcodeValue}
+                        />
+                      </div>
+
+                      {/* Item Code Number */}
+                      <span
+                        className="font-mono font-bold text-gray-800 tracking-wider leading-none"
+                        style={{ fontSize: `${Math.max(6.5, Math.round(cardHeightPx * 0.07))}px` }}
+                      >
+                        {label.barcodeValue}
+                      </span>
+
+                      {/* Lines */}
+                      {label.line1 && (
+                        <span
+                          className="font-bold text-gray-700 truncate max-w-full leading-tight"
+                          style={{ fontSize: `${Math.max(6.5, Math.round(cardHeightPx * 0.07))}px` }}
+                        >
+                          {label.line1}
+                        </span>
+                      )}
+                      {label.line2 && (
+                        <span
+                          className="font-semibold text-gray-600 truncate max-w-full leading-tight"
+                          style={{ fontSize: `${Math.max(6, Math.round(cardHeightPx * 0.065))}px` }}
+                        >
+                          {label.line2}
+                        </span>
+                      )}
+                      {label.line3 && (
+                        <span
+                          className="font-black text-[#7A1220] truncate max-w-full leading-none"
+                          style={{ fontSize: `${Math.max(7.5, Math.round(cardHeightPx * 0.09))}px` }}
+                        >
+                          {label.line3}
+                        </span>
+                      )}
+                      {label.line4 && (
+                        <span
+                          className="text-gray-500 truncate max-w-full leading-none"
+                          style={{ fontSize: `${Math.max(5.5, Math.round(cardHeightPx * 0.06))}px` }}
+                        >
+                          {label.line4}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         </div>
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-200 bg-white shrink-0 gap-2 pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.75rem))] shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
           <span className="text-[11px] sm:text-xs font-bold text-gray-600 truncate mr-2">
-            Total {individualLabels.length} pages ready to print
+            Total {sheets.length} {sheets.length === 1 ? 'sheet' : 'sheets'} ({individualLabels.length} {individualLabels.length === 1 ? 'sticker' : 'stickers'}) ready to print
           </span>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button

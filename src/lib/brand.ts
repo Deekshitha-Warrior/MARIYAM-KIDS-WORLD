@@ -30,9 +30,9 @@ export function getDefaultBarcodeSettings(branch?: string): BarcodeSettingsConfi
       showDiscount: true
     }
   }
-  // POS1: Standard thermal labels (default)
+  // POS1: Standard sticker sheet layout (default)
   return {
-    printerType: 'label',
+    printerType: 'regular',
     selectedSizeId: '2_50x25',
     showSalePrice: true,
     showCompanyName: true,

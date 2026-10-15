@@ -18,6 +18,7 @@ import {
   type LabelSizeConfig,
   getStoredBarcodeSettings,
   getAllLabelSizes,
+  calculateSheetLayout,
   renderBarcodeSvg,
   generateBarcodeSvgString,
 } from '../../lib/barcode'
@@ -450,30 +451,26 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
       }
     })
 
-    let bodyContent = ''
-    // How many labels sit side-by-side across the physical roll/sheet width.
-    // A roll printer fed with a "2-up" / "3-up" die-cut roll MUST receive a page
-    // that is the full physical width (all columns), not a single label's width —
-    // otherwise the printer anchors the narrow page to one side of the roll and
-    // the other column(s) print blank.
-    const columns = isThermal ? Math.max(1, currentSizeConfig.labelsPerRow || 1) : 1
-    const gapMm = currentSizeConfig.horizontalGapMm || 0
+    // Calculate standard A4 vertical sheet layout & pagination
+    const layout = calculateSheetLayout(currentSizeConfig)
 
-    if (isThermal) {
-      const rows: string[] = []
-      for (let i = 0; i < allStickers.length; i += columns) {
-        const rowStickers = allStickers.slice(i, i + columns)
-        rows.push(`<div class="sticker-row">${rowStickers.join('')}</div>`)
-      }
-      bodyContent = rows.join('')
-    } else {
-      // Regular A4 printer container
-      bodyContent = `
-        <div class="a4-container">
-          ${allStickers.join('')}
-        </div>
-      `
+    // Chunk all stickers into sheets
+    const sheets: string[][] = []
+    for (let i = 0; i < allStickers.length; i += layout.stickersPerSheet) {
+      sheets.push(allStickers.slice(i, i + layout.stickersPerSheet))
     }
+
+    const bodyContent = sheets
+      .map(
+        (sheetStickers, sIdx) => `
+          <div class="sheet-page" data-sheet="${sIdx + 1}">
+            <div class="sheet-grid">
+              ${sheetStickers.join('')}
+            </div>
+          </div>
+        `
+      )
+      .join('')
 
     doc.open()
     doc.write(`
@@ -483,11 +480,8 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
           <title>${BRAND_EN} Barcode Labels</title>
           <style>
             @page {
-              ${
-                isThermal
-                  ? `size: ${(currentSizeConfig.widthMm * columns + gapMm * (columns - 1)).toFixed(2)}mm ${currentSizeConfig.heightMm}mm; margin: 0mm !important; marks: none !important;`
-                  : `size: A4 portrait; margin: 10mm !important;`
-              }
+              size: A4 portrait;
+              margin: 0mm !important;
             }
             * {
               box-sizing: border-box;
@@ -502,29 +496,55 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
-            .a4-container {
-              display: flex;
-              flex-wrap: wrap;
-              align-content: flex-start;
-              gap: 3mm 4mm;
-            }
-            .sticker-row {
-              display: flex;
-              flex-direction: row;
-              align-items: flex-start;
-              gap: ${gapMm}mm;
-              width: ${(currentSizeConfig.widthMm * columns + gapMm * (columns - 1)).toFixed(2)}mm;
-              break-inside: avoid !important;
+            .sheet-page {
+              width: 210mm !important;
+              height: 297mm !important;
+              max-width: 210mm !important;
+              max-height: 297mm !important;
+              padding: ${layout.marginTopMm}mm ${layout.marginRightMm}mm ${layout.marginBottomMm}mm ${layout.marginLeftMm}mm !important;
+              box-sizing: border-box !important;
+              overflow: hidden !important;
               page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
-            .sticker-row + .sticker-row {
-              ${isThermal ? 'break-before: page !important; page-break-before: always !important;' : ''}
+            .sheet-page + .sheet-page {
+              page-break-before: always !important;
+              break-before: page !important;
+            }
+            @media print {
+              .sheet-page {
+                width: 210mm !important;
+                height: 297mm !important;
+                max-width: 210mm !important;
+                max-height: 297mm !important;
+                padding: ${layout.marginTopMm}mm ${layout.marginRightMm}mm ${layout.marginBottomMm}mm ${layout.marginLeftMm}mm !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .sheet-page + .sheet-page {
+                page-break-before: always !important;
+                break-before: page !important;
+              }
+            }
+            .sheet-grid {
+              display: grid !important;
+              grid-template-columns: repeat(${layout.columns}, ${layout.stickerWidthMm}mm) !important;
+              grid-auto-rows: ${layout.stickerHeightMm}mm !important;
+              column-gap: ${layout.horizontalGapMm}mm !important;
+              row-gap: ${layout.verticalGapMm}mm !important;
+              justify-content: flex-start !important;
+              align-content: flex-start !important;
+              width: 100% !important;
+              height: 100% !important;
+              box-sizing: border-box !important;
             }
             .label-sticker {
-              width: ${currentSizeConfig.widthMm}mm !important;
-              height: ${currentSizeConfig.heightMm}mm !important;
-              max-width: ${currentSizeConfig.widthMm}mm !important;
-              max-height: ${currentSizeConfig.heightMm}mm !important;
+              width: ${layout.stickerWidthMm}mm !important;
+              height: ${layout.stickerHeightMm}mm !important;
+              max-width: ${layout.stickerWidthMm}mm !important;
+              max-height: ${layout.stickerHeightMm}mm !important;
               box-sizing: border-box;
               padding: ${stickerPadding};
               display: flex;
@@ -537,7 +557,7 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
               break-inside: avoid !important;
               page-break-inside: avoid !important;
               background: #fff;
-              ${!isThermal ? 'border: 0.2mm dashed #bbb;' : ''}
+              border: 0.15mm dashed #bbb;
             }
             .header {
               font-size: ${headerFontSize};
