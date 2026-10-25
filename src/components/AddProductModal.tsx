@@ -20,6 +20,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     name: '',
     category: '',
     price: '',
+    purchasePrice: '',
     stock: '0',
     lowStockAlert: '5',
   })
@@ -84,6 +85,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
           category: categoryName || 'Apparel',
           category_id: categoryId,
           price: Number(formData.price),
+          purchase_price: Number(formData.purchasePrice) || 0,
           stock: stockNum,
           stock_quantity: stockNum,
           low_stock_alert: alertThreshold,
@@ -208,15 +210,14 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-emerald-800 mb-1.5">
-                  Received Stock (Qty)
-                </label>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1.5">Cost / Purchase Price (₹)</label>
                 <input
                   type="number"
+                  step="0.01"
                   min="0"
-                  value={formData.stock}
-                  onChange={e => setFormData({...formData, stock: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-emerald-50/40 border-2 border-emerald-300 rounded-xl focus:outline-none focus:border-emerald-600 focus:bg-white text-sm font-black text-emerald-950"
+                  value={formData.purchasePrice}
+                  onChange={e => setFormData({...formData, purchasePrice: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-black"
                   placeholder="0"
                 />
               </div>
@@ -231,6 +232,22 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   onChange={e => setFormData({...formData, lowStockAlert: e.target.value})}
                   className="w-full px-4 py-2.5 bg-[#FBFAF6] border-2 border-[#E8D399] rounded-xl focus:outline-none focus:border-[#7A1220] focus:bg-white text-sm font-bold text-black"
                   placeholder="5"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-emerald-800 mb-1.5">
+                  Received Stock (Qty)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.stock}
+                  onChange={e => setFormData({...formData, stock: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-emerald-50/40 border-2 border-emerald-300 rounded-xl focus:outline-none focus:border-emerald-600 focus:bg-white text-sm font-black text-emerald-950"
+                  placeholder="0"
                 />
               </div>
             </div>

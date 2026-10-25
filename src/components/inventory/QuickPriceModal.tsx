@@ -14,10 +14,15 @@ interface Props {
 
 export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSuccess }) => {
   const branch = useAdminAuthStore((state) => resolveBranch(state.activeBranch))
+  const getInitialCost = (it: InventoryStockItem | null): string => {
+    if (!it) return ''
+    if (it.purchase_price != null) return String(it.purchase_price)
+    if (it.cost_price != null) return String(it.cost_price)
+    return ''
+  }
+
   const [sellingPrice, setSellingPrice] = useState<string>(item ? String(item.price ?? '') : '')
-  const [costPrice, setCostPrice] = useState<string>(
-    item && item.purchase_price !== undefined ? String(item.purchase_price) : ''
-  )
+  const [costPrice, setCostPrice] = useState<string>(getInitialCost(item))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,7 +30,7 @@ export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSucc
   useEffect(() => {
     if (item) {
       setSellingPrice(String(item.price ?? ''))
-      setCostPrice(item.purchase_price !== undefined ? String(item.purchase_price) : '')
+      setCostPrice(getInitialCost(item))
       setError('')
     }
   }, [item])
@@ -58,8 +63,8 @@ export const QuickPriceModal: React.FC<Props> = ({ isOpen, item, onClose, onSucc
       return
     }
 
-    const numCost = costPrice.trim() !== '' ? Number(costPrice) : undefined
-    if (numCost !== undefined && (isNaN(numCost) || numCost < 0)) {
+    const numCost = costPrice.trim() !== '' ? Number(costPrice) : 0
+    if (isNaN(numCost) || numCost < 0) {
       setError('Please enter a valid cost price.')
       return
     }
