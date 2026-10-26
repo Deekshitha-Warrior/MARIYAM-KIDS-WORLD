@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, Printer, Copy, Check } from 'lucide-react'
 import { BarcodeLabel } from './BarcodeLabel'
 import { BRAND_EN, getBarcodePrefix, getDefaultBarcodeSettings } from '../../lib/brand'
-import { getAllLabelSizes, generateBarcodeSvgString, getStoredBarcodeSettings, saveStoredBarcodeSettings } from '../../lib/barcode'
+import { getAllLabelSizes, generateBarcodeSvgString, getStoredBarcodeSettings, saveStoredBarcodeSettings, calculateSheetLayout } from '../../lib/barcode'
 import { useAdminAuthStore, resolveBranch } from '../../store/store'
 
 export interface BarcodePrintModalProps {
@@ -161,27 +161,27 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
       </div>
     `
 
-    const columns = isThermal ? Math.max(1, selectedPreset.labelsPerRow || 1) : 1
-    const gapMm = selectedPreset.horizontalGapMm || 0
+    // Calculate standard A4 vertical sheet layout & pagination
+    const layout = calculateSheetLayout(selectedPreset)
 
-    const totalStickers = Math.max(1, validQuantity)
-    const rows: string[] = []
-    for (let i = 0; i < totalStickers; i += columns) {
-      const rowCount = Math.min(columns, totalStickers - i)
-      const rowHtml = Array.from({ length: rowCount }).map(() => singleStickerHtml).join('')
-      
-      if (isThermal) {
-        // Wrap each row in a discrete page container to force hardware gap sensor alignment
-        rows.push(`<div class="page-wrapper"><div class="sticker-row">${rowHtml}</div></div>`)
-      } else {
-        rows.push(`<div class="sticker-row">${rowHtml}</div>`)
-      }
+    const allStickers: string[] = Array.from({ length: validQuantity }).map(() => singleStickerHtml)
+
+    const sheets: string[][] = []
+    for (let i = 0; i < allStickers.length; i += layout.stickersPerSheet) {
+      sheets.push(allStickers.slice(i, i + layout.stickersPerSheet))
     }
-    const allStickersHtml = rows.join('')
 
-    const bodyContent = isThermal
-      ? allStickersHtml
-      : `<div class="a4-container">${allStickersHtml}</div>`
+    const bodyContent = sheets
+      .map(
+        (sheetStickers, sIdx) => `
+          <div class="sheet-page" data-sheet="${sIdx + 1}">
+            <div class="sheet-grid">
+              ${sheetStickers.join('')}
+            </div>
+          </div>
+        `
+      )
+      .join('')
 
     const html = `
       <!DOCTYPE html>
@@ -190,30 +190,8 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
           <title>Print Barcode - ${barcodeValue}</title>
           <style>
             @page {
-              ${
-                isThermal
-                  ? `size: ${(selectedPreset.widthMm * columns + gapMm * (columns - 1)).toFixed(2)}mm ${selectedPreset.heightMm}mm; margin: 0;`
-                  : `size: A4 portrait; margin: 4mm;`
-              }
-            }
-            @media print {
-              ${
-                isThermal
-                  ? `
-                  html, body {
-                    margin: 0 !important;
-                    padding: 0 !important;
-                  }
-                  .page-wrapper {
-                    width: ${(selectedPreset.widthMm * columns + gapMm * (columns - 1)).toFixed(2)}mm !important;
-                    height: ${selectedPreset.heightMm}mm !important;
-                    overflow: hidden !important;
-                    page-break-after: always !important;
-                    break-after: page !important;
-                  }
-                  `
-                  : ''
-              }
+              size: A4 portrait;
+              margin: 0mm !important;
             }
             * {
               box-sizing: border-box;
@@ -258,44 +236,68 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
                 font-weight: 900 !important;
               }
             }
-            .a4-container {
-              display: flex;
-              flex-wrap: wrap;
-              align-content: flex-start;
-              width: 202mm;
-              gap: 3mm 2mm;
-            }
-            .page-wrapper {
-              display: block;
-            }
-            .sticker-row {
-              display: flex;
-              flex-direction: row;
-              align-items: center;
-              justify-content: ${isThermal ? 'space-between' : 'flex-start'};
-              gap: ${isThermal ? '0' : gapMm + 'mm'};
-              width: ${(selectedPreset.widthMm * columns + gapMm * (columns - 1)).toFixed(2)}mm;
-              height: ${isThermal ? selectedPreset.heightMm + 'mm' : 'auto'};
-              break-inside: avoid !important;
+            .sheet-page {
+              width: 210mm !important;
+              height: 297mm !important;
+              max-width: 210mm !important;
+              max-height: 297mm !important;
+              padding: ${layout.marginTopMm}mm ${layout.marginRightMm}mm ${layout.marginBottomMm}mm ${layout.marginLeftMm}mm !important;
+              box-sizing: border-box !important;
+              overflow: hidden !important;
               page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            .sheet-page + .sheet-page {
+              page-break-before: always !important;
+              break-before: page !important;
+            }
+            @media print {
+              .sheet-page {
+                width: 210mm !important;
+                height: 297mm !important;
+                max-width: 210mm !important;
+                max-height: 297mm !important;
+                padding: ${layout.marginTopMm}mm ${layout.marginRightMm}mm ${layout.marginBottomMm}mm ${layout.marginLeftMm}mm !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .sheet-page + .sheet-page {
+                page-break-before: always !important;
+                break-before: page !important;
+              }
+            }
+            .sheet-grid {
+              display: grid !important;
+              grid-template-columns: repeat(${layout.columns}, ${layout.stickerWidthMm}mm) !important;
+              grid-auto-rows: ${layout.stickerHeightMm}mm !important;
+              column-gap: ${layout.horizontalGapMm}mm !important;
+              row-gap: ${layout.verticalGapMm}mm !important;
+              justify-content: flex-start !important;
+              align-content: flex-start !important;
+              width: 100% !important;
+              height: 100% !important;
+              box-sizing: border-box !important;
             }
             .sticker {
-              width: ${selectedPreset.widthMm}mm;
-              height: ${selectedPreset.heightMm}mm;
-              max-width: ${selectedPreset.widthMm}mm;
-              max-height: ${selectedPreset.heightMm}mm;
-              /* Increased horizontal padding to protect text from physical printer misalignment */
-              padding: ${isSmall ? '0.8mm 2mm' : '1.2mm 2.5mm'};
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              align-items: center;
-              text-align: center;
-              overflow: hidden;
-              box-sizing: border-box;
-              flex-shrink: 0;
-              background: #fff;
-              ${!isThermal ? 'border: 0.2mm dashed #bbb;' : ''}
+              width: ${layout.stickerWidthMm}mm !important;
+              height: ${layout.stickerHeightMm}mm !important;
+              max-width: ${layout.stickerWidthMm}mm !important;
+              max-height: ${layout.stickerHeightMm}mm !important;
+              padding: ${stickerPadding} !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              align-items: center !important;
+              text-align: center !important;
+              overflow: hidden !important;
+              box-sizing: border-box !important;
+              flex-shrink: 0 !important;
+              background: #fff !important;
+              border: 0.15mm dashed #bbb !important;
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
             }
             .header {
               width: 100%;

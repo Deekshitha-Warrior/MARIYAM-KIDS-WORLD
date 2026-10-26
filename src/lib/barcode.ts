@@ -41,12 +41,93 @@ export interface BarcodeSettings {
 }
 
 export const DEFAULT_BARCODE_SETTINGS: BarcodeSettings = {
-  printerType: 'label',
+  printerType: 'regular',
   selectedSizeId: '2_38x25',
   showSalePrice: true,
   showCompanyName: true,
   showItemName: true,
   showDiscount: false,
+}
+
+export interface SheetLayoutCalculation {
+  sheetWidthMm: number
+  sheetHeightMm: number
+  marginTopMm: number
+  marginBottomMm: number
+  marginLeftMm: number
+  marginRightMm: number
+  availableWidthMm: number
+  availableHeightMm: number
+  columns: number
+  rowsPerPage: number
+  stickersPerSheet: number
+  stickerWidthMm: number
+  stickerHeightMm: number
+  horizontalGapMm: number
+  verticalGapMm: number
+}
+
+/**
+ * Calculates vertical/portrait sticker sheet layout for printing and preview.
+ * Fits multiple stickers onto an A4 portrait sheet (210mm × 297mm)
+ * with precise column and row pagination.
+ */
+export function calculateSheetLayout(
+  sizeConfig: { widthMm: number; heightMm: number; labelsPerRow?: number; horizontalGapMm?: number }
+): SheetLayoutCalculation {
+  const sheetWidthMm = 210
+  const sheetHeightMm = 297
+  const baseMarginHoriz = 6
+  const baseMarginVert = 8
+
+  const availableMaxW = sheetWidthMm - baseMarginHoriz * 2 // 198mm
+  const availableMaxH = sheetHeightMm - baseMarginVert * 2 // 281mm
+
+  const stickerWidthMm = sizeConfig.widthMm
+  const stickerHeightMm = sizeConfig.heightMm
+  const horizontalGapMm = typeof sizeConfig.horizontalGapMm === 'number' && sizeConfig.horizontalGapMm >= 0
+    ? sizeConfig.horizontalGapMm
+    : 2
+  const verticalGapMm = 2.5
+
+  // Determine columns across sheet
+  let columns = 1
+  if (sizeConfig.labelsPerRow && sizeConfig.labelsPerRow > 1) {
+    columns = sizeConfig.labelsPerRow
+  } else {
+    columns = Math.max(1, Math.floor((availableMaxW + horizontalGapMm) / (stickerWidthMm + horizontalGapMm)))
+  }
+
+  // Determine rows per sheet
+  const rowsPerPage = Math.max(1, Math.floor((availableMaxH + verticalGapMm) / (stickerHeightMm + verticalGapMm)))
+  const stickersPerSheet = Math.max(1, columns * rowsPerPage)
+
+  // Calculate content dimensions and center grid on sheet
+  const gridWidthMm = columns * stickerWidthMm + (columns - 1) * horizontalGapMm
+  const gridHeightMm = rowsPerPage * stickerHeightMm + (rowsPerPage - 1) * verticalGapMm
+
+  const marginLeftMm = Math.max(2, Math.round(((sheetWidthMm - gridWidthMm) / 2) * 10) / 10)
+  const marginRightMm = marginLeftMm
+  const marginTopMm = Math.max(4, Math.round(((sheetHeightMm - gridHeightMm) / 2) * 10) / 10)
+  const marginBottomMm = marginTopMm
+
+  return {
+    sheetWidthMm,
+    sheetHeightMm,
+    marginTopMm,
+    marginBottomMm,
+    marginLeftMm,
+    marginRightMm,
+    availableWidthMm: sheetWidthMm - marginLeftMm * 2,
+    availableHeightMm: sheetHeightMm - marginTopMm * 2,
+    columns,
+    rowsPerPage,
+    stickersPerSheet,
+    stickerWidthMm,
+    stickerHeightMm,
+    horizontalGapMm,
+    verticalGapMm,
+  }
 }
 
 const SETTINGS_KEY = 'yg_barcode_settings'
