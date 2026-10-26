@@ -21,3 +21,5 @@ The app keeps the established dashboard, POS billing, catalog, category, coupon,
 - `VITE_BRANCH_2_STAFF_ID` / `VITE_BRANCH_2_STAFF_PASSWORD` — Branch 2 (Taj Textiles) staff login
 
 Brand assets are located in `public/yg-logo.png`.
+
+The End
