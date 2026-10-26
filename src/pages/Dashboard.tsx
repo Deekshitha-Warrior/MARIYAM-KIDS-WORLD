@@ -300,6 +300,7 @@ const emptyForm = {
   unitType: 'unit' as UnitType, unitLabel: 'piece', baseQuantity: 1,
   stockQuantity: 100, stockUnit: 'piece', allowDecimalQuantity: false,
   predefinedOptionsText: '', isActive: true, sortOrder: 0, stock: 100,
+  lowStockAlert: 5 as string | number,
   description: '', descriptionTa: '', benefits: '', benefitsTa: '', image: '',
   hasVariants: false,
 }
@@ -1773,7 +1774,8 @@ export default function Dashboard() {
         category: prodForm.category.trim(), category_id: prodForm.categoryId || null,
         remedy: prodForm.remedy, price: toNumber(prodForm.price, 0),
         offer_price: prodForm.offerPrice === '' ? null : toNumber(prodForm.offerPrice, 0),
-        purchase_price: prodForm.purchasePrice === '' ? null : toNumber(prodForm.purchasePrice, 0),
+        purchase_price: prodForm.purchasePrice === '' ? 0 : toNumber(prodForm.purchasePrice, 0),
+        low_stock_alert: toNumber(prodForm.lowStockAlert, 5),
         mrp: prodForm.mrp === '' ? null : toNumber(prodForm.mrp, 0),
         sku: prodForm.sku || null,
         barcode: prodForm.barcode || null,
@@ -1808,11 +1810,12 @@ export default function Dashboard() {
       name: p.name, nameTa: p.nameTa || p.tamilName || '', category: p.category,
       categoryId: p.categoryId ?? null, remedy: p.remedy || [],
       price: p.price, offerPrice: p.offerPrice || '',
-      purchasePrice: p.purchasePrice || '', mrp: p.mrp || '',
+      purchasePrice: p.purchasePrice != null ? String(p.purchasePrice) : '', mrp: p.mrp || '',
       sku: p.sku || '', barcode: p.barcode || '',
       unitType: p.unitType,
       unitLabel: p.unitLabel, baseQuantity: p.baseQuantity,
       stockQuantity: p.stockQuantity || p.stock, stockUnit: p.stockUnit,
+      lowStockAlert: p.lowStockAlert != null ? String(p.lowStockAlert) : '5',
       allowDecimalQuantity: p.allowDecimalQuantity, predefinedOptionsText: optText,
       isActive: p.isActive, sortOrder: p.sortOrder, stock: p.stock,
       description: p.description, descriptionTa: p.descriptionTa || '',
@@ -4549,6 +4552,12 @@ export default function Dashboard() {
                     <input required type="number" min="0"
                       className="w-full px-4 py-2.5 bg-[#FAFAFA] border border-[#F3F4F6] focus:border-[#D4AF37] rounded-xl text-[13px] font-bold outline-none transition-colors"
                       value={prodForm.stockQuantity} onChange={e => setProdForm(f => ({...f, stockQuantity: Number(e.target.value)}))} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black uppercase text-[#6B7280] tracking-wider mb-1">{l('Low Stock Alert Limit', 'குறைந்த இருப்பு எச்சரிக்கை')}</label>
+                    <input type="number" min="1"
+                      className="w-full px-4 py-2.5 bg-[#FAFAFA] border border-[#F3F4F6] focus:border-[#D4AF37] rounded-xl text-[13px] font-bold outline-none transition-colors"
+                      value={prodForm.lowStockAlert} onChange={e => setProdForm(f => ({...f, lowStockAlert: e.target.value}))} />
                   </div>
                   <div className="col-span-2 sm:col-span-1">
                     <label className="block text-[11px] font-black uppercase text-[#6B7280] tracking-wider mb-1">{l('Category', 'வகை')} *</label>

@@ -50,11 +50,11 @@ export const BarcodeSheetPreviewModal: React.FC<BarcodeSheetPreviewModalProps> =
   }
 
   // Proportional card dimensions for preview sheet (matches physical label aspect ratio)
-  const cardScale = Math.min(3.5, 180 / (sizeConfig.widthMm * Math.max(1, layout.columns * 0.35)))
-  const cardWidthPx = Math.max(110, Math.round(sizeConfig.widthMm * cardScale))
-  const cardHeightPx = Math.max(75, Math.round(sizeConfig.heightMm * cardScale))
-  const cardBarcodeHeightPx = Math.max(20, Math.round(cardHeightPx * 0.45))
-  const cardBarcodeWidth = Math.max(0.75, Math.min(1.60, Math.round(((cardWidthPx * 0.85) / 115) * 100) / 100))
+  const cardScale = Math.min(4.8, 195 / sizeConfig.widthMm)
+  const cardWidthPx = Math.max(130, Math.round(sizeConfig.widthMm * cardScale))
+  const cardHeightPx = Math.max(85, Math.round(sizeConfig.heightMm * cardScale))
+  const cardBarcodeHeightPx = Math.max(22, Math.round(cardHeightPx * 0.48))
+  const cardBarcodeWidth = Math.max(1.30, Math.min(2.40, Math.round(((cardWidthPx * 0.88) / 115) * 100) / 100))
 
   useEffect(() => {
     if (!isOpen || !containerRef.current) return
@@ -68,8 +68,10 @@ export const BarcodeSheetPreviewModal: React.FC<BarcodeSheetPreviewModalProps> =
           width: cardBarcodeWidth,
           height: cardBarcodeHeightPx,
           fontSize: Math.max(7, Math.round(cardHeightPx * 0.08)),
+          fontOptions: 'bold',
           displayValue: false,
           margin: 0,
+          lineColor: '#000000',
         })
       }
     })

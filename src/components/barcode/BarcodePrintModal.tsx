@@ -117,12 +117,11 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
       const isSmall = selectedPreset.heightMm <= 25
       const isLarge = selectedPreset.heightMm >= 40
 
-      // Proportional barcode sizing preventing detail overlaps
-      // Barcode bars take ~32% of height, leaving balanced space for text, header, and footer
-      const barcodeHeightPx = Math.max(16, Math.round(selectedPreset.heightMm * 0.32 * 3.7795))
+      // Proportional barcode sizing: thicker, bolder bars for crystal clear scanning and deep black contrast
+      const barcodeHeightPx = Math.max(22, Math.round(selectedPreset.heightMm * 0.38 * 3.7795))
       const printableWidthPx = Math.max(30, (selectedPreset.widthMm - 4) * 3.7795)
-      const barcodeBarWidth = Math.max(0.80, Math.min(1.70, Math.round((printableWidthPx / 120) * 100) / 100))
-      const barcodeFontSize = Math.max(6, Math.min(9.5, Math.round(selectedPreset.heightMm * 0.20 * 10) / 10))
+      const barcodeBarWidth = Math.max(1.60, Math.min(2.50, Math.round((printableWidthPx / 100) * 100) / 100))
+      const barcodeFontSize = Math.max(7, Math.min(10, Math.round(selectedPreset.heightMm * 0.22 * 10) / 10))
 
       // Direct SVG generation without CDN script dependencies
       const svgMarkup = generateBarcodeSvgString(barcodeValue, {
@@ -130,9 +129,11 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
         height: barcodeHeightPx,
         fontSize: barcodeFontSize,
         font: 'Arial, sans-serif',
+        fontOptions: 'bold',
         margin: 0,
         textMargin: 1.5,
         displayValue: true,
+        lineColor: '#000000',
       })
 
       const headerFontSize = isSmall ? '7pt' : isLarge ? '10.5pt' : '8.5pt'
@@ -196,14 +197,44 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
               box-sizing: border-box;
               margin: 0;
               padding: 0;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
             }
             html, body {
               margin: 0 !important;
               padding: 0 !important;
               background: #fff !important;
+              color: #000 !important;
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            @media print {
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              body {
+                background: #fff !important;
+                color: #000 !important;
+              }
+              .barcode-box svg {
+                shape-rendering: crispEdges !important;
+                image-rendering: -webkit-optimize-contrast !important;
+                image-rendering: crisp-edges !important;
+                image-rendering: pixelated !important;
+              }
+              .barcode-box svg rect {
+                fill: #000000 !important;
+                shape-rendering: crispEdges !important;
+              }
+              .barcode-box svg text {
+                fill: #000000 !important;
+                font-weight: 900 !important;
+              }
             }
             .sheet-page {
               width: 210mm !important;
@@ -303,16 +334,29 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
               display: flex;
               justify-content: center;
               align-items: center;
-              margin: 0.4mm 0;
+              margin: 0.3mm 0;
               overflow: hidden;
             }
             .barcode-box svg {
               display: block;
               margin: 0 auto;
-              max-width: 98%;
+              max-width: 99%;
               max-height: 100%;
               width: auto;
               height: auto;
+              shape-rendering: crispEdges !important;
+              image-rendering: -webkit-optimize-contrast !important;
+              image-rendering: crisp-edges !important;
+              image-rendering: pixelated !important;
+            }
+            .barcode-box svg rect {
+              fill: #000000 !important;
+              shape-rendering: crispEdges !important;
+            }
+            .barcode-box svg text {
+              fill: #000000 !important;
+              font-weight: 900 !important;
+              font-family: Arial, sans-serif !important;
             }
             .footer {
               width: 100%;

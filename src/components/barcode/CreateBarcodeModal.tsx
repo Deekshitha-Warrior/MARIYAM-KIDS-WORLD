@@ -198,20 +198,22 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
     const previewScale = Math.min(230 / currentSizeConfig.widthMm, 150 / currentSizeConfig.heightMm)
     const previewWidth = Math.round(currentSizeConfig.widthMm * previewScale)
     const previewHeight = Math.round(currentSizeConfig.heightMm * previewScale)
-    const previewBarcodeHeight = Math.max(26, Math.round(previewHeight * 0.46))
+    const previewBarcodeHeight = Math.max(30, Math.round(previewHeight * 0.48))
     const codeLength = codeToRender.length
     const previewBarcodeWidth = Math.max(
-      0.82,
-      Math.min(1.85, Math.round(((previewWidth * 0.84) / ((codeLength + 2) * 11 + 2)) * 100) / 100)
+      1.3,
+      Math.min(2.4, Math.round(((previewWidth * 0.88) / ((codeLength + 2) * 11 + 2)) * 100) / 100)
     )
 
     if (previewSvgRef.current) {
       renderBarcodeSvg(previewSvgRef.current, codeToRender, {
         width: previewBarcodeWidth,
         height: previewBarcodeHeight,
-        fontSize: Math.max(7, Math.round(previewHeight * 0.08)),
+        fontSize: Math.max(7.5, Math.round(previewHeight * 0.09)),
+        fontOptions: 'bold',
         displayValue: false,
         margin: 0,
+        lineColor: '#000000',
       })
     }
   }, [
@@ -403,10 +405,11 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
     const isLarge = currentSizeConfig.heightMm >= 40
 
     // Proportional barcode sizing preventing detail overlaps
-    const barcodeHeightPx = Math.max(16, Math.round(currentSizeConfig.heightMm * 0.32 * 3.7795))
+    // Increased height and bolder bar width (min 1.6px, up to 2.5px) for rich, solid black prints
+    const barcodeHeightPx = Math.max(22, Math.round(currentSizeConfig.heightMm * 0.38 * 3.7795))
     const printableWidthPx = Math.max(30, (currentSizeConfig.widthMm - 4) * 3.7795)
-    const barcodeBarWidth = Math.max(0.80, Math.min(1.70, Math.round((printableWidthPx / 120) * 100) / 100))
-    const barcodeFontSize = Math.max(6, Math.min(9.5, Math.round(currentSizeConfig.heightMm * 0.20 * 10) / 10))
+    const barcodeBarWidth = Math.max(1.60, Math.min(2.50, Math.round((printableWidthPx / 100) * 100) / 100))
+    const barcodeFontSize = Math.max(7, Math.min(10, Math.round(currentSizeConfig.heightMm * 0.22 * 10) / 10))
 
     const headerFontSize = isSmall ? '7pt' : isLarge ? '10.5pt' : '8.5pt'
     const titleFontSize = isSmall ? '6pt' : isLarge ? '9pt' : '7.5pt'
@@ -428,9 +431,11 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
         height: barcodeHeightPx,
         fontSize: barcodeFontSize,
         font: 'Arial, sans-serif',
+        fontOptions: 'bold',
         margin: 0,
         textMargin: 1.5,
         displayValue: true,
+        lineColor: '#000000',
       })
       for (let i = 0; i < count; i++) {
         allStickers.push(`
@@ -487,14 +492,44 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
               box-sizing: border-box;
               margin: 0;
               padding: 0;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
             }
             html, body {
               margin: 0 !important;
               padding: 0 !important;
               background: #fff !important;
+              color: #000 !important;
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            @media print {
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              body {
+                background: #fff !important;
+                color: #000 !important;
+              }
+              .barcode-box svg {
+                shape-rendering: crispEdges !important;
+                image-rendering: -webkit-optimize-contrast !important;
+                image-rendering: crisp-edges !important;
+                image-rendering: pixelated !important;
+              }
+              .barcode-box svg rect {
+                fill: #000000 !important;
+                shape-rendering: crispEdges !important;
+              }
+              .barcode-box svg text {
+                fill: #000000 !important;
+                font-weight: 900 !important;
+              }
             }
             .sheet-page {
               width: 210mm !important;
@@ -586,16 +621,29 @@ export const CreateBarcodeModal: React.FC<CreateBarcodeModalProps> = ({
               display: flex;
               justify-content: center;
               align-items: center;
-              margin: 0.4mm 0;
+              margin: 0.3mm 0;
               overflow: hidden;
             }
             .barcode-box svg {
               display: block;
               margin: 0 auto;
-              max-width: 98%;
+              max-width: 99%;
               max-height: 100%;
               width: auto;
               height: auto;
+              shape-rendering: crispEdges !important;
+              image-rendering: -webkit-optimize-contrast !important;
+              image-rendering: crisp-edges !important;
+              image-rendering: pixelated !important;
+            }
+            .barcode-box svg rect {
+              fill: #000000 !important;
+              shape-rendering: crispEdges !important;
+            }
+            .barcode-box svg text {
+              fill: #000000 !important;
+              font-weight: 900 !important;
+              font-family: Arial, sans-serif !important;
             }
             .extra-line {
               font-size: ${tagFontSize};

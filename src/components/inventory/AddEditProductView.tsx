@@ -103,9 +103,9 @@ export const AddEditProductView: React.FC<{
     setCategoryId(matchedCatId)
 
     setPrice(String(p.price || ''))
-    setPurchasePrice(String(p.purchasePrice || ''))
+    setPurchasePrice(p.purchasePrice != null ? String(p.purchasePrice) : '')
     setStockQuantity(String(p.stockQuantity ?? p.stock ?? 0))
-    setLowStockAlert(p.lowStockAlert ? String(p.lowStockAlert) : '5')
+    setLowStockAlert(p.lowStockAlert != null ? String(p.lowStockAlert) : '5')
     setBarcode(p.barcode || '')
     setDescription(p.description || '')
     setHasVariants(Boolean(p.hasVariants))
@@ -378,7 +378,9 @@ export const AddEditProductView: React.FC<{
           for (const v of variantRows) {
             if (!v.variantName.trim()) continue
             const vPrice = Number(v.price) > 0 ? Number(v.price) : priceNum
-            const vCost = Number(v.costPrice) > 0 ? Number(v.costPrice) : costNum
+            const vCost = (v.costPrice !== undefined && v.costPrice !== null && !isNaN(Number(v.costPrice)) && Number(v.costPrice) >= 0)
+              ? Number(v.costPrice)
+              : costNum
             const vStock = Math.max(0, Number(v.stock) || 0)
             totalVariantStock += vStock
 
@@ -583,7 +585,9 @@ export const AddEditProductView: React.FC<{
           for (const v of variantRows) {
             if (!v.variantName.trim()) continue
             const vPrice = Number(v.price) > 0 ? Number(v.price) : priceNum
-            const vCost = Number(v.costPrice) > 0 ? Number(v.costPrice) : costNum
+            const vCost = (v.costPrice !== undefined && v.costPrice !== null && !isNaN(Number(v.costPrice)) && Number(v.costPrice) >= 0)
+              ? Number(v.costPrice)
+              : costNum
             const vStock = Math.max(0, Number(v.stock) || 0)
 
             const { data: createdVar } = await supabase

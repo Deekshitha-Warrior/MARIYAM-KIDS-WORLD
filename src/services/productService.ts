@@ -12,7 +12,7 @@ const PRODUCT_COLUMNS = [
   'predefined_options', 'is_active', 'sort_order', 'unit', 'rating',
   'description', 'description_ta', 'benefits', 'benefits_ta',
   'image_url', 'image', 'has_variants', 'barcode', 'sku',
-  'purchase_price', 'mrp',
+  'purchase_price', 'mrp', 'low_stock_alert',
 ].join(', ')
 
 // `branch` omitted returns both branches combined (used by the public storefront,
@@ -41,7 +41,7 @@ export async function updateItemPrice(params: {
       price: params.newPrice,
       updated_at: new Date().toISOString(),
     }
-    if (params.newCostPrice !== undefined && params.newCostPrice >= 0) {
+    if (params.newCostPrice !== undefined && params.newCostPrice !== null && !isNaN(params.newCostPrice) && params.newCostPrice >= 0) {
       updatePayload.purchase_price = params.newCostPrice
     }
     const { error } = await supabase
@@ -55,7 +55,7 @@ export async function updateItemPrice(params: {
       price: params.newPrice,
       updated_at: new Date().toISOString(),
     }
-    if (params.newCostPrice !== undefined && params.newCostPrice >= 0) {
+    if (params.newCostPrice !== undefined && params.newCostPrice !== null && !isNaN(params.newCostPrice) && params.newCostPrice >= 0) {
       updatePayload.purchase_price = params.newCostPrice
     }
     const { error } = await supabase

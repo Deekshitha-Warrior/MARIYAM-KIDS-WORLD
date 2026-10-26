@@ -137,6 +137,7 @@ export const inventoryService = {
       if (prodVariants && prodVariants.length > 0) {
         // Multi-variant product: each variant is a sellable SKU
         for (const v of prodVariants) {
+          const vCost = v.purchase_price != null ? Number(v.purchase_price) : (p.purchase_price != null ? Number(p.purchase_price) : 0)
           items.push({
             id: `var-${v.id}`,
             product_id: p.id,
@@ -151,8 +152,8 @@ export const inventoryService = {
             low_stock_threshold: threshold,
             price: Number(v.price) || Number(p.price) || 0,
             offer_price: p.offer_price ? Number(p.offer_price) : undefined,
-            purchase_price: v.purchase_price ? Number(v.purchase_price) : (p.purchase_price ? Number(p.purchase_price) : undefined),
-            cost_price: v.purchase_price ? Number(v.purchase_price) : (p.purchase_price ? Number(p.purchase_price) : undefined),
+            purchase_price: vCost,
+            cost_price: vCost,
             unit: p.unit,
             unit_type: p.unit_type,
             category: p.category,
@@ -163,6 +164,7 @@ export const inventoryService = {
         }
       } else {
         // Non-variant product
+        const pCost = p.purchase_price != null ? Number(p.purchase_price) : 0
         items.push({
           id: `prod-${p.id}`,
           product_id: p.id,
@@ -177,8 +179,8 @@ export const inventoryService = {
           low_stock_threshold: threshold,
           price: Number(p.price) || 0,
           offer_price: p.offer_price ? Number(p.offer_price) : undefined,
-          purchase_price: p.purchase_price ? Number(p.purchase_price) : undefined,
-          cost_price: p.purchase_price ? Number(p.purchase_price) : undefined,
+          purchase_price: pCost,
+          cost_price: pCost,
           unit: p.unit,
           unit_type: p.unit_type,
           category: p.category,
